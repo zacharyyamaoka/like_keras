@@ -1,0 +1,45 @@
+General
+	Part Number	Component3
+	Part Name	Component3
+	Description
+	Material Name	Steel
+
+Manage
+	Item Number
+	Lifecycle
+	Revision
+	State
+	Change Order
+
+Physical
+	Mass	15056.2175 g
+	Volume	1.918E+06 mm^3
+	Density	0.0079 g / mm^3
+	Area	1.370E+05 mm^2
+	World X,Y,Z	0.00 mm, 0.00 mm, 0.00 mm
+	Center of Mass	275.00 mm, -155.2028 mm, 144.8751 mm
+	Bounding Box
+		Length	550.00 mm
+		Width	61.3926 mm
+		Height	56.8025 mm
+	Moment of Inertia at Center of Mass   (g mm^2)
+		Ixx	8.777E+06
+		Ixy	-9.095E-08
+		Ixz	-1.819E-07
+		Iyx	-9.095E-08
+		Iyy	3.836E+08
+		Iyz	0.00
+		Izx	-1.819E-07
+		Izy	0.00
+		Izz	3.843E+08
+	Moment of Inertia at Origin   (g mm^2)
+		Ixx	6.875E+08
+		Ixy	6.426E+08
+		Ixz	-5.998E+08
+		Iyx	6.426E+08
+		Iyy	1.838E+09
+		Iyz	3.385E+08
+		Izx	-5.998E+08
+		Izy	3.385E+08
+		Izz	1.886E+09
+

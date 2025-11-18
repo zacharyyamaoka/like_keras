@@ -1,0 +1,45 @@
+General
+	Part Number	Component4
+	Part Name	Component4
+	Description
+	Material Name	Steel
+
+Manage
+	Item Number
+	Lifecycle
+	Revision
+	State
+	Change Order
+
+Physical
+	Mass	36583.778 g
+	Volume	4.660E+06 mm^3
+	Density	0.0079 g / mm^3
+	Area	2.950E+05 mm^2
+	World X,Y,Z	0.00 mm, 0.00 mm, 0.00 mm
+	Center of Mass	207.2138 mm, 284.745 mm, -55.8622 mm
+	Bounding Box
+		Length	425.5494 mm
+		Width	463.393 mm
+		Height	425.5494 mm
+	Moment of Inertia at Center of Mass   (g mm^2)
+		Ixx	8.564E+08
+		Ixy	3.448E+08
+		Ixz	-1.436E+08
+		Iyx	3.448E+08
+		Iyy	5.408E+08
+		Iyz	3.448E+08
+		Izx	-1.436E+08
+		Izy	3.448E+08
+		Izz	8.564E+08
+	Moment of Inertia at Origin   (g mm^2)
+		Ixx	3.937E+09
+		Ixy	-1.814E+09
+		Ixz	2.798E+08
+		Iyx	-1.814E+09
+		Iyy	2.226E+09
+		Iyz	9.267E+08
+		Izx	2.798E+08
+		Izy	9.267E+08
+		Izz	5.393E+09
+

@@ -3,3 +3,12 @@ examples
 tests
 docs
 .cursor
+
+
+lk/utils 
+lk/msgs
+lk/common
+
+lk/robot_description
+
+
