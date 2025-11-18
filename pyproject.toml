@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["lk"]
+
+[project]
+name = "like_keras"
+version = "0.0.1"
+dependencies = [
+  # Bare-minimum runtime requirement
+  "numpy",
+  "pin",
+  "xacrodoc",
+  "matplotlib",
+  "dacite",
+  'meshcat',
+  'viser',
+
+  "pytest",
+  "robot_descriptions", # ok for quick testing, but very old, and interia wrong on UR5, etc..
+
+  "tf_transformations @ git+https://github.com/zacharyyamaoka/tf_transformations.git@main",
+  "ruckig-pro @ git+https://github.com/zacharyyamaoka/ruckig-pro-v0.16.1.git@main",
+  # Helpers
+  "nbstripout", # remove notebook output to prevent flooding version control
+
+  # make this optional at some point? 
+  "dora-rs-cli",
+]
+
+[project.optional-dependencies]
+# Install with `pip install .[core]` or `pip install .[full]`
+
+testing = [
+
+]
+
+full = [
+
+  "opencv-contrib-python", # Updated Numpy dependency rules. Packages for Python 3.9+ are built with Numpy 2.x. Packages for older Python version are built with Numpy 1.x.
+  "open3d",
+  "torch",
+  "torchvision",
+  "wandb",
+
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:Please update your 'hppfcl' imports to 'coal'",
+    "ignore:zmq.eventloop.ioloop is deprecated",
+    "ignore:This function has been marked as deprecated"
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+]
+
