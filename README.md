@@ -1,5 +1,6 @@
+<img src="ChatGPT Image Nov 18, 2025, 02_29_00 AM.png" alt="Logo" width="180"/>
 
-# like_keras
+# Like Keras - Python API for Robot System Design
 
 A python library for robotics like keras
 
@@ -50,3 +51,17 @@ Ok so one view of it is the dataflow view:
 https://dora-rs.ai/python/dora/builder.html
 
 Thats what we are doing now... I think the cool thing is that you can inject just normal python nodes though and then you can use the function like normal?
+
+Killer Features
+
+1. Interactive graph visualiztion of system
+    - Super easy to understand the different connections.
+    - What test can we make to verify that we can always plot and view the cart?
+    - v1 would be that it just succesfull runs
+    - v2 could be we save an expected output, and make sure that it can always generate that same output?
+    - Yes that seems a reasonable way to prevent regressions on this very visual thing.
+
+2. Pythonic like development, High performance static graphs for deployment
+    - Seamless transition between the two!
+    - Mabye using ideas like: https://www.tensorflow.org/guide/function
+    - When you call that function it should really do what it means... it should execut accordigly.. that is why the = doesn't make sense, it doesn't mean anything, that is why I like the approach of passing the data, like pytorch...

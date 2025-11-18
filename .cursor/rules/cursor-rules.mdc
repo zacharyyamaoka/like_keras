@@ -1,0 +1,12 @@
+---
+description: When creating or modifying cursor rules
+alwaysApply: false
+---
+# Cursor Rules Location
+
+## Rule Storage
+- **ALWAYS create cursor rules in `.cursor/rules/` directory**
+- Never create rules in other locations
+- Rules must use the `.mdc` extension (Markdown with Cursor metadata)
+
+

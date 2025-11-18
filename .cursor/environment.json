@@ -1,0 +1,7 @@
+{
+  "snapshot": "POPULATED_FROM_SETTINGS",
+  "install": "cd /home/bam/bam_ws/src/bam_machine && bash .cursor/setup-worktree-unix.sh",
+  "start": "",
+  "terminals": []
+}
+

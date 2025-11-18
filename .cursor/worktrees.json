@@ -1,0 +1,7 @@
+{
+  "setup-worktree-unix": ".cursor/setup-worktree-unix.sh",
+  "setup-worktree": [
+    "echo 'Using generic fallback. For better support, define OS-specific scripts.'"
+  ]
+}
+

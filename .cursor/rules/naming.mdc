@@ -1,0 +1,12 @@
+---
+alwaysApply: true
+---
+
+# Naming Conventions - "As simple as possible, but no simpler"
+- Prefer descriptive variable names that are self-explanatory
+- Use abbreviated names only when space is limited or when the variable is repeated frequently
+- Examples:
+  - `curr_observation` is preferred over `current_observation` (good balance of clarity and conciseness)
+  - `obs` is acceptable only when space is limited or the variable is repeated often
+  - Avoid overly short names like `co` that require mental translation
+  - When in doubt, err on the side of clarity over brevity

@@ -1,0 +1,21 @@
+---
+description: Naming conventions for markdown files for when making new markdown files
+alwaysApply: false
+---
+Use `kebab-case.md`
+
+docs/
+├── training-recipe.md          # kebab-case
+├── architecture-overview.md    # kebab-case
+└── design-patterns.md          # kebab-case
+
+
+**Exception**: For root-level project or package documentation, always use `README.md` in all capital letters (not kebab-case).
+
+Examples:
+docs/
+├── training-recipe.md          # kebab-case
+├── architecture-overview.md    # kebab-case
+├── design-patterns.md          # kebab-case
+└── README.md                   # exception: all caps
+

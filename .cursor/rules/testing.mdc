@@ -1,0 +1,18 @@
+---
+description: When writing tests
+alwaysApply: false
+---
+# Testing Philosophy
+- Prefer a few really good illustrative tests over many mediocre ones
+- Avoid having more tests than code - focus on quality over quantity
+- Write simple code that obviously works and doesn't need extensive testing
+- Tests are important for preventing regression and ensuring reliability
+- Tests should be non-flaky and give the same result every time
+- Tests should have deterministic behavior - like a lookup table where input always produces the same output
+- Tests should be clear and illustrative - they should demonstrate the intended behavior
+- Tests should be automated and not require human in the loop to visually confirm result
+- Unit tests go inside the packages they test (in a `tests/` subdirectory)
+- Unit tests should not depend on other packages - keep dependencies minimal
+- Multi-package/integration tests go in the `tests/` directory at the workspace root
+- Each test should be independent and not affect others
+- Tests should verify correctness not just regression. Its easy to catch regressions with this system, you change anything it will fail lol!

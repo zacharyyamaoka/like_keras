@@ -1,0 +1,75 @@
+---
+description: When making a new feature in an offline branch - run tests before and after making changes
+alwaysApply: false
+---
+# Feature Development Workflow
+
+When working on a new feature in an offline branch, follow this strict testing workflow to prevent introducing regressions.
+
+## Workflow
+
+### Step 1: Run Tests BEFORE Starting Work
+
+1. **ALWAYS run all tests before making ANY edits**
+2. Use the test runner: `/home/bam/bam_ws/src/bam_machine/tests/run_all_pytests.py`
+3. **Verify that ALL tests pass**
+4. **If tests don't pass, DO NOT continue working**
+   - Fix existing test failures first
+   - Or document why tests are failing and get approval to proceed
+
+### Step 2: Make Your Changes
+
+- Only proceed with feature development after confirming all tests pass
+- Make your edits, additions, and modifications
+- Follow all other BAM workspace rules and conventions
+
+### Step 3: Run Tests AFTER Finishing Work
+
+1. **ALWAYS run all tests after completing your edits**
+2. Use the same test runner: `/home/bam/bam_ws/src/bam_machine/tests/run_all_pytests.py`
+3. **Verify that ALL tests still pass**
+4. **If tests don't pass:**
+   - Review what broke
+   - Fix your changes to make tests pass
+   - Run tests again
+   - **Keep editing and testing until all tests pass**
+   - Do not consider the feature complete until all tests pass
+
+## Running the Test Suite
+
+Use the test runner script:
+
+```bash
+cd /home/bam/bam_ws/src/bam_machine
+python tests/run_all_pytests.py
+```
+
+Or run it directly:
+
+```bash
+/home/bam/bam_ws/src/bam_machine/tests/run_all_pytests.py
+```
+
+## Why This Workflow?
+
+1. **Prevents Regressions**: Ensures you don't break existing functionality
+2. **Establishes Baseline**: Confirms the codebase was healthy before your changes
+3. **Immediate Feedback**: Catches issues right away instead of discovering them later
+4. **Clean Commits**: Ensures every commit in the offline branch maintains test health
+5. **Confidence**: Provides confidence that your feature works and doesn't break anything
+
+## Configuration
+
+The test runner configuration can be adjusted in `run_all_pytests.py`:
+- `INCLUDE_MARKS`: Run only specific test marks (e.g., ["fast"])
+- `EXCLUDE_MARKS`: Skip specific test marks (e.g., ["slow", "rclpy"])
+- `PRINT_OUTPUT`: Set to True to see print statements during tests
+- `LAST_FAILED`: Set to True to rerun only previously failed tests
+
+## Important Notes
+
+- This workflow is **mandatory** when working on new features in offline branches
+- The test-before-edit step protects you from being blamed for pre-existing failures
+- The test-after-edit step ensures your feature is production-ready
+- If you encounter flaky tests, document them and work with the team to fix them
+- **Never skip this workflow** - the few minutes spent running tests saves hours of debugging later

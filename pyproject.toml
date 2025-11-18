@@ -10,24 +10,10 @@ name = "like_keras"
 version = "0.0.1"
 dependencies = [
   # Bare-minimum runtime requirement
-  "numpy",
-  "pin",
-  "xacrodoc",
-  "matplotlib",
   "dacite",
-  'meshcat',
-  'viser',
-
-  "pytest",
-  "robot_descriptions", # ok for quick testing, but very old, and interia wrong on UR5, etc..
-
-  "tf_transformations @ git+https://github.com/zacharyyamaoka/tf_transformations.git@main",
-  "ruckig-pro @ git+https://github.com/zacharyyamaoka/ruckig-pro-v0.16.1.git@main",
-  # Helpers
-  "nbstripout", # remove notebook output to prevent flooding version control
-
-  # make this optional at some point? 
-  "dora-rs-cli",
+  "numpy",
+  "dash",
+  "dash-cytoscape"
 ]
 
 [project.optional-dependencies]
@@ -37,6 +23,12 @@ testing = [
 
 ]
 
+viz = [
+  # Interactive graph visualization (static Mermaid.js graphs work without these)
+  "dash",
+  "dash-cytoscape",
+]
+
 full = [
 
   "opencv-contrib-python", # Updated Numpy dependency rules. Packages for Python 3.9+ are built with Numpy 2.x. Packages for older Python version are built with Numpy 1.x.
@@ -44,6 +36,10 @@ full = [
   "torch",
   "torchvision",
   "wandb",
+  
+  # Interactive graph visualization
+  "dash",
+  "dash-cytoscape",
 
 ]
 

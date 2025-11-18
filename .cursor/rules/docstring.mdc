@@ -1,0 +1,26 @@
+---
+description: When you need to write docstrings
+alwaysApply: false
+---
+
+Indedent the docstring so that they can be collapsed
+
+
+WRONG:
+    def foo(bar):
+    """
+    Validates that a matrix path goes through all waypoints in a WaypointAction in order.
+
+    DescriptionArgs:
+        waypoint_action: WaypointAction containing waypoints to validate
+    """
+
+CORRECTLY INDENDET:
+
+    def foo(bar):
+    """
+        Validates that a matrix path goes through all waypoints in a WaypointAction in order.
+
+        DescriptionArgs:
+            waypoint_action: WaypointAction containing waypoints to validate
+    """

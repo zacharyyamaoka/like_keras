@@ -382,6 +382,66 @@ class System:
         """Get public output ports."""
         return self._outputs.copy()
     
+    def plot_graph(self, 
+                   to_file: Optional[str] = None,
+                   show: bool = False,
+                   rankdir: str = 'LR') -> Optional[str]:
+        """
+            Visualize the system graph using Mermaid.js.
+            
+            Similar to Keras's plot_model function.
+            
+            Args:
+                to_file: Path to save HTML file (None = temporary file)
+                show: Whether to open in browser
+                rankdir: Layout direction ('LR' or 'TB')
+                
+            Returns:
+                Path to generated HTML file
+            
+            Example:
+                system.plot_graph(to_file='my_system.html', show=True)
+        """
+        from lk.utils.plot_graph import plot_system
+        return plot_system(self, to_file=to_file, show=show, rankdir=rankdir)
+    
+    def to_mermaid(self, rankdir: str = 'LR') -> str:
+        """
+            Convert system to Mermaid diagram format.
+            
+            Args:
+                rankdir: Layout direction ('LR' or 'TB')
+                
+            Returns:
+                Mermaid diagram string
+                
+            Example:
+                mermaid_str = system.to_mermaid()
+                print(mermaid_str)
+        """
+        from lk.utils.plot_graph import system_to_mermaid
+        return system_to_mermaid(self, rankdir=rankdir)
+    
+    def launch_viewer(self, port: int = 8050, debug: bool = False, live_update: bool = False, update_interval_ms: int = 1000):
+        """
+            Launch interactive Dash Cytoscape viewer.
+            
+            Opens a web-based interactive graph viewer with zoom, pan,
+            and component inspection capabilities.
+            
+            Args:
+                port: Port to run web server on
+                debug: Enable debug mode
+                live_update: Enable real-time updates of the graph
+                update_interval_ms: Update interval in milliseconds (if live_update=True)
+                
+            Example:
+                system.launch_viewer(port=8050)
+                system.launch_viewer(port=8050, live_update=True, update_interval_ms=500)
+        """
+        from lk.utils.plot_graph import launch_interactive_viewer
+        launch_interactive_viewer(self, port=port, debug=debug, live_update=live_update, update_interval_ms=update_interval_ms)
+    
     def __repr__(self) -> str:
         return (
             f"System(name={self.config.name}, nodes={len(self._nodes)}, "
