@@ -1,0 +1,16 @@
+{
+    "_metadata": {
+        "version": "1.0",
+        "created_by": "Zach Yamaoka",
+        "created_at": "06_55pm_11_nov_2025"
+    },
+    "_save_dir": "/home/bam/bam_ws/",
+    "_file_name": "camera_config",
+    "_file_name_stamped": "camera_config_06_55pm_11_nov_2025",
+    "resolution": [
+        1920,
+        1080
+    ],
+    "fps": 30,
+    "color": true
+}

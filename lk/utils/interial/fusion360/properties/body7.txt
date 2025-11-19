@@ -1,0 +1,45 @@
+General
+	Part Number	Component7
+	Part Name	Component7
+	Description
+	Material Name	Steel
+
+Manage
+	Item Number
+	Lifecycle
+	Revision
+	State
+	Change Order
+
+Physical
+	Mass	7850.00 g
+	Volume	1.000E+06 mm^3
+	Density	0.0079 g / mm^3
+	Area	60000.00 mm^2
+	World X,Y,Z	0.00 mm, 0.00 mm, 0.00 mm
+	Center of Mass	0.00 mm, 0.00 mm, 0.00 mm
+	Bounding Box
+		Length	141.4214 mm
+		Width	141.4214 mm
+		Height	100.00 mm
+	Moment of Inertia at Center of Mass   (g mm^2)
+		Ixx	1.308E+07
+		Ixy	0.00
+		Ixz	5.712E-09
+		Iyx	0.00
+		Iyy	1.308E+07
+		Iyz	0.00
+		Izx	5.712E-09
+		Izy	0.00
+		Izz	1.308E+07
+	Moment of Inertia at Origin   (g mm^2)
+		Ixx	1.308E+07
+		Ixy	0.00
+		Ixz	5.712E-09
+		Iyx	0.00
+		Iyy	1.308E+07
+		Iyz	0.00
+		Izx	5.712E-09
+		Izy	0.00
+		Izz	1.308E+07
+

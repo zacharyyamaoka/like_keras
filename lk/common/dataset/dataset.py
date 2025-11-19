@@ -10,8 +10,10 @@
     - ReductStore (production time-series database)
 """
 
-# BAM
-from lk.common.dataset.backends import DatasetBackend, MemoryBackend, PickleBackend
+# BAM  
+from .backend import DatasetBackend
+from .memory_backend import MemoryBackend
+from .pickle_backend import PickleBackend
 
 # PYTHON
 from typing import Any, Optional
@@ -324,4 +326,5 @@ if __name__ == '__main__':
     print("\n" + "="*70)
     print("Dataset provides uniform API across different storage backends")
     print("="*70 + "\n")
+
 

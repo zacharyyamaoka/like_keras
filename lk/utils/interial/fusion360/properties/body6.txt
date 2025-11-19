@@ -1,0 +1,45 @@
+General
+	Part Number	Component6
+	Part Name	Component6
+	Description
+	Material Name	Steel
+
+Manage
+	Item Number
+	Lifecycle
+	Revision
+	State
+	Change Order
+
+Physical
+	Mass	11775.00 g
+	Volume	1.500E+06 mm^3
+	Density	0.0079 g / mm^3
+	Area	1.250E+05 mm^2
+	World X,Y,Z	0.00 mm, 0.00 mm, 0.00 mm
+	Center of Mass	0.00 mm, 0.00 mm, 0.00 mm
+	Bounding Box
+		Length	600.00 mm
+		Width	50.00 mm
+		Height	50.00 mm
+	Moment of Inertia at Center of Mass   (g mm^2)
+		Ixx	4.906E+06
+		Ixy	0.00
+		Ixz	1.142E-08
+		Iyx	0.00
+		Iyy	3.557E+08
+		Iyz	0.00
+		Izx	1.142E-08
+		Izy	0.00
+		Izz	3.557E+08
+	Moment of Inertia at Origin   (g mm^2)
+		Ixx	4.906E+06
+		Ixy	0.00
+		Ixz	1.142E-08
+		Iyx	0.00
+		Iyy	3.557E+08
+		Iyz	0.00
+		Izx	1.142E-08
+		Izy	0.00
+		Izz	3.557E+08
+

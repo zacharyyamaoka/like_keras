@@ -1,4 +1,0 @@
-"""
-    Robot description and kinematics
-"""
-
