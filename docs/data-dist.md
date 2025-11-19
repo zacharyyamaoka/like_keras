@@ -56,25 +56,3 @@ When specificing a input/output spec, we don't have a specific message so its a 
 
 Would it be helpful to know what dist a msg came from? Poetailyl but not really, thats why I don't think the message needs to carry that information.
 
-So I think we have a seperate PoseStampedDist()
-
-PoseStamped(PoseStampedDist)
-    Dist = PoseStampedDist
-
-
-Ok what about a dataset, could it be nice to load a dataset into a distribution?
-
-No this is the other way around! We actually want a dataset to be the end result
-
-DataDist -> Data -> Dataset (list[x], list[Data])
-
-For example
-
-PoseStamped.Dist -> PoseStamped -> (t, list[Posestamped])
-
-
-PoseStampedDist
-
-    @static method
-    def unfiorm(): self
-    etc.

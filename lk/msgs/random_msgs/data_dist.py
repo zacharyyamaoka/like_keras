@@ -10,7 +10,7 @@
 
 # PYTHON
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Callable, get_type_hints
+from typing import Any, Optional, Callable
 from dataclasses import dataclass, field
 import numpy as np
 
@@ -113,24 +113,6 @@ class DataDist(ABC):
             NotImplementedError: If this distribution doesn't support deserialization
         """
         raise NotImplementedError(f"{cls.__name__} does not support from_config")
-    
-    @property
-    def d_type(self) -> type:
-        """Return the data type of this distribution.
-        
-        Extracts the return type from the sample() method's type hint.
-        Matches gymnasium's Space.dtype pattern and numpy's dtype convention.
-        
-        Returns:
-            The type that sample() produces (e.g., Point, PoseStamped, float)
-            
-        Example:
-            >>> dist = PoseStamped.uniform(-1, 1)
-            >>> dist.d_type
-            <class 'PoseStamped'>
-        """
-        hints = get_type_hints(self.sample)
-        return hints.get('return', Any)
     
     @property
     def shape(self) -> Optional[tuple[int, ...]]:
@@ -257,7 +239,6 @@ if __name__ == '__main__':
     print("  - save() -> value")
     
     print("\n" + "Properties:")
-    print("  - d_type -> type (data type produced by sample(), like gymnasium Space.dtype)")
     print("  - shape -> tuple[int, ...] | None")
     print("  - is_flattenable -> bool")
     print("  - permutation_total -> int")

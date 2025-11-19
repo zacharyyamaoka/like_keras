@@ -12,7 +12,7 @@ from tf_transformations import xyzrpy_offset
 # PYTHON
 import copy
 import numpy as np
-from typing import List, TYPE_CHECKING, Optional
+from typing import List, TYPE_CHECKING
 from dataclasses import dataclass, field
 
 if TYPE_CHECKING:
@@ -77,71 +77,6 @@ class PoseStamped(PoseMsg):
     @classmethod
     def from_xyzrpy(cls, xyz: list[float], rpy: list[float], frame_id='', header: Header = None):
         return cls.from_list(list=list(xyz) + list(rpy), euler=True, frame_id=frame_id, header=header)
-    
-    @dataclass
-    class Dist:
-        """Distribution specification for PoseStamped (mirrors message structure)."""
-        pose: 'Pose.Dist' = field(default_factory=Pose.Dist)
-        # Note: header is not part of distribution - frame_id is set separately
-        _seed: Optional[int] = field(default=None, init=False, repr=False)
-        
-        def __post_init__(self):
-            """Initialize RNG."""
-            self.rng = np.random.default_rng(self._seed)
-        
-        def sample(self, frame_id: str = '') -> 'PoseStamped':
-            """Sample a concrete PoseStamped.
-            
-            Args:
-                frame_id: Optional frame_id for the header
-            """
-            return PoseStamped(
-                header=Header(frame_id=frame_id),
-                pose=self.pose.sample()
-            )
-        
-        def get_range(self) -> tuple[Optional[dict], Optional[dict]]:
-            """Get bounds as nested dict."""
-            return self.pose.get_range()
-        
-        def contains(self, pose_stamped: 'PoseStamped') -> bool:
-            """Check if pose_stamped is within bounds."""
-            return self.pose.contains(pose_stamped.pose)
-        
-        def seed(self, seed: Optional[int] = None) -> int:
-            """Seed the RNG for all component distributions."""
-            if seed is None:
-                seed = np.random.randint(0, 2**31)
-            self._seed = seed
-            self.rng = np.random.default_rng(seed)
-            # Seed component distributions
-            self.pose.seed(seed)
-            return seed
-        
-        def generate_dataset(self, n: int, frame_id: str = '') -> list['PoseStamped']:
-            """Generate a dataset of n PoseStamped samples.
-            
-            Args:
-                n: Number of samples
-                frame_id: Optional frame_id for all headers
-            """
-            return [self.sample(frame_id=frame_id) for _ in range(n)]
-        
-        @classmethod
-        def uniform(cls, low: float, high: float) -> 'PoseStamped.Dist':
-            """Uniform distribution for position, identity for orientation."""
-            return cls(
-                pose=Pose.Dist.uniform(low, high)
-            )
-        
-        @classmethod
-        def uniform_with_rotation(cls, pos_low: float, pos_high: float,
-                                  rpy_lower: tuple[float, float, float] = (-np.pi, -np.pi, -np.pi),
-                                  rpy_upper: tuple[float, float, float] = (np.pi, np.pi, np.pi)) -> 'PoseStamped.Dist':
-            """Uniform distribution for both position and orientation (via euler angles)."""
-            return cls(
-                pose=Pose.Dist.uniform_with_rotation(pos_low, pos_high, rpy_lower, rpy_upper)
-            )
 
 
 

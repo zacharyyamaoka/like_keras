@@ -7,10 +7,7 @@
 """
 
 # BAM
-from .data_dist import DataDist
-
-# Backward compatibility
-RandomType = DataDist
+from .random_type import RandomType
 
 # PYTHON
 from typing import Optional, Callable

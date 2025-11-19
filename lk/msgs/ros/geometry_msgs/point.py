@@ -6,8 +6,7 @@ if typing.TYPE_CHECKING:
     from .vector3 import Vector3
 
 # PYTHON
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 import numpy as np
 
 # https://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/Point.html
@@ -70,82 +69,6 @@ class Point(RosMsg):
 
     def distance(self, target: 'Point') -> float:
         return np.linalg.norm(np.array(self.to_list()) - np.array(target.to_list()))
-    
-    @dataclass
-    class Dist:
-        """Distribution specification for Point with gymnasium Space compatibility."""
-        from lk.msgs.random_msgs.float_dist import FloatDist
-        from lk.msgs.random_msgs.data_dist import DataDist
-        
-        x: 'FloatDist' = field(default_factory=lambda: FloatDist.fixed(0.0))
-        y: 'FloatDist' = field(default_factory=lambda: FloatDist.fixed(0.0))
-        z: 'FloatDist' = field(default_factory=lambda: FloatDist.fixed(0.0))
-        _seed: Optional[int] = field(default=None, init=False, repr=False)
-        
-        def __post_init__(self):
-            """Initialize RNG."""
-            self.rng = np.random.default_rng(self._seed)
-        
-        def sample(self) -> 'Point':
-            """Sample a concrete Point."""
-            return Point(
-                x=self.x.sample(),
-                y=self.y.sample(),
-                z=self.z.sample()
-            )
-        
-        def get_range(self) -> tuple[Optional[tuple], Optional[tuple]]:
-            """Get (min, max) bounds as tuples."""
-            x_min, x_max = self.x.get_range()
-            y_min, y_max = self.y.get_range()
-            z_min, z_max = self.z.get_range()
-            
-            min_pt = (x_min, y_min, z_min) if all(v is not None for v in [x_min, y_min, z_min]) else None
-            max_pt = (x_max, y_max, z_max) if all(v is not None for v in [x_max, y_max, z_max]) else None
-            return (min_pt, max_pt)
-        
-        def contains(self, point: 'Point') -> bool:
-            """Check if point is within bounds."""
-            return (self.x.contains(point.x) and 
-                    self.y.contains(point.y) and 
-                    self.z.contains(point.z))
-        
-        def seed(self, seed: Optional[int] = None) -> int:
-            """Seed the RNG for all component distributions."""
-            if seed is None:
-                seed = np.random.randint(0, 2**31)
-            self._seed = seed
-            self.rng = np.random.default_rng(seed)
-            # Seed component distributions
-            self.x.seed(seed)
-            self.y.seed(seed + 1)
-            self.z.seed(seed + 2)
-            return seed
-        
-        def generate_dataset(self, n: int) -> list['Point']:
-            """Generate a dataset of n Point samples."""
-            return [self.sample() for _ in range(n)]
-        
-        @classmethod
-        def uniform(cls, low: float, high: float) -> 'Point.Dist':
-            """Uniform distribution on all axes."""
-            from lk.msgs.random_msgs.float_dist import FloatDist
-            return cls(
-                x=FloatDist.uniform(low, high),
-                y=FloatDist.uniform(low, high),
-                z=FloatDist.uniform(low, high)
-            )
-        
-        @classmethod
-        def normal(cls, mean: tuple[float, float, float] = (0.0, 0.0, 0.0), 
-                  std: tuple[float, float, float] = (1.0, 1.0, 1.0)) -> 'Point.Dist':
-            """Normal distribution with per-axis mean and std."""
-            from lk.msgs.random_msgs.float_dist import FloatDist
-            return cls(
-                x=FloatDist.normal(mean[0], std[0]),
-                y=FloatDist.normal(mean[1], std[1]),
-                z=FloatDist.normal(mean[2], std[2])
-            )
 
     def __post_init__(self):
         self.x = float(self.x)
