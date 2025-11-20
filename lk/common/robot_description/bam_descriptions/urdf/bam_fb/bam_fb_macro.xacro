@@ -1,0 +1,676 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+
+  <!--
+    BamFb Macro - Config-driven version
+    
+    This macro creates a BamFb arm from a config file containing joint kinematics,
+    link inertial properties, collision geometry, and other parameters.
+    
+    Structure matches bam_fb_cad_kin.urdf.xacro with regions for:
+    - Serial Chain (shoulder, L1, L2, wrist)
+    - Parallel Linkage (C1, C2)
+    
+    NOTE: This macro expects common.xacro to be included by the parent file.
+  -->
+
+  <!-- 
+    Universal config loader - makes composite simpler
+  -->
+  <xacro:macro name="make_config" params="config_file">
+    <xacro:make_arm config_file="${config_file}"/>
+  </xacro:macro>
+
+  <xacro:macro name="make_arm" params="config_file">
+    
+    <xacro:property name="cfg" value="${xacro.load_yaml(config_file)}"/>
+    
+    <!-- Extract commonly used values -->
+    <xacro:property name="prefix" value="${cfg['info']['prefix']}"/>
+    <xacro:property name="reflect" value="${cfg['args']['reflect']}"/>
+    <xacro:property name="disable_L1" value="${cfg['args']['disable_L1']}"/>
+    <xacro:property name="disable_L2" value="${cfg['args']['disable_L2']}"/>
+    <xacro:property name="disable_C1" value="${cfg['args']['disable_C1']}"/>
+    <xacro:property name="disable_C2" value="${cfg['args']['disable_C2']}"/>
+    <xacro:property name="disable_wrist" value="${cfg['args']['disable_wrist']}"/>
+    <xacro:property name="disable_sticker" value="${cfg['args']['disable_sticker']}"/>
+    
+    <!--region - SERIAL CHAIN -->
+    
+    <!-- Base Link -->
+    <link name="${prefix}arm_base_link">
+      <xacro:if value="${cfg['links']['arm_base_link']['visual']['geometry']['type'] != 'none'}">
+        <visual>
+          <geometry>
+            <mesh filename="${cfg['links']['arm_base_link']['visual']['geometry']['filename']}"/>
+          </geometry>
+          <material name="StoglRobotics/LightGrey"/>
+        </visual>
+      </xacro:if>
+      
+      <inertial>
+        <origin xyz="${cfg['links']['arm_base_link']['inertial']['origin']['x']} ${cfg['links']['arm_base_link']['inertial']['origin']['y']} ${cfg['links']['arm_base_link']['inertial']['origin']['z']}" rpy="0 0 0"/>
+        <mass value="${cfg['links']['arm_base_link']['inertial']['mass']}"/>
+        <inertia 
+          ixx="${cfg['links']['arm_base_link']['inertial']['inertia']['ixx']}" 
+          ixy="${cfg['links']['arm_base_link']['inertial']['inertia']['ixy']}" 
+          ixz="${cfg['links']['arm_base_link']['inertial']['inertia']['ixz']}" 
+          iyy="${cfg['links']['arm_base_link']['inertial']['inertia']['iyy']}" 
+          iyz="${cfg['links']['arm_base_link']['inertial']['inertia']['iyz']}" 
+          izz="${cfg['links']['arm_base_link']['inertial']['inertia']['izz']}"/>
+      </inertial>
+      
+      <xacro:unless value="${cfg['links']['arm_base_link']['collision']['geometry']['type'] == 'none'}">
+        <collision>
+          <xacro:if value="${cfg['links']['arm_base_link']['collision']['geometry']['type'] == 'box'}">
+            <origin xyz="${cfg['links']['arm_base_link']['collision']['origin']['xyz']}" rpy="${cfg['links']['arm_base_link']['collision']['origin']['rpy']}"/>
+          </xacro:if>
+          <geometry>
+            <xacro:if value="${cfg['links']['arm_base_link']['collision']['geometry']['type'] == 'mesh'}">
+              <mesh filename="${cfg['links']['arm_base_link']['collision']['geometry']['filename']}"/>
+            </xacro:if>
+            <xacro:if value="${cfg['links']['arm_base_link']['collision']['geometry']['type'] == 'box'}">
+              <box size="${cfg['links']['arm_base_link']['collision']['geometry']['size']}"/>
+            </xacro:if>
+          </geometry>
+        </collision>
+      </xacro:unless>
+    </link>
+    
+    <!-- Shoulder Joint -->
+    <joint name="${prefix}shoulder_joint" type="revolute">
+      <origin 
+        xyz="${cfg['joints']['shoulder_joint']['transform']['xyz']}" 
+        rpy="${cfg['joints']['shoulder_joint']['transform']['rpy']}"/>
+      <parent link="${prefix}arm_base_link"/>
+      <child link="${prefix}shoulder_link"/>
+      <axis xyz="0 0 1"/>
+      <limit 
+        lower="${cfg['joints']['shoulder_joint']['limits']['min_position']}" 
+        upper="${cfg['joints']['shoulder_joint']['limits']['max_position']}" 
+        effort="${cfg['joints']['shoulder_joint']['limits']['max_effort']}" 
+        velocity="${cfg['joints']['shoulder_joint']['limits']['max_velocity']}"/>
+      <dynamics 
+        damping="${cfg['joints']['shoulder_joint']['physics']['damping']}" 
+        friction="${cfg['joints']['shoulder_joint']['physics']['friction']}"/>
+    </joint>
+    
+    <!-- Shoulder Link -->
+    <link name="${prefix}shoulder_link">
+      <xacro:if value="${cfg['links']['shoulder_link']['visual']['geometry']['type'] != 'none'}">
+        <visual>
+          <geometry>
+            <mesh filename="${cfg['links']['shoulder_link']['visual']['geometry']['filename']}"/>
+          </geometry>
+          <material name="StoglRobotics/LightGrey"/>
+        </visual>
+      </xacro:if>
+      
+      <inertial>
+        <origin xyz="${cfg['links']['shoulder_link']['inertial']['origin']['x']} ${cfg['links']['shoulder_link']['inertial']['origin']['y']} ${cfg['links']['shoulder_link']['inertial']['origin']['z']}" rpy="0 0 0"/>
+        <mass value="${cfg['links']['shoulder_link']['inertial']['mass']}"/>
+        <inertia 
+          ixx="${cfg['links']['shoulder_link']['inertial']['inertia']['ixx']}" 
+          ixy="${cfg['links']['shoulder_link']['inertial']['inertia']['ixy']}" 
+          ixz="${cfg['links']['shoulder_link']['inertial']['inertia']['ixz']}" 
+          iyy="${cfg['links']['shoulder_link']['inertial']['inertia']['iyy']}" 
+          iyz="${cfg['links']['shoulder_link']['inertial']['inertia']['iyz']}" 
+          izz="${cfg['links']['shoulder_link']['inertial']['inertia']['izz']}"/>
+      </inertial>
+      
+      <xacro:unless value="${cfg['links']['shoulder_link']['collision']['geometry']['type'] == 'none'}">
+        <collision>
+          <xacro:if value="${cfg['links']['shoulder_link']['collision']['geometry']['type'] == 'box'}">
+            <origin xyz="${cfg['links']['shoulder_link']['collision']['origin']['xyz']}" rpy="${cfg['links']['shoulder_link']['collision']['origin']['rpy']}"/>
+          </xacro:if>
+          <geometry>
+            <xacro:if value="${cfg['links']['shoulder_link']['collision']['geometry']['type'] == 'mesh'}">
+              <mesh filename="${cfg['links']['shoulder_link']['collision']['geometry']['filename']}"/>
+            </xacro:if>
+            <xacro:if value="${cfg['links']['shoulder_link']['collision']['geometry']['type'] == 'box'}">
+              <box size="${cfg['links']['shoulder_link']['collision']['geometry']['size']}"/>
+            </xacro:if>
+          </geometry>
+        </collision>
+      </xacro:unless>
+    </link>
+    
+    <!--region - Upper Arm (L1) -->
+    
+    <xacro:unless value="${disable_L1}">
+      
+      <!-- L1 Joint -->
+      <joint name="${prefix}l1_joint" type="revolute">
+        <origin 
+          xyz="${cfg['joints']['l1_joint']['transform']['xyz']}" 
+          rpy="${cfg['joints']['l1_joint']['transform']['rpy']}"/>
+        <parent link="${prefix}shoulder_link"/>
+        <child link="${prefix}l1_link"/>
+        <axis xyz="0 0 -1"/>
+        <limit 
+          lower="${cfg['joints']['l1_joint']['limits']['min_position']}" 
+          upper="${cfg['joints']['l1_joint']['limits']['max_position']}" 
+          effort="${cfg['joints']['l1_joint']['limits']['max_effort']}" 
+          velocity="${cfg['joints']['l1_joint']['limits']['max_velocity']}"/>
+        <dynamics 
+          damping="${cfg['joints']['l1_joint']['physics']['damping']}" 
+          friction="${cfg['joints']['l1_joint']['physics']['friction']}"/>
+      </joint>
+      
+      <link name="${prefix}l1_link">
+        <visual>
+          <geometry>
+            <mesh filename="${cfg['links']['l1_link']['visual']['geometry']['filename']}"/>
+          </geometry>
+          <material name="StoglRobotics/LightGrey"/>
+        </visual>
+        
+        <inertial>
+          <origin xyz="${cfg['links']['l1_link']['inertial']['origin']['x']} ${cfg['links']['l1_link']['inertial']['origin']['y']} ${cfg['links']['l1_link']['inertial']['origin']['z']}" rpy="0 0 0"/>
+          <mass value="${cfg['links']['l1_link']['inertial']['mass']}"/>
+          <inertia 
+            ixx="${cfg['links']['l1_link']['inertial']['inertia']['ixx']}" 
+            ixy="${cfg['links']['l1_link']['inertial']['inertia']['ixy']}" 
+            ixz="${cfg['links']['l1_link']['inertial']['inertia']['ixz']}" 
+            iyy="${cfg['links']['l1_link']['inertial']['inertia']['iyy']}" 
+            iyz="${cfg['links']['l1_link']['inertial']['inertia']['iyz']}" 
+            izz="${cfg['links']['l1_link']['inertial']['inertia']['izz']}"/>
+        </inertial>
+        
+        <xacro:unless value="${cfg['links']['l1_link']['collision']['geometry']['type'] == 'none'}">
+          <collision>
+            <xacro:if value="${cfg['links']['l1_link']['collision']['geometry']['type'] == 'box'}">
+              <origin xyz="${cfg['links']['l1_link']['collision']['origin']['xyz']}" rpy="${cfg['links']['l1_link']['collision']['origin']['rpy']}"/>
+            </xacro:if>
+            <geometry>
+              <xacro:if value="${cfg['links']['l1_link']['collision']['geometry']['type'] == 'mesh'}">
+                <mesh filename="${cfg['links']['l1_link']['collision']['geometry']['filename']}"/>
+              </xacro:if>
+              <xacro:if value="${cfg['links']['l1_link']['collision']['geometry']['type'] == 'box'}">
+                <box size="${cfg['links']['l1_link']['collision']['geometry']['size']}"/>
+              </xacro:if>
+            </geometry>
+          </collision>
+        </xacro:unless>
+      </link>
+      
+    </xacro:unless>
+    
+    <!--endregion - Upper Arm (L1) -->
+    
+    <!--region - Forearm (L2) -->
+    
+    <xacro:unless value="${disable_L2}">
+      
+      <!-- L2 Joint -->
+      <joint name="${prefix}l2_joint" type="revolute">
+        <origin 
+          xyz="${cfg['joints']['l2_joint']['transform']['xyz']}" 
+          rpy="${cfg['joints']['l2_joint']['transform']['rpy']}"/>
+        <parent link="${prefix}l1_link"/>
+        <child link="${prefix}l2_link"/>
+        <axis xyz="0 0 1"/>
+        <limit 
+          lower="${cfg['joints']['l2_joint']['limits']['min_position']}" 
+          upper="${cfg['joints']['l2_joint']['limits']['max_position']}" 
+          effort="${cfg['joints']['l2_joint']['limits']['max_effort']}" 
+          velocity="${cfg['joints']['l2_joint']['limits']['max_velocity']}"/>
+        <dynamics 
+          damping="${cfg['joints']['l2_joint']['physics']['damping']}" 
+          friction="${cfg['joints']['l2_joint']['physics']['friction']}"/>
+      </joint>
+      
+      <link name="${prefix}l2_link">
+        <visual>
+          <geometry>
+            <mesh filename="${cfg['links']['l2_link']['visual']['geometry']['filename']}"/>
+          </geometry>
+          <material name="StoglRobotics/LightGrey"/>
+        </visual>
+        
+        <inertial>
+          <origin xyz="${cfg['links']['l2_link']['inertial']['origin']['x']} ${cfg['links']['l2_link']['inertial']['origin']['y']} ${cfg['links']['l2_link']['inertial']['origin']['z']}" rpy="0 0 0"/>
+          <mass value="${cfg['links']['l2_link']['inertial']['mass']}"/>
+          <inertia 
+            ixx="${cfg['links']['l2_link']['inertial']['inertia']['ixx']}" 
+            ixy="${cfg['links']['l2_link']['inertial']['inertia']['ixy']}" 
+            ixz="${cfg['links']['l2_link']['inertial']['inertia']['ixz']}" 
+            iyy="${cfg['links']['l2_link']['inertial']['inertia']['iyy']}" 
+            iyz="${cfg['links']['l2_link']['inertial']['inertia']['iyz']}" 
+            izz="${cfg['links']['l2_link']['inertial']['inertia']['izz']}"/>
+        </inertial>
+        
+        <xacro:unless value="${cfg['links']['l2_link']['collision']['geometry']['type'] == 'none'}">
+          <collision>
+            <xacro:if value="${cfg['links']['l2_link']['collision']['geometry']['type'] == 'box'}">
+              <origin xyz="${cfg['links']['l2_link']['collision']['origin']['xyz']}" rpy="${cfg['links']['l2_link']['collision']['origin']['rpy']}"/>
+            </xacro:if>
+            <geometry>
+              <xacro:if value="${cfg['links']['l2_link']['collision']['geometry']['type'] == 'mesh'}">
+                <mesh filename="${cfg['links']['l2_link']['collision']['geometry']['filename']}"/>
+              </xacro:if>
+              <xacro:if value="${cfg['links']['l2_link']['collision']['geometry']['type'] == 'box'}">
+                <box size="${cfg['links']['l2_link']['collision']['geometry']['size']}"/>
+              </xacro:if>
+            </geometry>
+          </collision>
+        </xacro:unless>
+      </link>
+      
+      <!-- Elbow link for five-bar constraint visualization -->
+      <joint name="${prefix}elbow_joint" type="fixed">
+        <origin 
+          xyz="${cfg['joints']['elbow_joint']['transform']['xyz']}" 
+          rpy="${cfg['joints']['elbow_joint']['transform']['rpy']}"/>
+        <parent link="${prefix}l2_link"/>
+        <child link="${prefix}elbow_link"/>
+      </joint>
+      
+      <link name="${prefix}elbow_link">
+        <visual>
+          <geometry>
+            <mesh filename="${cfg['links']['elbow_link']['visual']['geometry']['filename']}"/>
+          </geometry>
+          <material name="StoglRobotics/LightGrey"/>
+        </visual>
+        
+        <inertial>
+          <origin xyz="${cfg['links']['elbow_link']['inertial']['origin']['x']} ${cfg['links']['elbow_link']['inertial']['origin']['y']} ${cfg['links']['elbow_link']['inertial']['origin']['z']}" rpy="0 0 0"/>
+          <mass value="${cfg['links']['elbow_link']['inertial']['mass']}"/>
+          <inertia 
+            ixx="${cfg['links']['elbow_link']['inertial']['inertia']['ixx']}" 
+            ixy="${cfg['links']['elbow_link']['inertial']['inertia']['ixy']}" 
+            ixz="${cfg['links']['elbow_link']['inertial']['inertia']['ixz']}" 
+            iyy="${cfg['links']['elbow_link']['inertial']['inertia']['iyy']}" 
+            iyz="${cfg['links']['elbow_link']['inertial']['inertia']['iyz']}" 
+            izz="${cfg['links']['elbow_link']['inertial']['inertia']['izz']}"/>
+        </inertial>
+        
+        <xacro:unless value="${cfg['links']['elbow_link']['collision']['geometry']['type'] == 'none'}">
+          <collision>
+            <xacro:if value="${cfg['links']['elbow_link']['collision']['geometry']['type'] == 'box'}">
+              <origin xyz="${cfg['links']['elbow_link']['collision']['origin']['xyz']}" rpy="${cfg['links']['elbow_link']['collision']['origin']['rpy']}"/>
+            </xacro:if>
+            <geometry>
+              <xacro:if value="${cfg['links']['elbow_link']['collision']['geometry']['type'] == 'mesh'}">
+                <mesh filename="${cfg['links']['elbow_link']['collision']['geometry']['filename']}"/>
+              </xacro:if>
+              <xacro:if value="${cfg['links']['elbow_link']['collision']['geometry']['type'] == 'box'}">
+                <box size="${cfg['links']['elbow_link']['collision']['geometry']['size']}"/>
+              </xacro:if>
+            </geometry>
+          </collision>
+        </xacro:unless>
+      </link>
+      
+      <joint name="${prefix}elbow_tip_joint" type="fixed">
+        <origin 
+          xyz="${cfg['joints']['elbow_tip_joint']['transform']['xyz']}" 
+          rpy="${cfg['joints']['elbow_tip_joint']['transform']['rpy']}"/>
+        <parent link="${prefix}elbow_link"/>
+        <child link="${prefix}elbow_tip"/>
+      </joint>
+      
+      <link name="${prefix}elbow_tip"/>
+      
+            
+      
+      <!-- Sticker anchor (optional) -->
+      <xacro:unless value="${disable_sticker}">
+        <link name="${prefix}sticker_anchor">
+          <xacro:dummy_inertial/>
+        </link>
+        
+        <joint name="${prefix}l2_to_sticker_anchor" type="fixed">
+          <parent link="${prefix}l2_link"/>
+          <child link="${prefix}sticker_anchor"/>
+          <origin xyz="0 0 0" rpy="0 0 0"/>
+        </joint>
+      </xacro:unless>
+      
+    </xacro:unless>
+    
+    <!--endregion - Forearm (L2) -->
+    
+    <!--region - Wrist -->
+    
+    <xacro:unless value="${disable_wrist}">
+      
+      <!-- Wrist 1 Joint -->
+      <joint name="${prefix}wrist_1_joint" type="revolute">
+        <origin 
+          xyz="${cfg['joints']['wrist_1_joint']['transform']['xyz']}" 
+          rpy="${cfg['joints']['wrist_1_joint']['transform']['rpy']}"/>
+        <parent link="${prefix}l2_link"/>
+        <child link="${prefix}wrist_1_link"/>
+        <axis xyz="0 0 1"/>
+        <limit 
+          lower="${cfg['joints']['wrist_1_joint']['limits']['min_position']}" 
+          upper="${cfg['joints']['wrist_1_joint']['limits']['max_position']}" 
+          effort="${cfg['joints']['wrist_1_joint']['limits']['max_effort']}" 
+          velocity="${cfg['joints']['wrist_1_joint']['limits']['max_velocity']}"/>
+        <dynamics 
+          damping="${cfg['joints']['wrist_1_joint']['physics']['damping']}" 
+          friction="${cfg['joints']['wrist_1_joint']['physics']['friction']}"/>
+      </joint>
+      
+      <link name="${prefix}wrist_1_link">
+        <visual>
+          <geometry>
+            <mesh filename="${cfg['links']['wrist_1_link']['visual']['geometry']['filename']}"/>
+          </geometry>
+          <material name="StoglRobotics/LightGrey"/>
+        </visual>
+        
+        <inertial>
+          <origin xyz="${cfg['links']['wrist_1_link']['inertial']['origin']['x']} ${cfg['links']['wrist_1_link']['inertial']['origin']['y']} ${cfg['links']['wrist_1_link']['inertial']['origin']['z']}" rpy="0 0 0"/>
+          <mass value="${cfg['links']['wrist_1_link']['inertial']['mass']}"/>
+          <inertia 
+            ixx="${cfg['links']['wrist_1_link']['inertial']['inertia']['ixx']}" 
+            ixy="${cfg['links']['wrist_1_link']['inertial']['inertia']['ixy']}" 
+            ixz="${cfg['links']['wrist_1_link']['inertial']['inertia']['ixz']}" 
+            iyy="${cfg['links']['wrist_1_link']['inertial']['inertia']['iyy']}" 
+            iyz="${cfg['links']['wrist_1_link']['inertial']['inertia']['iyz']}" 
+            izz="${cfg['links']['wrist_1_link']['inertial']['inertia']['izz']}"/>
+        </inertial>
+        
+        <xacro:unless value="${cfg['links']['wrist_1_link']['collision']['geometry']['type'] == 'none'}">
+          <collision>
+            <xacro:if value="${cfg['links']['wrist_1_link']['collision']['geometry']['type'] == 'box'}">
+              <origin xyz="${cfg['links']['wrist_1_link']['collision']['origin']['xyz']}" rpy="${cfg['links']['wrist_1_link']['collision']['origin']['rpy']}"/>
+            </xacro:if>
+            <geometry>
+              <xacro:if value="${cfg['links']['wrist_1_link']['collision']['geometry']['type'] == 'mesh'}">
+                <mesh filename="${cfg['links']['wrist_1_link']['collision']['geometry']['filename']}"/>
+              </xacro:if>
+              <xacro:if value="${cfg['links']['wrist_1_link']['collision']['geometry']['type'] == 'box'}">
+                <box size="${cfg['links']['wrist_1_link']['collision']['geometry']['size']}"/>
+              </xacro:if>
+            </geometry>
+          </collision>
+        </xacro:unless>
+      </link>
+      
+      <!-- Wrist 2 Joint -->
+      <joint name="${prefix}wrist_2_joint" type="revolute">
+        <origin 
+          xyz="${cfg['joints']['wrist_2_joint']['transform']['xyz']}" 
+          rpy="${cfg['joints']['wrist_2_joint']['transform']['rpy']}"/>
+        <parent link="${prefix}wrist_1_link"/>
+        <child link="${prefix}wrist_2_link"/>
+        <axis xyz="0 0 1"/>
+        <limit 
+          lower="${cfg['joints']['wrist_2_joint']['limits']['min_position']}" 
+          upper="${cfg['joints']['wrist_2_joint']['limits']['max_position']}" 
+          effort="${cfg['joints']['wrist_2_joint']['limits']['max_effort']}" 
+          velocity="${cfg['joints']['wrist_2_joint']['limits']['max_velocity']}"/>
+        <dynamics 
+          damping="${cfg['joints']['wrist_2_joint']['physics']['damping']}" 
+          friction="${cfg['joints']['wrist_2_joint']['physics']['friction']}"/>
+      </joint>
+      
+      <link name="${prefix}wrist_2_link">
+        <visual>
+          <geometry>
+            <mesh filename="${cfg['links']['wrist_2_link']['visual']['geometry']['filename']}"/>
+          </geometry>
+          <material name="StoglRobotics/LightGrey"/>
+        </visual>
+        
+        <inertial>
+          <origin xyz="${cfg['links']['wrist_2_link']['inertial']['origin']['x']} ${cfg['links']['wrist_2_link']['inertial']['origin']['y']} ${cfg['links']['wrist_2_link']['inertial']['origin']['z']}" rpy="0 0 0"/>
+          <mass value="${cfg['links']['wrist_2_link']['inertial']['mass']}"/>
+          <inertia 
+            ixx="${cfg['links']['wrist_2_link']['inertial']['inertia']['ixx']}" 
+            ixy="${cfg['links']['wrist_2_link']['inertial']['inertia']['ixy']}" 
+            ixz="${cfg['links']['wrist_2_link']['inertial']['inertia']['ixz']}" 
+            iyy="${cfg['links']['wrist_2_link']['inertial']['inertia']['iyy']}" 
+            iyz="${cfg['links']['wrist_2_link']['inertial']['inertia']['iyz']}" 
+            izz="${cfg['links']['wrist_2_link']['inertial']['inertia']['izz']}"/>
+        </inertial>
+        
+        <xacro:unless value="${cfg['links']['wrist_2_link']['collision']['geometry']['type'] == 'none'}">
+          <collision>
+            <xacro:if value="${cfg['links']['wrist_2_link']['collision']['geometry']['type'] == 'box'}">
+              <origin xyz="${cfg['links']['wrist_2_link']['collision']['origin']['xyz']}" rpy="${cfg['links']['wrist_2_link']['collision']['origin']['rpy']}"/>
+            </xacro:if>
+            <geometry>
+              <xacro:if value="${cfg['links']['wrist_2_link']['collision']['geometry']['type'] == 'mesh'}">
+                <mesh filename="${cfg['links']['wrist_2_link']['collision']['geometry']['filename']}"/>
+              </xacro:if>
+              <xacro:if value="${cfg['links']['wrist_2_link']['collision']['geometry']['type'] == 'box'}">
+                <box size="${cfg['links']['wrist_2_link']['collision']['geometry']['size']}"/>
+              </xacro:if>
+            </geometry>
+          </collision>
+        </xacro:unless>
+      </link>
+      
+      <!-- Wrist 3 Joint -->
+      <joint name="${prefix}wrist_3_joint" type="revolute">
+        <origin 
+          xyz="${cfg['joints']['wrist_3_joint']['transform']['xyz']}" 
+          rpy="${cfg['joints']['wrist_3_joint']['transform']['rpy']}"/>
+        <parent link="${prefix}wrist_2_link"/>
+        <child link="${prefix}wrist_3_link"/>
+        <axis xyz="0 0 1"/>
+        <limit 
+          lower="${cfg['joints']['wrist_3_joint']['limits']['min_position']}" 
+          upper="${cfg['joints']['wrist_3_joint']['limits']['max_position']}" 
+          effort="${cfg['joints']['wrist_3_joint']['limits']['max_effort']}" 
+          velocity="${cfg['joints']['wrist_3_joint']['limits']['max_velocity']}"/>
+        <dynamics 
+          damping="${cfg['joints']['wrist_3_joint']['physics']['damping']}" 
+          friction="${cfg['joints']['wrist_3_joint']['physics']['friction']}"/>
+      </joint>
+      
+      <link name="${prefix}wrist_3_link">
+        <xacro:if value="${cfg['links']['wrist_3_link']['visual']['geometry']['type'] != 'none'}">
+          <visual>
+            <geometry>
+              <mesh filename="${cfg['links']['wrist_3_link']['visual']['geometry']['filename']}"/>
+            </geometry>
+            <material name="StoglRobotics/LightGrey"/>
+          </visual>
+        </xacro:if>
+        
+        <inertial>
+          <origin xyz="${cfg['links']['wrist_3_link']['inertial']['origin']['x']} ${cfg['links']['wrist_3_link']['inertial']['origin']['y']} ${cfg['links']['wrist_3_link']['inertial']['origin']['z']}" rpy="0 0 0"/>
+          <mass value="${cfg['links']['wrist_3_link']['inertial']['mass']}"/>
+          <inertia 
+            ixx="${cfg['links']['wrist_3_link']['inertial']['inertia']['ixx']}" 
+            ixy="${cfg['links']['wrist_3_link']['inertial']['inertia']['ixy']}" 
+            ixz="${cfg['links']['wrist_3_link']['inertial']['inertia']['ixz']}" 
+            iyy="${cfg['links']['wrist_3_link']['inertial']['inertia']['iyy']}" 
+            iyz="${cfg['links']['wrist_3_link']['inertial']['inertia']['iyz']}" 
+            izz="${cfg['links']['wrist_3_link']['inertial']['inertia']['izz']}"/>
+        </inertial>
+        
+        <xacro:unless value="${cfg['links']['wrist_3_link']['collision']['geometry']['type'] == 'none'}">
+          <collision>
+            <xacro:if value="${cfg['links']['wrist_3_link']['collision']['geometry']['type'] == 'box'}">
+              <origin xyz="${cfg['links']['wrist_3_link']['collision']['origin']['xyz']}" rpy="${cfg['links']['wrist_3_link']['collision']['origin']['rpy']}"/>
+            </xacro:if>
+            <geometry>
+              <xacro:if value="${cfg['links']['wrist_3_link']['collision']['geometry']['type'] == 'mesh'}">
+                <mesh filename="${cfg['links']['wrist_3_link']['collision']['geometry']['filename']}"/>
+              </xacro:if>
+              <xacro:if value="${cfg['links']['wrist_3_link']['collision']['geometry']['type'] == 'box'}">
+                <box size="${cfg['links']['wrist_3_link']['collision']['geometry']['size']}"/>
+              </xacro:if>
+            </geometry>
+          </collision>
+        </xacro:unless>
+      </link>
+      
+      <!-- Tool frame -->
+      <link name="${prefix}tool0"/>
+      
+      <joint name="${prefix}wrist_3_to_tool0" type="fixed">
+        <parent link="${prefix}wrist_3_link"/>
+        <child link="${prefix}tool0"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+      </joint>
+
+
+      <link name="${prefix}tool0_flip"/>
+
+      <joint name="${prefix}tool0_to_tool0_flip" type="fixed">
+        <parent link="${prefix}tool0"/>
+        <child link="${prefix}tool0_flip"/>
+        <origin xyz="0 0 0" rpy="${pi} 0 0"/>
+      </joint>
+
+      <!-- EE Link for IK (matches UR convention) -->
+      <link name="${prefix}ee_link">
+        <xacro:dummy_inertial/>
+      </link>
+      
+      <joint name="${prefix}tool0_to_ee_link" type="fixed">
+        <parent link="${prefix}tool0"/>
+        <child link="${prefix}ee_link"/>
+        <origin xyz="0 0 0" rpy="${-pi/2} ${-pi/2} 0"/>
+      </joint>
+      
+    </xacro:unless>
+    
+    <!--endregion - Wrist -->
+    
+    <!--endregion - SERIAL CHAIN -->
+    
+    <!--region - PARALLEL LINKAGE -->
+    
+    <xacro:unless value="${disable_C1}">
+      
+      <!-- C1 Joint (drives C1 link) -->
+      <joint name="${prefix}c1_joint" type="revolute">
+        <origin 
+          xyz="${cfg['joints']['c1_joint']['transform']['xyz']}" 
+          rpy="${cfg['joints']['c1_joint']['transform']['rpy']}"/>
+        <parent link="${prefix}shoulder_link"/>
+        <child link="${prefix}c1_link"/>
+        <axis xyz="0 0 1"/>
+        <limit 
+          lower="${cfg['joints']['c1_joint']['limits']['min_position']}" 
+          upper="${cfg['joints']['c1_joint']['limits']['max_position']}" 
+          effort="${cfg['joints']['c1_joint']['limits']['max_effort']}" 
+          velocity="${cfg['joints']['c1_joint']['limits']['max_velocity']}"/>
+        <dynamics 
+          damping="${cfg['joints']['c1_joint']['physics']['damping']}" 
+          friction="${cfg['joints']['c1_joint']['physics']['friction']}"/>
+      </joint>
+      
+      <link name="${prefix}c1_link">
+        <visual>
+          <geometry>
+            <mesh filename="${cfg['links']['c1_link']['visual']['geometry']['filename']}"/>
+          </geometry>
+          <material name="StoglRobotics/LightGrey"/>
+        </visual>
+        
+        <inertial>
+          <origin xyz="${cfg['links']['c1_link']['inertial']['origin']['x']} ${cfg['links']['c1_link']['inertial']['origin']['y']} ${cfg['links']['c1_link']['inertial']['origin']['z']}" rpy="0 0 0"/>
+          <mass value="${cfg['links']['c1_link']['inertial']['mass']}"/>
+          <inertia 
+            ixx="${cfg['links']['c1_link']['inertial']['inertia']['ixx']}" 
+            ixy="${cfg['links']['c1_link']['inertial']['inertia']['ixy']}" 
+            ixz="${cfg['links']['c1_link']['inertial']['inertia']['ixz']}" 
+            iyy="${cfg['links']['c1_link']['inertial']['inertia']['iyy']}" 
+            iyz="${cfg['links']['c1_link']['inertial']['inertia']['iyz']}" 
+            izz="${cfg['links']['c1_link']['inertial']['inertia']['izz']}"/>
+        </inertial>
+        
+        <xacro:unless value="${cfg['links']['c1_link']['collision']['geometry']['type'] == 'none'}">
+          <collision>
+            <xacro:if value="${cfg['links']['c1_link']['collision']['geometry']['type'] == 'box'}">
+              <origin xyz="${cfg['links']['c1_link']['collision']['origin']['xyz']}" rpy="${cfg['links']['c1_link']['collision']['origin']['rpy']}"/>
+            </xacro:if>
+            <geometry>
+              <xacro:if value="${cfg['links']['c1_link']['collision']['geometry']['type'] == 'mesh'}">
+                <mesh filename="${cfg['links']['c1_link']['collision']['geometry']['filename']}"/>
+              </xacro:if>
+              <xacro:if value="${cfg['links']['c1_link']['collision']['geometry']['type'] == 'box'}">
+                <box size="${cfg['links']['c1_link']['collision']['geometry']['size']}"/>
+              </xacro:if>
+            </geometry>
+          </collision>
+        </xacro:unless>
+      </link>
+      
+    </xacro:unless>
+    
+    <xacro:unless value="${disable_C2}">
+      
+      <!-- C2 Joint (drives C2 link) -->
+      <joint name="${prefix}c2_joint" type="revolute">
+        <origin 
+          xyz="${cfg['joints']['c2_joint']['transform']['xyz']}" 
+          rpy="${cfg['joints']['c2_joint']['transform']['rpy']}"/>
+        <parent link="${prefix}c1_link"/>
+        <child link="${prefix}c2_link"/>
+        <axis xyz="0 0 1"/>
+        <limit 
+          lower="${cfg['joints']['c2_joint']['limits']['min_position']}" 
+          upper="${cfg['joints']['c2_joint']['limits']['max_position']}" 
+          effort="${cfg['joints']['c2_joint']['limits']['max_effort']}" 
+          velocity="${cfg['joints']['c2_joint']['limits']['max_velocity']}"/>
+        <dynamics 
+          damping="${cfg['joints']['c2_joint']['physics']['damping']}" 
+          friction="${cfg['joints']['c2_joint']['physics']['friction']}"/>
+      </joint>
+      
+      <link name="${prefix}c2_link">
+        <visual>
+          <geometry>
+            <mesh filename="${cfg['links']['c2_link']['visual']['geometry']['filename']}"/>
+          </geometry>
+          <material name="StoglRobotics/LightGrey"/>
+        </visual>
+        
+        <inertial>
+          <origin xyz="${cfg['links']['c2_link']['inertial']['origin']['x']} ${cfg['links']['c2_link']['inertial']['origin']['y']} ${cfg['links']['c2_link']['inertial']['origin']['z']}" rpy="0 0 0"/>
+          <mass value="${cfg['links']['c2_link']['inertial']['mass']}"/>
+          <inertia 
+            ixx="${cfg['links']['c2_link']['inertial']['inertia']['ixx']}" 
+            ixy="${cfg['links']['c2_link']['inertial']['inertia']['ixy']}" 
+            ixz="${cfg['links']['c2_link']['inertial']['inertia']['ixz']}" 
+            iyy="${cfg['links']['c2_link']['inertial']['inertia']['iyy']}" 
+            iyz="${cfg['links']['c2_link']['inertial']['inertia']['iyz']}" 
+            izz="${cfg['links']['c2_link']['inertial']['inertia']['izz']}"/>
+        </inertial>
+        
+        <xacro:unless value="${cfg['links']['c2_link']['collision']['geometry']['type'] == 'none'}">
+          <collision>
+            <xacro:if value="${cfg['links']['c2_link']['collision']['geometry']['type'] == 'box'}">
+              <origin xyz="${cfg['links']['c2_link']['collision']['origin']['xyz']}" rpy="${cfg['links']['c2_link']['collision']['origin']['rpy']}"/>
+            </xacro:if>
+            <geometry>
+              <xacro:if value="${cfg['links']['c2_link']['collision']['geometry']['type'] == 'mesh'}">
+                <mesh filename="${cfg['links']['c2_link']['collision']['geometry']['filename']}"/>
+              </xacro:if>
+              <xacro:if value="${cfg['links']['c2_link']['collision']['geometry']['type'] == 'box'}">
+                <box size="${cfg['links']['c2_link']['collision']['geometry']['size']}"/>
+              </xacro:if>
+            </geometry>
+          </collision>
+        </xacro:unless>
+      </link>
+      
+      <!-- C2 coupler for five-bar -->
+      <joint name="${prefix}c2_tip_joint" type="fixed">
+        <origin 
+          xyz="${cfg['joints']['c2_tip_joint']['transform']['xyz']}" 
+          rpy="${cfg['joints']['c2_tip_joint']['transform']['rpy']}"/>
+        <parent link="${prefix}c2_link"/>
+        <child link="${prefix}c2_tip"/>
+      </joint>
+      
+      <link name="${prefix}c2_tip"/>
+      
+    </xacro:unless>
+    
+    <!--endregion - PARALLEL LINKAGE -->
+    
+  </xacro:macro>
+  
+</robot>

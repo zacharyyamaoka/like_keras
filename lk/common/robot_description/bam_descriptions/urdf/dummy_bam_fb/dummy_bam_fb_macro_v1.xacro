@@ -1,0 +1,827 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="dummy_bam_fb">
+<!--  Design Guide Lines:
+
+    - Its better to not do any visual rotations, then the CAD values can be read directly, otherwise you may need to switch axises
+    - When defining the joints, do as few rotations as possible, so its easy to orient back to base_link
+
+    URDF is designed to be self contained and mimic a UR robot
+    - If you don't shift from the base_link_1, then moveit should work for right/left arms
+    - Put all axis of rotation along +z (makes it easy to visually see)
+    - Convention for mesh export is to have z+ through the body, and y+ along forward direction/link
+    - Due to differences in UR and BAM construction, you may need to flip z (like for axis 1)
+    - By making it as close as possible to a UR robot, it makes life easier 
+
+    IK Notes:
+    - IK Goes from base_link_1 -> ee_link
+    - ee_link is a special frame used for IK tip in ur_kinematics
+    - You can mount the eef to the eef_frame which has z going outwards, as expected... TF transform can be used to go from tcp_world/tool to ee_link
+
+
+    Notes on bool vs string https://github.com/ros/xacro/issues/145
+    Using "true"/"false" seemed buggy as sometimes its bool/str instead use config and pass a string
+
+ -->
+
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/dummy_bam_fb/servo_macros.xacro"/>
+
+    <xacro:property name="deg2rad" value="${pi/180}"/>
+    <xacro:property name="rev2rad" value="${2*pi}"/>
+    <xacro:property name="inch2m" value="${25.4/1000}"/>
+    <xacro:property name="mm2m" value="${1/1000}"/>
+
+    <xacro:property name="alu_6061_density" value="${2700}"/>
+
+    <xacro:macro name="dummy_bam_fb" params="
+        prefix:=''
+        reflect:=1
+        disable_L1:=false
+        disable_L2:=false
+        disable_C1:=false
+        disable_C2:=false
+        disable_wrist:=false
+        disable_sticker:=false
+
+        shoulder_front_plate_offset:=0.1
+        shoulder_C1_offset:=0.08
+        shoulder_J2_offset:=0.16
+        shoulder_gearbox_mass:=1.2
+        shoulder_gearbox_length:=${81.5*mm2m}
+        shoulder_gearbox_diameter:=${64*mm2m}
+        shoulder_gearbox_front_offset:=${19*mm2m}
+        shoulder_gearbox_flange_diameter:=${64*mm2m*1.2}
+        shoulder_motor_mass:=0.8
+        shoulder_motor_length:=${60*mm2m}
+        shoulder_motor_width:=${60*mm2m}
+        shoulder_driver_length:=${20*mm2m}
+        shoulder_plate_thickness:=0.003
+        shoulder_mount_plate_thickness:=0.006
+
+        five_bar_offset:=${20*mm2m}
+        link_density:=${alu_6061_density}
+        link_wall_thickness:=${1/16*inch2m}
+
+        C1_length:=${120*mm2m}
+        C1_width:=${45*mm2m}
+        C1_thickness:=${6*mm2m}
+        C1_to_C2_spacing:=${3*mm2m}
+        C1_mass:=-1
+
+        C2_length:=${260*mm2m}
+        C2_width:=${30*mm2m}
+        C2_thickness:=${6*mm2m}
+        C2_mass:=-1
+
+        L1_length:=${240*mm2m}
+        L1_width:=${2*inch2m}
+        L1_mass:=-1
+        L1_to_L2_spacing:=${9*mm2m}
+
+        L2_length:=0.292
+        L2_width:=${1.5*inch2m}
+        L2_mass:=-1
+        
+        theta_elbow_offset:=${45*deg2rad}
+        elbow_length:=${120*mm2m}
+
+        wrist_length:=0.05
+        wrist_pipe_diameter:=0.04
+        wrist_pipe_wall_thickness:=0.0015
+        wrist_pipe_density:=${alu_6061_density}
+        wrist_pipe_mass:=-1
+        wrist_servo_length:=0.03
+        wrist_servo_diameter:=0.05
+        wrist_servo_mass:=0.01
+        wrist_driver_length:=0.01
+        wrist_to_wrist_spacing:=0.003
+        wrist_front_offset:=0.015
+
+        joint_1_friction:=0.01
+        joint_1_damping:=0.001
+        joint_2_friction:=0.01
+        joint_2_damping:=0.001
+        joint_3_friction:=0.01
+        joint_3_damping:=0.001
+        joint_4_friction:=0.01
+        joint_4_damping:=0.001
+        joint_5_friction:=0.01
+        joint_5_damping:=0.001
+        joint_6_friction:=0.01
+        joint_6_damping:=0.001
+        c1_friction:=0.01
+        c1_damping:=0.001
+        c2_friction:=0.01
+        c2_damping:=0.001
+    ">
+
+        <!-- PROPERTIES - START -->
+            <xacro:property name="pos_reflect_1_neg_reflect_0" value="${(reflect+1)*0.5}"/>
+            <xacro:property name="pos_reflect_0_neg_reflect_1" value="${(reflect-1)*-0.5}"/>
+
+            <!-- Computed properties -->
+            <xacro:property name="L1_offset" value="${C1_thickness + C1_to_C2_spacing}"/>
+
+        <!-- PROPERTIES - END -->
+
+        <!-- JOINT LIMITS - START -->
+            <!-- Use real hardstop values so KDL can optimise correctly -->
+            <!-- Check bam_calibration config folder for values -->
+            <xacro:property name="J1_upper" value="${90 * deg2rad}"/>
+            <xacro:property name="J1_lower" value="${-90 * deg2rad}"/>
+
+            <!-- Small value so doesn't jam if starts at 0 -->
+            <xacro:if value="${reflect == 1}">
+                <xacro:property name="J2_upper" value="${0.4 * rev2rad}"/> 
+                <!-- <xacro:property name="J2_upper" value="${0.1708 * rev2rad}"/> -->
+                <xacro:property name="J2_lower" value="${-0.25 * rev2rad}"/>
+
+                <xacro:property name="J3_upper" value="${0 * deg2rad}"/> 
+                <xacro:property name="J3_lower" value="${-180 * deg2rad}"/>
+            </xacro:if>
+
+
+            <xacro:if value="${reflect == -1}">
+
+                <xacro:property name="J2_upper" value="${0.25 * rev2rad}"/> 
+                <!-- <xacro:property name="J2_upper" value="${0.1708 * rev2rad}"/> -->
+                <xacro:property name="J2_lower" value="${-0.4 * rev2rad}"/>
+
+                <xacro:property name="J3_upper" value="${180 * deg2rad}"/> 
+                <xacro:property name="J3_lower" value="${0 * deg2rad}"/>
+                
+            </xacro:if>
+
+            <!--shift limits so it makes more sense... with workspace-->
+            <xacro:property name="J4_upper" value="${(175-90) * deg2rad}"/>
+            <xacro:property name="J4_lower" value="${(-175-90) * deg2rad}"/>
+
+            <xacro:property name="J5_upper" value="${175 * deg2rad}"/>
+            <xacro:property name="J5_lower" value="${-175 * deg2rad}"/>
+
+            <xacro:property name="J6_upper" value="${175 * deg2rad}"/>
+            <xacro:property name="J6_lower" value="${-175 * deg2rad}"/>
+        <!-- JOINT LIMITS - END -->
+
+        <!-- SERIAL CHAIN - START -->
+
+            <link name="${prefix}arm_base_link">
+            </link>
+
+            <joint name="${prefix}arm_base_link_to_j1_servo" type="fixed">
+                <parent link="${prefix}arm_base_link"/>
+                <child link="${prefix}j1_servo"/>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+            </joint>
+
+            <xacro:shoulder_servo_link 
+                name="${prefix}j1_servo"
+                gearbox_length="${shoulder_gearbox_length}"
+                gearbox_diameter="${shoulder_gearbox_diameter}"
+                gearbox_mass="${shoulder_gearbox_mass}"
+                gearbox_front_offset="${shoulder_gearbox_front_offset}"
+                motor_length="${shoulder_motor_length}"
+                motor_width="${shoulder_motor_width}"
+                motor_mass="${shoulder_motor_mass}"
+            />
+
+            <joint name="${prefix}shoulder_joint" type="revolute">
+                <origin xyz="0 0 ${shoulder_gearbox_front_offset}" rpy="0 0 ${pi}"/>                    
+                <parent link="${prefix}arm_base_link"/>
+                <child link="${prefix}shoulder_link"/>
+                <axis xyz="0 0 1"/>
+                <limit lower="${J1_lower}" upper="${J1_upper}" effort="50.0" velocity="100.0"/>
+                <dynamics damping="0.05" friction="0.1"/>
+            </joint>
+
+            <!-- Relative to arm_base_link, doesn't move with arm -->
+            <link name="${prefix}planning_frame"/>
+
+            <joint name="${prefix}joint_planning_frame" type="fixed">
+                <origin xyz="0 0 ${156.50/1000}" rpy="0 ${pi/2} ${-pi} "/>
+                <parent link="${prefix}arm_base_link"/>
+                <child link="${prefix}planning_frame"/>
+            </joint>
+
+
+            <!-- STL Shoulder Link with Servos already -->
+            <link name="${prefix}shoulder_link">
+                <!-- <visual>
+                    <geometry>
+                        <mesh filename="package://bam_descriptions/urdf/arm_400_v1/meshes/shoulder.stl"/>
+                    </geometry>
+                    <origin rpy="0 0 ${pi*0}"/>
+                    <material name="StoglRobotics/LightGrey"/>
+                </visual>
+
+                <collision>
+                    <origin xyz="0.000000 -0.010423 0.090000" rpy="0 0 0"/>
+                    <geometry>
+                        <box size="0.104000 0.158846 0.180000"/>
+                    </geometry>
+                </collision>
+
+                <inertial>
+                    <origin xyz="0.001942 -0.001158 0.090668"/>
+                    <mass value="5.469791"/>
+                    <inertia 
+                        ixx="2.272000e-02" ixy="7.822000e-04" ixz="-1.589000e-04"
+                        iyy="1.876000e-02" iyz="2.229000e-04"
+                        izz="1.471000e-02"/>
+                </inertial> -->
+            </link>
+
+            <xacro:property name="shoulder_mount_plate_length" value="${shoulder_front_plate_offset + shoulder_gearbox_diameter/2}"/>
+            <xacro:property name="shoulder_mount_plate_width" value="${shoulder_gearbox_flange_diameter}"/>
+            <xacro:property name="shoulder_front_plate_length" value="${shoulder_J2_offset + shoulder_gearbox_flange_diameter/2}"/>
+
+            <xacro:rectangular_plate_link 
+                name="${prefix}shoulder_mount_plate"
+                width="${shoulder_mount_plate_width}" 
+                length="${shoulder_mount_plate_length}" 
+                plate_thickness="${shoulder_mount_plate_thickness}" 
+                density="2700" 
+                origin_offset="${(shoulder_front_plate_offset - shoulder_gearbox_diameter/2)/2}"/>
+
+            <joint name="${prefix}shoulder_to_mount_plate" type="fixed">
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <parent link="${prefix}shoulder_link"/>
+                <child link="${prefix}shoulder_mount_plate"/>
+            </joint>
+
+
+            <xacro:rectangular_plate_link 
+                name="${prefix}shoulder_front_plate"
+                width="${shoulder_mount_plate_width}" 
+                length="${shoulder_front_plate_length}" 
+                plate_thickness="${shoulder_plate_thickness}" 
+                density="2700" 
+                origin_offset="${shoulder_front_plate_length/2}"/>
+                
+           <joint name="${prefix}shoulder_to_front_plate" type="fixed">
+                <origin xyz="0 ${shoulder_front_plate_offset + shoulder_plate_thickness} 0" rpy="${pi/2} 0 0"/>
+                <parent link="${prefix}shoulder_link"/>
+                <child link="${prefix}shoulder_front_plate"/>
+            </joint>
+
+            <xacro:rectangular_plate_link 
+                name="${prefix}shoulder_side_plate_1"
+                width="${shoulder_mount_plate_length}" 
+                length="${shoulder_front_plate_length}" 
+                plate_thickness="${shoulder_plate_thickness}" 
+                density="2700" 
+                origin_offset="${shoulder_front_plate_length/2}"/>
+
+           <joint name="${prefix}shoulder_to_side_plate_1" type="fixed">
+                <origin xyz="${shoulder_mount_plate_width/2 + shoulder_plate_thickness} ${shoulder_mount_plate_length/2 - shoulder_gearbox_diameter/2} 0" rpy="${pi/2} 0 ${-pi/2}"/>
+                <parent link="${prefix}shoulder_link"/>
+                <child link="${prefix}shoulder_side_plate_1"/>
+            </joint>
+
+
+            <xacro:rectangular_plate_link 
+                name="${prefix}shoulder_side_plate_2"
+                width="${shoulder_mount_plate_length}" 
+                length="${shoulder_front_plate_length}" 
+                plate_thickness="${shoulder_plate_thickness}" 
+                density="2700" 
+                origin_offset="${shoulder_front_plate_length/2}"/>
+
+           <joint name="${prefix}shoulder_to_side_plate_2" type="fixed">
+                <origin xyz="${-shoulder_mount_plate_width/2} ${shoulder_mount_plate_length/2- shoulder_gearbox_diameter/2} 0" rpy="${pi/2} 0 ${-pi/2}"/>
+                <parent link="${prefix}shoulder_link"/>
+                <child link="${prefix}shoulder_side_plate_2"/>
+            </joint>
+
+
+            <xacro:shoulder_servo_link 
+                name="${prefix}l1_servo"
+                gearbox_length="${shoulder_gearbox_length}"
+                gearbox_diameter="${shoulder_gearbox_diameter}"
+                gearbox_mass="${shoulder_gearbox_mass}"
+                gearbox_front_offset="${shoulder_gearbox_front_offset}"
+                motor_length="${shoulder_motor_length}"
+                motor_width="${shoulder_motor_width}"
+                motor_mass="${shoulder_motor_mass}"
+            />
+
+            <joint name="${prefix}shoulder_to_l1_servo" type="fixed">
+                <origin xyz="0 ${shoulder_front_plate_offset} ${shoulder_J2_offset}" rpy="${-pi/2} 0 0"/>
+                <parent link="${prefix}shoulder_link"/>
+                <child link="${prefix}l1_servo"/>
+            </joint>
+
+            <xacro:shoulder_servo_link 
+                name="${prefix}c2_servo"
+                gearbox_length="${shoulder_gearbox_length}"
+                gearbox_diameter="${shoulder_gearbox_diameter}"
+                gearbox_mass="${shoulder_gearbox_mass}"
+                gearbox_front_offset="${shoulder_gearbox_front_offset}"
+                motor_length="${shoulder_motor_length}"
+                motor_width="${shoulder_motor_width}"
+                motor_mass="${shoulder_motor_mass}"
+            />
+
+            <joint name="${prefix}shoulder_to_c2_servo" type="fixed">
+                <origin xyz="0 ${shoulder_front_plate_offset} ${shoulder_C1_offset}" rpy="${-pi/2} 0 0"/>
+                <parent link="${prefix}shoulder_link"/>
+                <child link="${prefix}c2_servo"/>
+            </joint>
+
+            <!-- UPPER ARM L1 -->
+            <xacro:unless value="${disable_L1}">
+
+                <!-- Z offset goes upwards from j1, you can see it similar to the planning_frame, y offset goes perpendicular to axis of rotation to front surface of shoulder -->
+                <joint name="${prefix}l1_joint" type="revolute">
+                    <origin xyz="0 ${shoulder_front_plate_offset + shoulder_gearbox_front_offset} ${shoulder_J2_offset}" rpy="${-pi/2} ${reflect*pi/2} 0"/>
+                    <parent link="${prefix}shoulder_link"/>
+                    <child link="${prefix}l1_link_spacer"/>
+                    <!-- <axis xyz="0 0 1"/> -->
+                    <!-- Match direction of rotation of UR -->
+                    <axis xyz="0 0 -1"/> 
+                    <limit lower="${J2_lower}" upper="${J2_upper}" effort="50.0" velocity="100.0"/>
+                    <dynamics damping="0.05" friction="0.1"/>
+                </joint>
+
+                <!-- link_length 0 so that total_link_length = link_width -->
+                <link name="${prefix}l1_link_spacer">
+                    <visual>
+                        <origin xyz="0 0 ${L1_offset/2 + five_bar_offset/2}" rpy="0 0 0"/>
+                        <geometry>
+                            <cylinder length="${L1_offset + five_bar_offset}" radius="${L1_width/2}"/>
+                        </geometry>
+                        <material name="StoglRobotics/LightGrey"/>
+                    </visual>
+                </link>
+
+                <joint name="${prefix}l1_spacer_joint" type="fixed">
+                    <origin xyz="0 0 ${L1_offset + five_bar_offset}" rpy="0 0 0"/>
+                    <parent link="${prefix}l1_link_spacer"/>
+                    <child link="${prefix}l1_link"/>
+                </joint>
+
+
+                <xacro:rectangular_tube_link
+                    name="${prefix}l1_link"
+                    width="${L1_width}"
+                    length="${L1_length}"
+                    height="${L1_width}"
+                    wall_thickness="${link_wall_thickness}"
+                    density="${link_density}"
+                    origin_offset="${(L1_length)/2}"
+                    />
+            </xacro:unless>
+            
+
+            <!-- FORE ARM L2 -->
+            <xacro:unless value="${disable_L2}">
+
+                <joint name="${prefix}l2_joint" type="revolute">
+                    <!-- Althought the limits are now lined up, the rotation is still around l1 Z which is point in the same direction, so + reflect*11*deg2rad -->
+                    <origin xyz="0 ${L1_length} ${-L1_to_L2_spacing}" rpy="0 ${pi} 0"/> 
+                                <!-- <origin xyz="0 ${240/1000} ${L1_offset - L1_to_L2_spacing}" rpy="${pos_reflect_1_neg_reflect_0 * pi} 0 ${(pos_reflect_1_neg_reflect_0 * pi) + reflect*11*deg2rad}"/>  -->
+                    <!-- <origin xyz="0 ${L1_length} ${-L1_to_L2_spacing - L2_width}" rpy="0 0 0"/>  -->
+
+                    <!-- UPDATE YAW with elbow offset -->
+                    <parent link="${prefix}l1_link"/>
+                    <child link="${prefix}l2_link"/>
+                    <axis xyz="0 0 1"/>
+                    <limit lower="${J3_lower}" upper="${J3_upper}" effort="50.0" velocity="100.0"/>
+                    <dynamics damping="0.05" friction="0.1"/>
+                </joint>
+
+
+                <xacro:rectangular_tube_link 
+                    name="${prefix}l2_link"
+                    width="${L2_width}"
+                    length="${L2_length - wrist_servo_diameter/2}"
+                    height="${L2_width}"
+                    wall_thickness="${link_wall_thickness}"
+                    density="${link_density}"
+                    origin_offset="${(L2_length - wrist_servo_diameter/2)/2}"
+                    />
+
+                <joint name="${prefix}elbow_joint" type="fixed">
+                    <origin xyz="0 0 ${-6*mm2m}" rpy="0 0 ${reflect*(theta_elbow_offset + pi/2)}"/>
+                    <parent link="${prefix}l2_link"/>
+                    <child link="${prefix}elbow_link"/>
+                </joint>
+                
+                <!-- <xacro:rectangular_tube_link 
+                    name="${prefix}elbow_link"
+                    link_width="${L2_width}"
+                    link_length="${elbow_length}" 
+                    link_thickness="${L2_width}"
+                    link_wall_thickness="${link_wall_thickness}"
+                    link_density="${link_density}"/> -->
+                <xacro:rectangular_plate_link 
+                    name="${prefix}elbow_link"
+                    width="${L2_width}"
+                    length="${elbow_length}" 
+                    plate_thickness="${C1_thickness}"
+                    density="${link_density}"
+                    origin_offset="${elbow_length/2}"
+                    />
+
+                <joint name="${prefix}l2_coupler_joint" type="fixed">
+                    <origin xyz="0 ${elbow_length} 0" rpy="0 0 0"/>
+                    <parent link="${prefix}elbow_link"/>
+                    <child link="${prefix}l2_coupler"/>
+                </joint>
+
+                <link name="${prefix}l2_coupler">
+                    <!-- <xacro:dummy_inertial/> -->
+                </link>
+
+            </xacro:unless>
+
+            <!-- WRIST -->
+            <xacro:unless value="${disable_wrist}">
+
+                <joint name="${prefix}wrist_fixed_joint" type="fixed">
+                <!-- Add reflection here mabye... -->
+                <!-- -6mm as 2 less plates-->
+                    <origin xyz="0 ${L2_length - wrist_servo_diameter/2} ${L2_width/2}" rpy="${-pi/2} ${pi} 0"/>
+                    <parent link="${prefix}l2_link"/>
+                    <child link="${prefix}wrist_1_link"/>
+                </joint>
+
+
+                <!-- Don't put pipe mass here as its shorter than the other two links -->
+                <xacro:wrist_link 
+                    name="${prefix}wrist_1_link"
+                    pipe_density="${wrist_pipe_density}"
+                    pipe_diameter="${wrist_pipe_diameter}"
+                    pipe_wall_thickness="${wrist_pipe_wall_thickness}"
+                    wrist_length="${wrist_servo_diameter/2}" 
+                    wrist_servo_length="${wrist_servo_length}"
+                    wrist_servo_diameter="${wrist_servo_diameter}"
+                    wrist_servo_mass="${wrist_servo_mass}"
+                    wrist_front_offset="${L2_width/2 - wrist_servo_length/2}"
+                    wrist_to_wrist_spacing="${wrist_to_wrist_spacing}"
+                    driver_length="${wrist_driver_length}"/>
+
+
+                <joint name="${prefix}wrist_1_joint" type="revolute">
+                    <origin xyz="0 ${wrist_servo_length/2 + wrist_to_wrist_spacing + (L2_width/2 - wrist_servo_length/2)} ${wrist_servo_diameter/2}" rpy="${-pi/2} ${-pi/2 * reflect} 0"/>
+                    <parent link="${prefix}wrist_1_link"/>
+                    <child link="${prefix}wrist_2_link"/>
+                    <axis xyz="0 0 1"/>
+                    <limit lower="${J4_lower}" upper="${J4_upper}" effort="50.0" velocity="100.0"/>
+                    <dynamics damping="0.05" friction="0.1"/>
+                </joint>
+
+
+                <xacro:wrist_link 
+                    name="${prefix}wrist_2_link"
+                    pipe_density="${wrist_pipe_density}"
+                    pipe_mass="${wrist_pipe_mass}"
+                    pipe_diameter="${wrist_pipe_diameter}"
+                    pipe_wall_thickness="${wrist_pipe_wall_thickness}"
+                    wrist_length="${wrist_length}"
+                    wrist_servo_length="${wrist_servo_length}"
+                    wrist_servo_diameter="${wrist_servo_diameter}"
+                    wrist_servo_mass="${wrist_servo_mass}"
+                    wrist_front_offset="${wrist_front_offset}"
+                    wrist_to_wrist_spacing="${wrist_to_wrist_spacing}"
+                    driver_length="${wrist_driver_length}"/>
+
+
+                <joint name="${prefix}wrist_2_joint" type="revolute">
+                    <origin xyz="0 ${wrist_servo_length/2 + wrist_to_wrist_spacing + wrist_front_offset} ${wrist_length}" rpy="${-pi/2} ${reflect * pi} 0"/>
+                    <!-- changing pitch from - to + changes direction of wrist... -->
+                    <parent link="${prefix}wrist_2_link"/>
+                    <child link="${prefix}wrist_3_link"/>
+                    <axis xyz="0 0 1"/>
+                    <limit lower="${J5_lower}" upper="${J5_upper}" effort="50.0" velocity="100.0"/>
+                    <dynamics damping="0.05" friction="0.1"/>
+                </joint>
+    
+
+                <xacro:wrist_link 
+                    name="${prefix}wrist_3_link"
+                    pipe_density="${wrist_pipe_density}"
+                    pipe_mass="${wrist_pipe_mass}"
+                    pipe_diameter="${wrist_pipe_diameter}"
+                    pipe_wall_thickness="${wrist_pipe_wall_thickness}"
+                    wrist_length="${wrist_length}"
+                    wrist_servo_length="${wrist_servo_length}"
+                    wrist_servo_diameter="${wrist_servo_diameter}"
+                    wrist_servo_mass="${wrist_servo_mass}"
+                    wrist_front_offset="${wrist_front_offset}"
+                    wrist_to_wrist_spacing="${wrist_to_wrist_spacing}"
+                    driver_length="${wrist_driver_length}"/>
+
+
+                <joint name="${prefix}wrist_3_joint" type="revolute">
+                    <origin xyz="0 ${wrist_servo_length/2 + wrist_to_wrist_spacing + wrist_front_offset} ${wrist_length}" rpy="${-pi/2} 0 0"/>
+                    <parent link="${prefix}wrist_3_link"/>
+                    <child link="${prefix}tool0"/>
+                    <axis xyz="0 0 1"/>
+                    <limit lower="${J6_lower}" upper="${J6_upper}" effort="50.0" velocity="100.0"/>
+                    <dynamics damping="0.05" friction="0.1"/>
+                </joint>
+
+                <link name="${prefix}tool0">
+                    <xacro:dummy_inertial/>
+                </link>
+
+                <!-- https://github.com/ros-industrial/universal_robot/pull/506/files -->
+                <joint name="${prefix}ee_fixed_joint" type="fixed">
+                    <parent link="${prefix}tool0" />
+                    <child link="${prefix}ee_link" />
+                    <origin xyz="0 0 0" rpy="0.0 ${-pi/2.0} ${pi/2.0}" />
+                </joint>
+
+                <link name="${prefix}ee_link">
+                    <xacro:dummy_inertial/>
+                </link>
+
+            </xacro:unless>
+        <!-- SERIAL CHAIN - END -->
+
+        <!-- PARALLEL LINKS - START -->
+            <!-- C1 -->
+            <xacro:unless value="${disable_C1}">
+
+                <joint name="${prefix}c2_joint" type="revolute">
+                            <!-- L1 Joint -->
+                            <!-- <origin xyz="0 ${69/1000} ${137.5/1000}" rpy="${-pi/2} ${reflect*pi/2} 0"/> -->
+
+                            <origin xyz="0 ${shoulder_front_plate_offset + shoulder_gearbox_front_offset} ${shoulder_C1_offset}" rpy="${-pi/2} ${reflect*pi/2} 0"/>
+                            <parent link="${prefix}shoulder_link"/>
+                            <child link="${prefix}c1_link_spacer"/>
+                            <axis xyz="0 0 -1"/>
+                            <limit lower="-${2*pi}" upper="${2*pi}" effort="50.0" velocity="100.0"/>
+                            <dynamics damping="${c1_damping}" friction="${c1_friction}"/>
+                        </joint>
+
+
+                <link name="${prefix}c1_link_spacer">
+                    <visual>
+                        <origin xyz="0 0 ${five_bar_offset/2}" rpy="0 0 0"/>
+                        <geometry>
+                            <cylinder length="${five_bar_offset}" radius="${C1_width/2}"/>
+                        </geometry>
+                        <material name="StoglRobotics/LightGrey"/>
+                    </visual>
+                </link>
+
+                <joint name="${prefix}c1_spacer_joint" type="fixed">
+                    <origin xyz="0 0 ${five_bar_offset}" rpy="0 0 0"/>
+                    <parent link="${prefix}c1_link_spacer"/>
+                    <child link="${prefix}c1_link"/>
+                </joint>
+
+
+
+                <xacro:rectangular_plate_link
+                    name="${prefix}c1_link"
+                    width="${C1_width}"
+                    length="${C1_length}" 
+                    plate_thickness="${C1_thickness}"
+                    density="${link_density}" 
+                    mass="${C1_mass}"
+                    origin_offset="${(C1_length)/2}"
+                    />
+
+            </xacro:unless>
+
+            <!-- C2 -->
+            <xacro:unless value="${disable_C2}">
+
+                <joint name="${prefix}c1_joint" type="revolute">
+                    <origin xyz="0 ${C1_length} ${C1_thickness + C1_to_C2_spacing}" rpy="0 0 0"/>
+                    <parent link="${prefix}c1_link"/>
+                    <child link="${prefix}c2_link"/>
+                    <axis xyz="0 0 -1"/>
+                    <limit lower="${-pi}" upper="${pi}" effort="50.0" velocity="100.0"/>
+                    <dynamics damping="${c2_damping}" friction="${c2_friction}"/>
+                </joint>
+
+
+                    <xacro:rectangular_plate_link
+                    name="${prefix}c2_link"
+                    width="${C2_width}"
+                    length="${C2_length}" 
+                    plate_thickness="${C2_thickness}"
+                    density="${link_density}"
+                    mass="${C2_mass}"
+                    origin_offset="${(C2_length)/2}"
+                    />
+
+                <joint name="${prefix}c2_coupler_joint" type="fixed">
+                    <origin xyz="0 ${C2_length} 0" rpy="0 0 0"/>
+                    <parent link="${prefix}c2_link"/>
+                    <child link="${prefix}c2_coupler"/>
+                </joint>
+
+                <link name="${prefix}c2_coupler">
+                    <xacro:dummy_inertial/>
+                </link>
+
+            </xacro:unless>
+        <!-- PARALLEL LINKS - END -->
+
+
+        <!-- FORE ARM ANCHORS AND STICKER -->
+        <xacro:unless value="${disable_sticker}">
+
+            <joint name="${prefix}l2_anchors_joint" type="fixed">
+                <origin xyz="0 ${L2_length - wrist_servo_diameter/2} ${L2_width/2}" rpy="${-pi/2} ${pi} 0"/>
+                <parent link="${prefix}l2_link"/>
+                <child link="${prefix}l2_anchors"/>
+            </joint>
+
+            <link name="${prefix}l2_anchors"/>
+
+            <!-- TODO: When you reflect then top and bottom should switch positions! -->
+
+
+            <joint name="${prefix}l2_top_anchor_joint" type="fixed">
+                <origin xyz="${L2_width/2} ${-L2_width/2} 0 " rpy="${-pi/2} 0 ${pi/2}"/>
+                <parent link="${prefix}l2_anchors"/>
+                <child link="${prefix}l2_top_anchor"/>
+            </joint>
+
+            <link name="${prefix}l2_top_anchor"/>
+
+            <joint name="${prefix}l2_bot_anchor_joint" type="fixed">
+                <origin xyz="${-L2_width/2} ${L2_width/2} 0 " rpy="${-pi/2} 0 ${-pi/2}"/>
+                <parent link="${prefix}l2_anchors"/>
+                <child link="${prefix}l2_bot_anchor"/>
+            </joint>
+
+            <link name="${prefix}l2_bot_anchor"/>
+
+            <joint name="${prefix}l2_inside_anchor_joint" type="fixed">
+                <origin xyz="${-L2_width/2} ${-L2_width/2} 0" rpy="${-pi/2} 0 0"/>
+                <parent link="${prefix}l2_anchors"/>
+                <child link="${prefix}l2_inside_anchor"/>
+            </joint>
+
+            <link name="${prefix}l2_inside_anchor"/>
+
+            <joint name="${prefix}l2_outside_anchor_joint" type="fixed">
+                <origin xyz="${L2_width/2} ${L2_width/2} 0" rpy="${pi/2} ${pi} 0"/>
+                <parent link="${prefix}l2_anchors"/>
+                <child link="${prefix}l2_outside_anchor"/>
+            </joint>
+
+            <link name="${prefix}l2_outside_anchor"/>
+
+
+            <joint name="${prefix}l2_top_sticker_joint" type="fixed">
+               <!-- Add a little z offset to avoid visual overlap -->
+                <origin xyz="0 0 -0.0001" rpy="0 0 0"/>
+                <parent link="${prefix}l2_top_anchor"/>
+                <child link="${prefix}top_sticker"/>
+            </joint>
+
+            <xacro:aruco_texture name="${prefix}top_sticker" width="0.038100" height="0.168500" thickness="0.0001"
+                    filename="package://bam_descriptions/urdf/aruco_markers/grid_board_dict3_marker27p1mm_num1x5_outer38p1x168p5mm/texture_cube.dae"/>
+
+            <joint name="${prefix}l2_bot_sticker_joint" type="fixed">
+               <!-- Add a little z offset to avoid visual overlap -->
+                <origin xyz="0 0 -0.0001" rpy="0 0 0"/>
+                <parent link="${prefix}l2_bot_anchor"/>
+                <child link="${prefix}bot_sticker"/>
+            </joint>
+
+            <xacro:aruco_texture name="${prefix}bot_sticker" width="0.038100" height="0.168500" thickness="0.0001"
+                    filename="package://bam_descriptions/urdf/aruco_markers/grid_board_dict3_marker27p1mm_num1x5_outer38p1x168p5mm/texture_cube.dae"/>
+
+
+            <joint name="${prefix}l2_inside_sticker_joint" type="fixed">
+               <!-- Add a little z offset to avoid visual overlap -->
+                <origin xyz="0 0 -0.0001" rpy="0 0 0"/>
+                <parent link="${prefix}l2_inside_anchor"/>
+                <child link="${prefix}inside_sticker"/>
+            </joint>
+
+            <xacro:aruco_texture name="${prefix}inside_sticker" width="0.038100" height="0.168500" thickness="0.0001"
+                    filename="package://bam_descriptions/urdf/aruco_markers/grid_board_dict3_marker27p1mm_num1x5_outer38p1x168p5mm/texture_cube.dae"/>
+
+            <joint name="${prefix}l2_outside_sticker_joint" type="fixed">
+               <!-- Add a little z offset to avoid visual overlap -->
+                <origin xyz="0 0 -0.0001" rpy="0 0 0"/>
+                <parent link="${prefix}l2_outside_anchor"/>
+                <child link="${prefix}outside_sticker"/>
+            </joint>
+
+            <xacro:aruco_texture name="${prefix}outside_sticker" width="0.038100" height="0.168500" thickness="0.0001"
+                    filename="package://bam_descriptions/urdf/aruco_markers/grid_board_dict3_marker27p1mm_num1x5_outer38p1x168p5mm/texture_cube.dae"/>
+
+        </xacro:unless>
+
+    </xacro:macro>
+
+    <!-- Standardized alias: make_arm -->
+    <xacro:macro name="make_arm" params="config_file">
+
+        <!--
+            Load parameters from config_file (which is expected to be a YAML file processed by xacro)
+            Example YAML structure:
+                prefix: ''
+                reflect: 1
+                disable_L1: false
+                disable_L2: false
+                disable_C1: false
+                disable_C2: false
+                disable_wrist: false
+                disable_sticker: false
+                shoulder_front_plate_offset: 0.1
+                ... (all other parameters)
+                joint_info:
+                    joint_1:
+                        friction: 0.01
+                        damping: 0.001
+                    ... (other joints)
+         -->
+         <xacro:property name="cfg" value="${xacro.load_yaml(config_file)}"/>
+
+
+        <xacro:dummy_bam_fb 
+            prefix="${cfg['info']['prefix']}"
+            reflect="${cfg['args']['reflect']}"
+            disable_L1="${cfg['args']['disable_L1']}"
+            disable_L2="${cfg['args']['disable_L2']}"
+            disable_C1="${cfg['args']['disable_C1']}"
+            disable_C2="${cfg['args']['disable_C2']}"
+            disable_wrist="${cfg['args']['disable_wrist']}"
+            disable_sticker="${cfg['args']['disable_sticker']}"
+
+            shoulder_front_plate_offset="${cfg['args']['params']['shoulder_front_plate_offset']}"
+            shoulder_C1_offset="${cfg['args']['params']['shoulder_C1_offset']}"
+            shoulder_J2_offset="${cfg['args']['params']['shoulder_J2_offset']}"
+            shoulder_gearbox_mass="${cfg['args']['params']['shoulder_gearbox_mass']}"
+            shoulder_gearbox_length="${cfg['args']['params']['shoulder_gearbox_length']}"
+            shoulder_gearbox_diameter="${cfg['args']['params']['shoulder_gearbox_diameter']}"
+            shoulder_gearbox_front_offset="${cfg['args']['params']['shoulder_gearbox_front_offset']}"
+            shoulder_gearbox_flange_diameter="${cfg['args']['params']['shoulder_gearbox_flange_diameter']}"
+            shoulder_motor_mass="${cfg['args']['params']['shoulder_motor_mass']}"
+            shoulder_motor_length="${cfg['args']['params']['shoulder_motor_length']}"
+            shoulder_motor_width="${cfg['args']['params']['shoulder_motor_width']}"
+            shoulder_driver_length="${cfg['args']['params']['shoulder_driver_length']}"
+            shoulder_plate_thickness="${cfg['args']['params']['shoulder_plate_thickness']}"
+            shoulder_mount_plate_thickness="${cfg['args']['params']['shoulder_mount_plate_thickness']}"
+
+            five_bar_offset="${cfg['args']['params']['five_bar_offset']}"
+            link_density="${cfg['args']['params']['link_density']}"
+            link_wall_thickness="${cfg['args']['params']['link_wall_thickness']}"
+            C1_length="${cfg['args']['params']['C1_length']}"
+            C1_width="${cfg['args']['params']['C1_width']}"
+            C1_thickness="${cfg['args']['params']['C1_thickness']}"
+            C1_to_C2_spacing="${cfg['args']['params']['C1_to_C2_spacing']}"
+            C1_mass="${cfg['args']['params']['C1_mass']}"
+            C2_length="${cfg['args']['params']['C2_length']}"
+            C2_width="${cfg['args']['params']['C2_width']}"
+            C2_thickness="${cfg['args']['params']['C2_thickness']}"
+            C2_mass="${cfg['args']['params']['C2_mass']}"
+            L1_length="${cfg['args']['params']['L1_length']}"
+            L1_width="${cfg['args']['params']['L1_width']}"
+            L1_mass="${cfg['args']['params']['L1_mass']}"
+            L1_to_L2_spacing="${cfg['args']['params']['L1_to_L2_spacing']}"
+            L2_length="${cfg['args']['params']['L2_length']}"
+            L2_width="${cfg['args']['params']['L2_width']}"
+            L2_mass="${cfg['args']['params']['L2_mass']}"
+            theta_elbow_offset="${cfg['args']['params']['theta_elbow_offset']}"
+            elbow_length="${cfg['args']['params']['elbow_length']}"
+
+            wrist_length="${cfg['args']['params']['wrist_length']}"
+            wrist_pipe_diameter="${cfg['args']['params']['wrist_pipe_diameter']}"
+            wrist_pipe_wall_thickness="${cfg['args']['params']['wrist_pipe_wall_thickness']}"
+            wrist_pipe_density="${cfg['args']['params']['wrist_pipe_density']}"
+            wrist_pipe_mass="${cfg['args']['params']['wrist_pipe_mass']}"
+            wrist_servo_length="${cfg['args']['params']['wrist_servo_length']}"
+            wrist_servo_diameter="${cfg['args']['params']['wrist_servo_diameter']}"
+            wrist_servo_mass="${cfg['args']['params']['wrist_servo_mass']}"
+            wrist_driver_length="${cfg['args']['params']['wrist_driver_length']}"
+            wrist_to_wrist_spacing="${cfg['args']['params']['wrist_to_wrist_spacing']}"
+            wrist_front_offset="${cfg['args']['params']['wrist_front_offset']}"
+
+            joint_1_friction="${cfg['joints']['shoulder_joint']['physics']['friction']}"
+            joint_1_damping="${cfg['joints']['shoulder_joint']['physics']['damping']}"
+            joint_2_friction="${cfg['joints']['l1_joint']['physics']['friction']}"
+            joint_2_damping="${cfg['joints']['l1_joint']['physics']['damping']}"
+            joint_3_friction="${cfg['joints']['l2_joint']['physics']['friction']}"
+            joint_3_damping="${cfg['joints']['l2_joint']['physics']['damping']}"
+            joint_4_friction="${cfg['joints']['wrist_1_joint']['physics']['friction']}"
+            joint_4_damping="${cfg['joints']['wrist_1_joint']['physics']['damping']}"
+            joint_5_friction="${cfg['joints']['wrist_2_joint']['physics']['friction']}"
+            joint_5_damping="${cfg['joints']['wrist_2_joint']['physics']['damping']}"
+            joint_6_friction="${cfg['joints']['wrist_3_joint']['physics']['friction']}"
+            joint_6_damping="${cfg['joints']['wrist_3_joint']['physics']['damping']}"
+            c1_friction="${cfg['joints']['c2_joint']['physics']['friction']}"
+            c1_damping="${cfg['joints']['c2_joint']['physics']['damping']}"
+            c2_friction="${cfg['joints']['c1_joint']['physics']['friction']}"
+            c2_damping="${cfg['joints']['c1_joint']['physics']['damping']}"
+        />
+
+    </xacro:macro>
+
+    <!-- <xacro:include filename="$(find bam_descriptions)/urdf/texture_cube/texture_cube_macro.xacro" />
+    <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+    <xacro:dummy_bam_fb prefix="" reflect="1" disable_L1="false" disable_L2="false" disable_C1="false" disable_C2="false" disable_wrist="false" disable_sticker="false"/> -->
+
+</robot>

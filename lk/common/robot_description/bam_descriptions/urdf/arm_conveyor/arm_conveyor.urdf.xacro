@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<!-- Standalone URDF xacro that instantiates arm_with_conveyor -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="arm_with_conveyor">
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+
+    <!-- DescriptionArgs to locate arm and conveyor macro files -->
+    <xacro:arg name="arm_macro_path" default="$(find ur_description)/urdf/ur_macro.xacro"/>
+    <xacro:arg name="arm_config_file" default="$(find ur_description)/urdf/config/ex_make_arm.yaml"/>
+    <xacro:arg name="conveyor_macro_path" default="$(find bam_descriptions)/urdf/conveyor/conveyor_macro.xacro"/>
+    <xacro:arg name="conveyor_config_file" default="$(find bam_descriptions)/urdf/conveyor/config/conveyor_skuv1_v0.0.0_config.yaml"/>
+
+    <xacro:arg name="world_xyz" default="0 0 0"/>
+    <xacro:arg name="world_rpy" default="0 0 0"/>
+    <xacro:arg name="base_xyz" default="0 0 0"/>
+    <xacro:arg name="base_rpy" default="0 0 0"/>
+
+    <xacro:arg name="mount_xyz" default="0 0 0.1"/>
+    <xacro:arg name="mount_rpy" default="0 0 0"/>
+    <xacro:arg name="conveyor_to_arm_link" default="conveyor_surface_center"/>
+    <xacro:arg name="arm_base_link" default="arm_base_link_ur"/>
+
+    <xacro:property name="arm_macro_path" value="$(arg arm_macro_path)"/>
+    <xacro:property name="arm_config_file" value="$(arg arm_config_file)"/>
+    <xacro:property name="conveyor_macro_path" value="$(arg conveyor_macro_path)"/>
+    <xacro:property name="conveyor_config_file" value="$(arg conveyor_config_file)"/>
+
+    <xacro:property name="mount_xyz" value="$(arg mount_xyz)"/>
+    <xacro:property name="mount_rpy" value="$(arg mount_rpy)"/>
+    <xacro:property name="conveyor_to_arm_link" value="$(arg conveyor_to_arm_link)"/>
+    <xacro:property name="arm_base_link" value="$(arg arm_base_link)"/>
+    
+    <xacro:property name="world_xyz" value="$(arg world_xyz)"/>
+    <xacro:property name="world_rpy" value="$(arg world_rpy)"/>
+    <xacro:property name="base_xyz" value="$(arg base_xyz)"/>
+    <xacro:property name="base_rpy" value="$(arg base_rpy)"/>
+
+    <!-- Attach to Gazebo World -->
+    <link name="world"/>
+
+    <joint name="world_to_base_link" type="fixed">
+        <origin xyz="${world_xyz}" rpy="${world_rpy}"/>
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint>
+
+    <link name="base_link">
+        <xacro:dummy_inertial/>
+    </link>
+
+    <joint name="base_link_to_conveyor" type="fixed">
+        <origin xyz="${base_xyz}" rpy="${base_rpy}"/>
+        <parent link="base_link"/>
+        <child link="${conveyor_to_arm_link}"/>
+    </joint>
+    
+    <xacro:include filename="/home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/arm_conveyor/arm_conveyor_macro.xacro"/>
+    <xacro:arm_with_conveyor
+      arm_macro_path="${arm_macro_path}"
+      conveyor_macro_path="${conveyor_macro_path}"
+      arm_config_file="${arm_config_file}"
+      conveyor_config_file="${conveyor_config_file}"
+      conveyor_to_arm_link="${conveyor_to_arm_link}"
+      arm_base_link="${arm_base_link}"
+      mount_xyz="${mount_xyz}"
+      mount_rpy="${mount_rpy}"/>
+
+</robot>

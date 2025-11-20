@@ -1,0 +1,4 @@
+<?xml version="1.0" ?>
+<robot name="crab_claw_v1">
+  <disable_collisions link1="eef_link_1" link2="eef_link_2" reason="Default"/>
+</robot>

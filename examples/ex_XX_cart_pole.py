@@ -9,7 +9,7 @@
 """
 
 # BAM
-from lk import System, SystemConfig, Node, Agent, Env
+from lk import System, Node, Agent, Env
 from lk import Observation, Action, Reward, Done, Info
 
 # PYTHON
@@ -33,7 +33,7 @@ def generate_system() -> System:
     action = agent(env.obs)
     obs = env(action)
 
-    return System(nodes=[node], components=[agent, env], inputs=[], outputs=[action, obs], subsystems=[], config=SystemConfig())
+    return System(nodes=[node], components=[agent, env], inputs=[], outputs=[action, obs], subsystems=[], config=System.Config())
 
 
 if __name__ == "__main__":

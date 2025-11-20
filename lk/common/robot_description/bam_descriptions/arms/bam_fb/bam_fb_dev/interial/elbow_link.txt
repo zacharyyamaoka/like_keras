@@ -1,0 +1,45 @@
+General
+	Part Number	Elbow Link
+	Part Name	Elbow Link
+	Description
+	Material Name	Aluminum 6061
+
+Manage
+	Item Number
+	Lifecycle
+	Revision
+	State
+	Change Order
+
+Physical
+	Mass	65.1718 g
+	Volume	24137.7067 mm^3
+	Density	0.0027 g / mm^3
+	Area	10888.0314 mm^2
+	World X,Y,Z	0.00 mm, 0.00 mm, -19.05 mm
+	Center of Mass	-0.0535 mm, 48.9859 mm, 2.9855 mm
+	Bounding Box
+		Length	161.0829 mm
+		Width	161.0829 mm
+		Height	6.00 mm
+	Moment of Inertia at Center of Mass   (g mm^2)
+		Ixx	1.015E+05
+		Ixy	-208.9883
+		Ixz	0.0504
+		Iyx	-208.9883
+		Iyy	5287.4239
+		Iyz	-46.1374
+		Izx	0.0504
+		Izy	-46.1374
+		Izz	1.064E+05
+	Moment of Inertia at Origin   (g mm^2)
+		Ixx	2.585E+05
+		Ixy	-38.2101
+		Ixz	10.4588
+		Iyx	-38.2101
+		Iyy	5868.5192
+		Iyz	-9577.4925
+		Izx	10.4588
+		Izy	-9577.4925
+		Izz	2.628E+05
+

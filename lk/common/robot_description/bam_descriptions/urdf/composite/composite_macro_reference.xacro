@@ -1,0 +1,176 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Generic Composite Macro
+    
+    Combines any number of robot descriptions with mounting joints.
+    
+    NOTE: This macro assumes common.xacro has already been included at the top level.
+    Each component's macro file will also include common.xacro, but xacro handles
+    duplicate includes gracefully.
+  -->
+
+  <!--
+    
+    Usage:
+      <xacro:make_composite config_file="${config_file}"/>
+    
+    The config file should contain:
+      - descriptions: list of robot description configs
+      - mounting_joints: list of mounting joint specs
+    
+    This macro will:
+      1. Loop through descriptions and include their macros
+      2. Call each description's macro
+      3. Add mounting joints between descriptions
+  -->
+
+  <xacro:macro name="make_composite" params="config_file">
+    
+    <!-- Load the composite config -->
+    <xacro:property name="cfg" value="${xacro.load_yaml(config_file)}"/>
+    
+    <!-- Extract descriptions and mounting joints -->
+    <xacro:property name="descriptions" value="${cfg['descriptions']}"/>
+    <xacro:property name="mounting_joints" value="${cfg['mounting_joints']}"/>
+    
+    <!-- Include all macro files first -->
+    <xacro:if value="${len(descriptions) > 0}">
+      <xacro:property name="desc0" value="${descriptions[0]}"/>
+      <xacro:include filename="${desc0['urdf']['macro_path']}"/>
+    </xacro:if>
+    
+    <xacro:if value="${len(descriptions) > 1}">
+      <xacro:property name="desc1" value="${descriptions[1]}"/>
+      <xacro:include filename="${desc1['urdf']['macro_path']}"/>
+    </xacro:if>
+    
+    <xacro:if value="${len(descriptions) > 2}">
+      <xacro:property name="desc2" value="${descriptions[2]}"/>
+      <xacro:include filename="${desc2['urdf']['macro_path']}"/>
+    </xacro:if>
+    
+    <xacro:if value="${len(descriptions) > 3}">
+      <xacro:property name="desc3" value="${descriptions[3]}"/>
+      <xacro:include filename="${desc3['urdf']['macro_path']}"/>
+    </xacro:if>
+    
+    <xacro:if value="${len(descriptions) > 4}">
+      <xacro:property name="desc4" value="${descriptions[4]}"/>
+      <xacro:include filename="${desc4['urdf']['macro_path']}"/>
+    </xacro:if>
+    
+    <!-- Now call the macros (assumes components use make_arm, make_hand, or make_conveyor) -->
+    <!-- Note: xacro doesn't support dynamic macro calls, so we try common patterns -->
+    
+    <!-- Description 0 -->
+    <xacro:if value="${len(descriptions) > 0}">
+      <xacro:property name="desc0_info" value="${desc0['info']}"/>
+      <xacro:property name="type0" value="${desc0_info['type']}"/>
+      <xacro:if value="${type0 == 'conveyor'}">
+        <xacro:make_conveyor config_file="${desc0['config_file']}"/>
+      </xacro:if>
+      <xacro:if value="${type0 in ['hand', 'gripper']}">
+        <xacro:make_hand config_file="${desc0['config_file']}"/>
+      </xacro:if>
+      <xacro:if value="${type0 not in ['conveyor', 'hand', 'gripper']}">
+        <xacro:make_arm config_file="${desc0['config_file']}"/>
+      </xacro:if>
+    </xacro:if>
+    
+    <!-- Description 1 -->
+    <xacro:if value="${len(descriptions) > 1}">
+      <xacro:property name="desc1_info" value="${desc1['info']}"/>
+      <xacro:property name="type1" value="${desc1_info['type']}"/>
+      <xacro:if value="${type1 == 'conveyor'}">
+        <xacro:make_conveyor config_file="${desc1['config_file']}"/>
+      </xacro:if>
+      <xacro:if value="${type1 in ['hand', 'gripper']}">
+        <xacro:make_hand config_file="${desc1['config_file']}"/>
+      </xacro:if>
+      <xacro:if value="${type1 not in ['conveyor', 'hand', 'gripper']}">
+        <xacro:make_arm config_file="${desc1['config_file']}"/>
+      </xacro:if>
+    </xacro:if>
+    
+    <!-- Description 2 -->
+    <xacro:if value="${len(descriptions) > 2}">
+      <xacro:property name="desc2_info" value="${desc2['info']}"/>
+      <xacro:property name="type2" value="${desc2_info['type']}"/>
+      <xacro:if value="${type2 == 'conveyor'}">
+        <xacro:make_conveyor config_file="${desc2['config_file']}"/>
+      </xacro:if>
+      <xacro:if value="${type2 in ['hand', 'gripper']}">
+        <xacro:make_hand config_file="${desc2['config_file']}"/>
+      </xacro:if>
+      <xacro:if value="${type2 not in ['conveyor', 'hand', 'gripper']}">
+        <xacro:make_arm config_file="${desc2['config_file']}"/>
+      </xacro:if>
+    </xacro:if>
+    
+    <!-- Add more descriptions here if needed (up to N) -->
+    
+    <!-- Add mounting joints -->
+    <!-- Note: All mounting joints are fixed joints by definition -->
+    
+    <!-- Mounting Joint 0 -->
+    <xacro:if value="${len(mounting_joints) > 0}">
+      <xacro:property name="mj0" value="${mounting_joints[0]}"/>
+      <xacro:property name="mj0_transform" value="${mj0['transform']}"/>
+      <joint name="${mj0['name']}" type="fixed">
+        <origin xyz="${mj0_transform['xyz']}" rpy="${mj0_transform['rpy']}"/>
+        <parent link="${mj0_transform['frame_id']}"/>
+        <child link="${mj0_transform['child_frame_id']}"/>
+      </joint>
+    </xacro:if>
+    
+    <!-- Mounting Joint 1 -->
+    <xacro:if value="${len(mounting_joints) > 1}">
+      <xacro:property name="mj1" value="${mounting_joints[1]}"/>
+      <xacro:property name="mj1_transform" value="${mj1['transform']}"/>
+      <joint name="${mj1['name']}" type="fixed">
+        <origin xyz="${mj1_transform['xyz']}" rpy="${mj1_transform['rpy']}"/>
+        <parent link="${mj1_transform['frame_id']}"/>
+        <child link="${mj1_transform['child_frame_id']}"/>
+      </joint>
+    </xacro:if>
+    
+    <!-- Mounting Joint 2 -->
+    <xacro:if value="${len(mounting_joints) > 2}">
+      <xacro:property name="mj2" value="${mounting_joints[2]}"/>
+      <xacro:property name="mj2_transform" value="${mj2['transform']}"/>
+      <joint name="${mj2['name']}" type="fixed">
+        <origin xyz="${mj2_transform['xyz']}" rpy="${mj2_transform['rpy']}"/>
+        <parent link="${mj2_transform['frame_id']}"/>
+        <child link="${mj2_transform['child_frame_id']}"/>
+      </joint>
+    </xacro:if>
+    
+    <!-- Mounting Joint 3 -->
+    <xacro:if value="${len(mounting_joints) > 3}">
+      <xacro:property name="mj3" value="${mounting_joints[3]}"/>
+      <xacro:property name="mj3_transform" value="${mj3['transform']}"/>
+      <joint name="${mj3['name']}" type="fixed">
+        <origin xyz="${mj3_transform['xyz']}" rpy="${mj3_transform['rpy']}"/>
+        <parent link="${mj3_transform['frame_id']}"/>
+        <child link="${mj3_transform['child_frame_id']}"/>
+      </joint>
+    </xacro:if>
+    
+    <!-- Mounting Joint 4 -->
+    <xacro:if value="${len(mounting_joints) > 4}">
+      <xacro:property name="mj4" value="${mounting_joints[4]}"/>
+      <xacro:property name="mj4_transform" value="${mj4['transform']}"/>
+      <joint name="${mj4['name']}" type="fixed">
+        <origin xyz="${mj4_transform['xyz']}" rpy="${mj4_transform['rpy']}"/>
+        <parent link="${mj4_transform['frame_id']}"/>
+        <child link="${mj4_transform['child_frame_id']}"/>
+      </joint>
+    </xacro:if>
+    
+    <!-- Add more mounting joints here if needed (up to N) -->
+    
+  </xacro:macro>
+
+</robot>

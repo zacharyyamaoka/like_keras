@@ -1,0 +1,45 @@
+General
+	Part Number	Tube
+	Part Name	Tube
+	Description
+	Material Name	Aluminum 6061
+
+Manage
+	Item Number
+	Lifecycle
+	Revision
+	State
+	Change Order
+
+Physical
+	Mass	225.0144 g
+	Volume	83338.6758 mm^3
+	Density	0.0027 g / mm^3
+	Area	1.067E+05 mm^2
+	World X,Y,Z	0.00 mm, 0.00 mm, 9.00 mm
+	Center of Mass	0.00 mm, 117.6918 mm, 34.4833 mm
+	Bounding Box
+		Length	50.80 mm
+		Width	279.00 mm
+		Height	50.80 mm
+	Moment of Inertia at Center of Mass   (g mm^2)
+		Ixx	1.481E+06
+		Ixy	1.0254
+		Ixz	-1.206E-08
+		Iyx	1.0254
+		Iyy	1.833E+05
+		Iyz	-1140.7699
+		Izx	-1.206E-08
+		Izy	-1140.7699
+		Izz	1.486E+06
+	Moment of Inertia at Origin   (g mm^2)
+		Ixx	4.865E+06
+		Ixy	1.0254
+		Ixz	-1.689E-07
+		Iyx	1.0254
+		Iyy	4.509E+05
+		Iyz	-9.143E+05
+		Izx	-1.689E-07
+		Izy	-9.143E+05
+		Izz	4.603E+06
+

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+
+
+    <xacro:macro name="moteus" params="joint_name init_pos:='0' can_id:='1' virtual:='false' mock:='false' max_vel:='100.0' max_accel:='100.0' hardstop_pos:='0' home_pos:='0'">
+        <joint name="${joint_name}">
+            <param name="can_id">${can_id}</param>
+            <!-- virtual: The board doesn't exist, don't try to connect to it. Just report back the intial position -->
+            <param name="virtual">${virtual}</param>
+            <!-- mock: Pretend to follow the commands. The the actual joint (real or virtual) will just hold current position, 
+                 but it will report back the commanded value -->
+            <param name="mock">${mock}</param>
+            <param name="initial_position">${init_pos}</param> 
+            <param name="hardstop_position">${hardstop_pos}</param>
+            <param name="home_position">${home_pos}</param>
+            <!-- Used by some ros2_control interfaces ie. ros2_gz_control plugin, accel not implemented yet, -1 for NAN-->
+            <param name="max_vel">${max_vel}</param>
+            <param name="max_accel">${max_accel}</param>
+
+            <command_interface name="position"/>
+            <command_interface name="velocity"/>
+            <command_interface name="acceleration"/>
+            <command_interface name="max_torque"/>
+            <command_interface name="kp_scale"/>
+            <command_interface name="kd_scale"/>
+            <command_interface name="effort"/>
+            <command_interface name="velocity_limit"/>
+            <command_interface name="accel_limit"/>
+            <command_interface name="flag"/>
+
+            <state_interface name="position">
+                <param name="initial_value">${init_pos}</param>
+            </state_interface>
+            <state_interface name="velocity">
+                <param name="initial_value">0.0</param>
+            </state_interface>
+            <state_interface name="effort">
+                <param name="initial_value">0.0</param>
+            </state_interface>
+            
+            <state_interface name="mode"/>          
+            <state_interface name="motor_temperature"/>      
+            <state_interface name="board_temperature"/>      
+            <state_interface name="voltage"/>      
+            <state_interface name="fault"/>      
+        </joint>
+    </xacro:macro>
+
+</robot>

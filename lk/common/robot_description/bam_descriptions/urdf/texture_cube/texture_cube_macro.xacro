@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="marker14">
+
+
+  <xacro:macro name="aruco_texture" params="name width height thickness filename">
+    
+    <!-- 
+      Coordinate system should match computer screen
+
+      (0,0,0) is top left corner. +x is right, +y is down, +z is into screen
+      https://docs.opencv.org/4.x/db/da9/tutorial_aruco_board_detection.html
+      
+      -->
+
+    <!-- Local scope the parameters to avoid naming conflicts -->
+    <xacro:property name="local_width" value="${width}"/>
+    <xacro:property name="local_height" value="${height}"/>
+    <xacro:property name="local_thickness" value="${thickness}"/>
+
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <mesh filename="${filename}"
+                scale="${local_thickness} ${local_width} ${local_height}"/>
+        </geometry>
+       <origin xyz="${local_width/2} ${local_height/2} ${local_thickness/2}" rpy="0 ${pi/2} ${-pi/2}"/>
+      </visual>
+
+      <!-- Hide the back surface -->
+      <!-- <color rgba="0.565 0.935 0.565 1"/> -->
+      <visual>
+        <geometry>
+          <box size="${local_thickness} ${local_width-0.0001} ${local_height-0.0001}"/>
+        </geometry>
+          <origin xyz="${local_width/2} ${local_height/2} ${local_thickness/2 + 0.0001}" rpy="0 ${pi/2} ${-pi/2}"/>
+        <material name="light_green">
+            <color rgba="0.565 0.935 0.565 1"/>
+        </material>
+      </visual>
+
+      <xacro:dummy_inertial/>
+
+    </link>
+
+  </xacro:macro>
+
+
+    <xacro:macro name="texture_cube" params="name width height thickness filename">
+    
+    <!-- Local scope the parameters to avoid naming conflicts -->
+    <xacro:property name="local_width" value="${width}"/>
+    <xacro:property name="local_height" value="${height}"/>
+    <xacro:property name="local_thickness" value="${thickness}"/>
+    
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <mesh filename="${filename}"
+                scale="${local_thickness} ${local_width} ${local_height}"/>
+        </geometry>
+      </visual>
+      <xacro:dummy_inertial/>
+    </link>
+
+  </xacro:macro>
+
+
+  <!-- Uncomment when prototyping -->
+  <!-- <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+
+  <xacro:aruco_texture name="aruco_texture_test" width="0.3" height="1.3" thickness="0.03"
+                       filename="package://bam_descriptions/urdf/texture_cube/texture_cube.dae"/> -->
+
+  <!-- <xacro:texture_cube name="texture_cube_test" width="0.3" height="1.3" thickness="0.1"
+                      filename="package://bam_descriptions/urdf/texture_cube/texture_cube.dae"/> -->
+
+</robot>

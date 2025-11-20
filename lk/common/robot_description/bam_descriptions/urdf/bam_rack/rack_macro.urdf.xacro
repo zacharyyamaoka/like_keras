@@ -1,0 +1,196 @@
+<?xml version="1.0"?>
+
+<!-- When testing you can run this URDF. Previously I had to comment/uncomment on the macro.xacro, but now I have a standalone file-->
+<!-- default values for properties should be "pure" for when its included in another xacro (ie. moveit) -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="rack">
+
+
+    <xacro:macro name="make_config" params="config_file">
+        <xacro:make_rack config_file="${config_file}"/>
+    </xacro:macro>
+
+    <xacro:macro name="make_rack" params="config_file">
+
+    
+    </xacro:macro>
+
+
+    <!-- 
+        Conveyor Material Flow  (-y axis)
+                  |
+    [front_left]  |  [front_right]
+                  |
+    [back_left]   |   [back_right]
+                  |
+                  v
+    -->
+
+    <xacro:arg name="front_right" default="true"/>
+    <xacro:property name="front_right" value="$(arg front_right)"/>
+    <xacro:arg name="front_right_transport" default=""/>
+    <xacro:property name="front_right_transport" value="$(arg front_right_transport)"/>
+
+    <xacro:arg name="front_left" default="true"/>
+    <xacro:property name="front_left" value="$(arg front_left)"/>
+    <xacro:arg name="front_left_transport" default=""/>
+    <xacro:property name="front_left_transport" value="$(arg front_left_transport)"/>
+
+    <xacro:arg name="back_right" default="false"/>
+    <xacro:property name="back_right" value="$(arg back_right)"/>
+    <xacro:arg name="back_right_transport" default=""/>
+    <xacro:property name="back_right_transport" value="$(arg back_right_transport)"/>
+
+    <xacro:arg name="back_left" default="false"/>
+    <xacro:property name="back_left" value="$(arg back_left)"/>
+    <xacro:arg name="back_left_transport" default=""/>
+    <xacro:property name="back_left_transport" value="$(arg back_left_transport)"/>
+
+    <gazebo>
+        <plugin name="gz::sim::systems::Label" filename="gz-sim-label-system">
+        <label>10</label>
+        </plugin>
+    </gazebo>
+
+    <link name="world"/>    <!-- Attach to Gazebo World -->
+
+    <joint name="world_to_base" type="fixed">
+        <origin xyz="${world_xyz}" rpy="${world_rpy}"/>
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint>
+
+    <link name="base_link">
+        <xacro:dummy_link/>
+    </link>
+
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/sensors/d405/_d405.urdf.xacro" />
+    <xacro:sensor_d405 parent="base_link" name="camera" use_nominal_extrinsics="${plugin == 'gazebo'}">
+        <origin xyz="0 0 -0.1" rpy="0 ${pi/2} ${pi/2}" />
+    </xacro:sensor_d405> 
+
+    <!-- <xacro:include filename="$(find bam_descriptions)/urdf/sensors/camera.gazebo.xacro" /> -->
+    <!-- <xacro:color_camera ref_link="camera_link"/> -->
+    <!-- <xacro:depth_camera ref_link="camera_link"/> -->
+    <!-- <xacro:rgbd_camera ref_link="camera_link"/> -->
+    <!-- <xacro:segmentation_camera ref_link="camera_link"/> -->
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/bam_arm_with_hand/bam_arm_with_hand_macro.xacro" />
+
+    <!-- 
+    Design Notes
+    - You cannot use double colon or it will parse as yaml!
+    - The front and back are the exact same
+    - rotate 180 deg around z
+    - Careful though, right becomes left and left becomes right 
+    - I considered making a macro, but you naming becomes not as clear with the flip
+    -->
+
+    <xacro:property name="x_center_offset" value="0.202"/>
+    <xacro:property name="y_center_offset" value="0.1"/>
+
+    <xacro:if value="${front_left or front_right}">
+
+        <joint name="front_pair_joint" type="fixed">
+            <origin rpy="0 0 0"/>
+            <parent link="base_link"/>
+            <child link="front_pair_link"/>
+        </joint>
+
+        <link name="front_pair_link">
+            <xacro:dummy_link/>
+        </link>
+
+        <xacro:if value="${front_right}">
+
+        <xacro:bam_arm_with_hand 
+            prefix="front_right_" 
+            reflect="1" 
+            plugin="${plugin}" 
+            transport_path="${front_right_transport}" 
+            arm_type="${arm_type}"
+            hand_type="${hand_type}" 
+            controllers_file_path="${controllers_file_path}" 
+            ros_namespace="${ros_namespace}"
+            six_dof_mode="${six_dof_mode}"/> 
+
+            <!-- <xacro:hybrid_v1_gripper_v1 prefix="front_right_" reflect="1" transport_path="${front_right_transport}" plugin="${plugin}"/> -->
+
+            <joint name="front_right_pair_joint" type="fixed">
+                <origin xyz="${x_center_offset} ${y_center_offset} 0" rpy="0 ${pi/2} ${pi}"/>
+                <parent link="front_pair_link"/>
+                <child link="front_right_base_link_1"/>
+            </joint>
+
+        </xacro:if>
+
+        <xacro:if value="${front_left}">
+
+            <xacro:bam_arm_with_hand 
+                prefix="front_left_" 
+                reflect="-1" 
+                plugin="${plugin}" 
+                transport_path="${front_left_transport}" 
+                arm_type="${arm_type}"
+                hand_type="${hand_type}" 
+                controllers_file_path="${controllers_file_path}" 
+                ros_namespace="${ros_namespace}"
+                six_dof_mode="${six_dof_mode}"/> 
+
+            <!-- <xacro:hybrid_v1_gripper_v1 prefix="front_left_" reflect="-1" transport_path="${front_left_transport}" plugin="${plugin}"/> -->
+
+            <joint name="front_left_pair_joint" type="fixed">
+                <origin xyz="${-x_center_offset} ${y_center_offset} 0" rpy="0 ${-pi/2} ${pi}"/>
+                <parent link="front_pair_link"/>
+                <child link="front_left_base_link_1"/>
+            </joint>
+
+        </xacro:if>
+
+    </xacro:if>
+
+    <!-- 
+        Copy paste from above & Replace as follows
+        front_left -> back_right
+        front_right -> back_left
+        front_pair -> back_pair
+
+        Add 180 deg rotation around z
+     -->
+    <xacro:if value="${back_right or back_left}">
+
+        <joint name="back_pair_joint" type="fixed">
+            <origin rpy="0 0 ${pi}"/>
+            <parent link="base_link"/>
+            <child link="back_pair_link"/>
+        </joint>
+
+        <link name="back_pair_link">
+            <xacro:dummy_link/>
+        </link>
+
+        <xacro:if value="${back_left}">
+
+            <xacro:hybrid_v1_gripper_v1 prefix="back_left_" reflect="1" transport_path="${back_left_transport}" plugin="${plugin}"/>
+
+            <joint name="back_left_pair_joint" type="fixed">
+                <origin xyz="${x_center_offset} 0 0" rpy="0 0 0"/>
+                <parent link="back_pair_link"/>
+                <child link="back_left_base_link_1"/>
+            </joint>
+        </xacro:if>
+
+        <xacro:if value="${back_right}">
+
+            <xacro:hybrid_v1_gripper_v1 prefix="back_right_" reflect="-1" transport_path="${back_right_transport}" plugin="${plugin}"/>
+
+            <joint name="back_right_pair_joint" type="fixed">
+                <origin xyz="${-x_center_offset} 0 0" rpy="0 ${pi} 0"/>
+                <parent link="back_pair_link"/>
+                <child link="back_right_base_link_1"/>
+            </joint>
+        </xacro:if>
+
+    </xacro:if>
+
+</robot>

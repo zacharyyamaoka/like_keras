@@ -12,7 +12,7 @@
 """
 
 # BAM
-from lk import System, SystemConfig, Node, Agent, Env
+from lk import System, Node, Agent, Env
 
 # PYTHON
 from typing import Optional
@@ -22,7 +22,7 @@ from dataclasses import dataclass
 # =============================================================================
 # Approach 1: Functional Factory (Simple)
 # =============================================================================
-def generate_system_functional_simple(system_config: Optional[SystemConfig] = None) -> System:
+def generate_system_functional_simple(system_config: Optional[System.Config] = None) -> System:
     """
         Simple functional approach with optional config.
         
@@ -56,7 +56,7 @@ def generate_system_functional_simple(system_config: Optional[SystemConfig] = No
 # Approach 2: Functional Factory with Typed Config
 # =============================================================================
 @dataclass
-class BcMedWasteConfig(SystemConfig):
+class BcMedWasteConfig(System.Config):
     """Custom system configuration."""
     agent_type: str = "bc"
     env_type: str = "mujoco"
@@ -98,7 +98,7 @@ def generate_system_explicit_config() -> System:
         Good for one-off systems with specific configurations.
     """
     # Feel free to change the call of this function to whatever you want!
-    my_favorite_system_config = SystemConfig(
+    my_favorite_system_config = System.Config(
         name="my_system",
         rate_hz=100.0,
         verbose=True
@@ -129,7 +129,7 @@ def generate_system_explicit_config() -> System:
 # Approach 4: Class-based with Config Dataclass
 # =============================================================================
 @dataclass
-class MyFavoriteSystemConfig(SystemConfig):
+class MyFavoriteSystemConfig(System.Config):
     """Configuration for custom system."""
     node_name: str = "agent_env_loop"
     agent_name: str = "agent"

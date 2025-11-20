@@ -20,7 +20,7 @@ Even dignaotics...
 #     node: Node.Config = field(default_factory=lambda: Node.Config())
 
 # @dataclass
-# class SystemConfig(lk.SystemConfig):
+# class SystemConfig(lk.System.Config):
 #     nodes: NodeConfigs = NodeConfigs()
 
 

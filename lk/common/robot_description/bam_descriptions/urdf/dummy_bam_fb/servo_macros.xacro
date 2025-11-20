@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="shoulder_servo_macro">
+
+
+
+
+<!-- As URDF can only have 1 interial tag, you need to use multiple links -->
+    <xacro:macro name="shoulder_servo_link"
+    params="name=''
+            gearbox_length=0.0815
+            gearbox_diameter=0.064
+            gearbox_mass=0.01
+            gearbox_front_offset=0.019
+            motor_length=0.06
+            motor_width=0.06
+            motor_mass=0.01
+            driver_length=0.02
+            collision=true
+            ">
+
+
+        <link name="${name}"/>
+
+        <joint name="${name}_joint" type="fixed">
+            <parent link="${name}"/>
+            <child link="${name}_gear_box"/>
+            <origin xyz="0 0 ${gearbox_front_offset}" rpy="0 0 0"/>
+        </joint>
+
+
+        <link name="${name}_gear_box">
+
+        <!-- Gearbox Cylinder -->
+            <visual>
+                <origin xyz="0 0 ${-gearbox_length/2}" rpy="0 0 0"/>
+                <geometry>
+                    <cylinder length="${gearbox_length}" radius="${gearbox_diameter/2}"/>
+                </geometry>
+                <material name="grey">
+                    <color rgba="0.7 0.7 0.7 1.0"/>
+                </material>
+            </visual>
+
+            <xacro:if value="${collision}">
+                <collision>
+                    <origin xyz="0 0 ${-gearbox_length/2}" rpy="0 0 0"/>
+                    <geometry>
+                        <cylinder length="${gearbox_length}" radius="${gearbox_diameter/2}"/>
+                    </geometry>
+                </collision>
+            </xacro:if>
+
+            <xacro:cylinder_inertial length="${gearbox_length}" outer_radius="${gearbox_diameter/2}" mass="${gearbox_mass}" origin_xyz="0 0 ${-gearbox_length/2}"/>
+            
+        <!-- Gearbox Flange -->
+            <xacro:property name="flange_length" value="0.005"/>
+            <visual>
+                <origin xyz="0 0 ${-gearbox_front_offset - flange_length/2}" rpy="0 0 0"/>
+                <geometry>
+                    <cylinder length="${flange_length}" radius="${1.2*gearbox_diameter/2}"/>
+                </geometry>
+                <material name="grey">
+                    <color rgba="0.7 0.7 0.7 1.0"/>
+                </material>
+            </visual>
+
+        </link>
+
+        <joint name="${name}_gearbox_motor_joint" type="fixed">
+            <parent link="${name}_gear_box"/>
+            <child link="${name}_motor"/>
+            <origin xyz="0 0 ${-gearbox_length}" rpy="0 0 0"/>
+        </joint>
+
+        <link name="${name}_motor">
+            <visual>
+                <origin xyz="0 0 ${-motor_length/2}" rpy="0 0 0"/>
+                <geometry>
+                    <box size="${motor_width} ${motor_width} ${motor_length}"/>
+                </geometry>
+                <material name="grey">
+                    <color rgba="0.7 0.7 0.7 1.0"/>
+                </material>
+            </visual>
+
+            <xacro:if value="${collision}">
+                <collision>
+                    <origin xyz="0 0 ${-motor_length/2}" rpy="0 0 0"/>
+                    <geometry>
+                        <box size="${motor_width} ${motor_width} ${motor_length}"/>
+                    </geometry>
+                </collision>
+            </xacro:if>
+
+            <xacro:solid_cuboid_inertial width="${motor_width}" height="${motor_width}" depth="${motor_length}" mass="${motor_mass}" origin_xyz="0 0 ${-motor_length/2}"/>
+
+        </link>
+
+
+        <joint name="${name}_driver_joint" type="fixed">
+            <parent link="${name}_motor"/>
+            <child link="${name}_driver"/>
+            <origin xyz="0 0 ${-motor_length}" rpy="0 0 0"/>
+        </joint>
+
+        <link name="${name}_driver">
+            <visual>
+                <origin xyz="0 0 ${-driver_length/2}" rpy="0 0 0"/>
+                <geometry>
+                    <box size="${motor_width} ${motor_width} ${driver_length}"/>
+                </geometry>
+                <material name="Black"/>
+            </visual>
+
+            <xacro:if value="${collision}">
+                <collision>
+                    <origin xyz="0 0 ${-driver_length/2}" rpy="0 0 0"/>
+                    <geometry>
+                        <box size="${motor_width} ${motor_width} ${driver_length}"/>
+                    </geometry>
+                </collision>
+            </xacro:if>
+        </link>
+
+    </xacro:macro>
+
+   <xacro:macro name="wrist_link"
+   params="name 
+           pipe_density=2700
+           pipe_mass=-1
+           pipe_diameter=0.04
+           pipe_wall_thickness=0.0015
+           wrist_length=0.05
+           wrist_servo_length=0.03
+           wrist_servo_diameter=0.05
+           wrist_servo_mass=0.01
+           wrist_front_offset=0.005
+           wrist_to_wrist_spacing=0.003
+           driver_length=0.01">
+
+        <xacro:property name="pipe_inner_radius" value="${(pipe_diameter - 2*pipe_wall_thickness)/2}"/>
+
+        <link name="${name}">
+        
+            <!-- Mounting Plate -->
+            <visual>
+                <origin xyz="0 ${wrist_front_offset + wrist_servo_length/2 + wrist_to_wrist_spacing/2} ${wrist_length}" rpy="${-pi/2} 0 0"/>
+                <geometry>
+                    <cylinder length="${wrist_to_wrist_spacing}" radius="${wrist_servo_diameter*0.8/2 }"/>
+                </geometry>
+                <material name="Violet"/>
+            </visual>
+
+            <!-- Driver -->
+            <visual>
+                <origin xyz="0 ${wrist_front_offset - wrist_servo_length/2 - driver_length/2} ${wrist_length}" rpy="${-pi/2} 0 0"/>
+
+                <geometry>
+                    <cylinder length="${driver_length}" radius="${wrist_servo_diameter/2 }"/>
+                </geometry>
+                <material name="Black"/>
+            </visual>
+        </link>
+
+        <xacro:cylinder_tube_link
+            name="${name}_pipe"
+            outer_radius="${pipe_diameter/2}"
+            inner_radius="${pipe_inner_radius}"
+            length="${wrist_length - wrist_servo_diameter/2}"
+            density="${pipe_density}"
+            mass="${pipe_mass}"
+            origin_offset="${(wrist_length - wrist_servo_diameter/2)/2}"
+            />
+
+        <joint name="${name}_to_${name}_pipe_joint" type="fixed">
+            <parent link="${name}"/>
+            <child link="${name}_pipe"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+        </joint>
+
+            <xacro:cylinder_tube_link
+            name="${name}_servo"
+            outer_radius="${wrist_servo_diameter/2}"
+            inner_radius="0"
+            length="${wrist_servo_length}"
+            density="N/A"
+            origin_offset="0"
+            mass="${wrist_servo_mass}"
+            />
+
+            <joint name="${name}_to_${name}_servo_joint" type="fixed">
+            <parent link="${name}"/>
+            <child link="${name}_servo"/>
+            <origin xyz="0 ${wrist_front_offset} ${wrist_length}" rpy="${-pi/2} 0 0"/>
+        </joint>
+
+    </xacro:macro>
+                
+    <!-- <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+
+    <link name="base_link"/>
+
+    <joint name="base_link_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link="gear_box"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <xacro:shoulder_servo prefix=""/> -->
+
+    <!-- <xacro:wrist_link name="wrist_1_link"/> -->
+
+
+</robot>

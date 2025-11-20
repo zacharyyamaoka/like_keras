@@ -1,0 +1,249 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="dummy_five_bar">
+
+  <!-- Import control_xacro -->
+
+  <xacro:arg name="world_xyz" default="0 0 0"/>
+  <xacro:property name="world_xyz" value="$(arg world_xyz)"/>
+
+  <xacro:arg name="world_rpy" default="0 0 0"/>
+  <xacro:property name="world_rpy" value="$(arg world_rpy)"/>
+  <!-- Generic Joint and Link Names which correspond to Five-Bar frames --> 
+  <!-- Arguments -->
+  <xacro:arg name="reflect" default="1"/>
+  <xacro:arg name="prefix" default=""/>
+
+  <xacro:arg name="dh_d1" default="0.2"/>
+  <xacro:arg name="j2_axis_offset" default="${69/1000}"/>
+
+  <!-- Five-Bar Mechanism Parameters (in meters) -->
+  <xacro:arg name="L_l1" default="0.240"/>      <!-- Length of link 1 -->
+  <xacro:arg name="L_l2" default="0.240"/>      <!-- Length of link 2 -->
+  <xacro:arg name="L_c1" default="0.120"/>      <!-- Length of coupler 1 -->
+  <xacro:arg name="L_c2" default="0.265"/>      <!-- Length of coupler 2 -->
+  <xacro:arg name="L_shoulder" default="0.087"/> <!-- Shoulder offset length -->
+  <xacro:arg name="L_elbow" default="0.120"/>   <!-- Elbow offset length -->
+  <xacro:arg name="theta_elbow_offset" default="0.785398"/> <!-- Elbow offset angle in radians (45 degrees) -->
+
+  <!-- Properties -->
+  <xacro:property name="reflect" value="$(arg reflect)"/>
+  <xacro:property name="prefix" value="$(arg prefix)"/>
+
+
+  <xacro:property name="dh_d1" value="$(arg dh_d1)"/>
+  <xacro:property name="j2_axis_offset" value="$(arg j2_axis_offset)"/>
+
+  <xacro:property name="L_l1" value="$(arg L_l1)"/>
+  <xacro:property name="L_l2" value="$(arg L_l2)"/>
+  <xacro:property name="L_c1" value="$(arg L_c1)"/>
+  <xacro:property name="L_c2" value="$(arg L_c2)"/>
+  <xacro:property name="L_shoulder" value="$(arg L_shoulder)"/>
+  <xacro:property name="L_elbow" value="$(arg L_elbow)"/>
+  <xacro:property name="theta_elbow_offset" value="$(arg theta_elbow_offset)"/>
+
+  <xacro:property name="link_width" value="0.01"/>
+  <xacro:property name="upper_arm_width" value="0.03"/>
+  <xacro:property name="fore_arm_width" value="0.02"/>
+
+  <xacro:property name="link_thickness" value="${20/1000}"/>
+
+  <!-- Link Colors -->
+  <xacro:property name="base_color" value="0.8 0.8 0.8 1"/>      <!-- Light gray for base -->
+  <xacro:property name="shoulder_color" value="0 0 0 1"/>          <!-- Blue for shoulder -->
+  <xacro:property name="c1_color" value="1 0 0 1"/>           <!-- Red for couplers -->
+  <xacro:property name="c2_color" value="0 1 0 1"/>         <!-- Green for upper arm -->
+  <xacro:property name="l1_color" value="1 1 0 1"/>          <!-- Yellow for fore arm -->
+  <xacro:property name="l2_color" value="0 0 1 1"/>          <!-- Blue for fore arm -->
+  <xacro:property name="end_effector_color" value="1 0 1 1"/>      <!-- Magenta for end effector -->
+
+  <xacro:macro name="slot_link" params="name link_width link_length link_thickness color">
+  <!-- Length goes along y, width goes along x, thickness goes along z -->
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 ${link_thickness/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${link_width/2}" length="${link_thickness}"/>
+        </geometry>
+        <material name="${name}_material"><color rgba="${color}"/></material>
+      </visual>
+
+      <visual>
+        <origin xyz="0 ${link_length/2} ${link_thickness/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${link_width} ${link_length} ${link_thickness}"/>
+        </geometry>
+        <material name="${name}_material"><color rgba="${color}"/></material>
+      </visual>
+
+      <visual>
+        <origin xyz="0 ${link_length} ${link_thickness/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${link_width/2}" length="${link_thickness}"/>
+        </geometry>
+        <material name="${name}_material"><color rgba="${color}"/></material>
+      </visual>
+    </link>
+  </xacro:macro>
+
+  <link name="world"/>
+
+    <joint name="world_to_base" type="fixed">
+        <origin xyz="${world_xyz}" rpy="${world_rpy}"/>
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint>
+
+  <!-- Base Link -->
+  <link name="base_link"/>
+
+
+  <joint name="${prefix}joint_1" type="revolute">
+    <parent link="base_link"/>
+    <child link="${prefix}link_0"/>
+    <origin xyz="0 0 0" rpy="0 0 ${pi}"/> 
+    <axis xyz="0 0 1"/>
+    <limit lower="${-pi}" upper="${pi}" velocity="100" effort="100"/>
+  </joint>
+
+  <link name="${prefix}link_0">
+    <visual>
+      <origin xyz="0 0 ${dh_d1/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${90/1000} ${j2_axis_offset*2} ${dh_d1}"/>
+      </geometry>
+      <material name="blue"><color rgba="0.5 0.5 0.5 0.5"/></material>
+    </visual>
+  </link>
+
+  <joint name="${prefix}joint_2" type="fixed">
+    <parent link="${prefix}link_0"/>
+    <child link="${prefix}five_bar_base"/>
+    <origin xyz="0 ${j2_axis_offset} ${dh_d1}" rpy="${-pi/2} 0 0"/>
+  </joint>
+
+
+  <link name="${prefix}five_bar_base">
+  </link>
+
+  <joint name="${prefix}five_bar_base_to_shoulder" type="fixed">
+      <parent link="${prefix}five_bar_base"/>
+      <child link="${prefix}shoulder"/>
+      <origin xyz="0 0 0" rpy="0 0 ${pi/2}"/> 
+    </joint>
+
+  <link name="${prefix}shoulder">
+    <visual>
+      <origin xyz="0 0 ${-j2_axis_offset/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${link_width/2}" length="${j2_axis_offset}"/>
+      </geometry>
+      <material name="shoulder_material"><color rgba="${shoulder_color}"/></material>
+    </visual>
+
+    <visual>
+      <origin xyz="${L_shoulder} 0 ${-j2_axis_offset/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${link_width/2}" length="${j2_axis_offset}"/>
+      </geometry>
+      <material name="shoulder_material"><color rgba="${shoulder_color}"/></material>
+    </visual>
+  </link>
+
+  <joint name="${prefix}shoulder_to_J2" type="fixed">
+    <parent link="${prefix}shoulder"/>
+    <child link="${prefix}J2"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/> 
+  </joint>
+
+  <link name="${prefix}J2">
+    <!-- <visual>
+      <origin xyz="0 0 ${-0.05/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${link_width/2}" length="0.05"/>
+      </geometry>
+      <material name="blue"><color rgba="0 0 1 1"/></material>
+    </visual> -->
+  </link>
+
+  <joint name="${prefix}shoulder_to_C1" type="revolute">
+    <parent link="${prefix}shoulder"/>
+    <child link="${prefix}C1"/>
+    <origin xyz="${L_shoulder} 0 0" rpy="0 0 0"/> 
+    <axis xyz="0 0 1"/>
+    <limit lower="${-pi}" upper="${pi}" velocity="100" effort="100"/>
+  </joint>
+
+
+  <!-- Usage example: -->
+  <xacro:slot_link 
+    name="${prefix}C1" 
+    link_width="${link_width}" 
+    link_length="${L_c1}" 
+    link_thickness="${link_thickness}" 
+    color="${c1_color}" 
+  />
+
+  <joint name="${prefix}C1_to_C2" type="revolute">
+    <parent link="${prefix}C1"/>
+    <child link="${prefix}C2"/>
+    <origin xyz="0 ${L_c1} 0" rpy="0 0 0"/> 
+    <axis xyz="0 0 1"/>
+    <limit lower="${-pi}" upper="${pi}" velocity="100" effort="100"/>
+  </joint>
+
+  <xacro:slot_link 
+    name="${prefix}C2" 
+    link_width="${link_width}" 
+    link_length="${L_c2}" 
+    link_thickness="${link_thickness}" 
+    color="${c2_color}" 
+  />
+
+  <joint name="${prefix}shoulder_to_L1" type="revolute">
+    <parent link="${prefix}shoulder"/>
+    <child link="${prefix}L1"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/> 
+    <axis xyz="0 0 1"/>
+    <limit lower="${-pi}" upper="${pi}" velocity="100" effort="100"/>
+  </joint>
+
+  <xacro:slot_link 
+    name="${prefix}L1" 
+    link_width="${link_width}" 
+    link_length="${L_l1}" 
+    link_thickness="${link_thickness}" 
+    color="${l1_color}" 
+  />
+
+  <joint name="${prefix}L1_to_L2" type="revolute">
+    <parent link="${prefix}L1"/>
+    <child link="${prefix}L2"/>
+    <origin xyz="0 ${L_l1} 0" rpy="0 0 0"/> 
+    <axis xyz="0 0 1"/>
+    <limit lower="${-pi}" upper="${pi}" velocity="100" effort="100"/>
+  </joint>
+
+  <xacro:slot_link 
+    name="${prefix}L2" 
+    link_width="${link_width}" 
+    link_length="${L_l2}" 
+    link_thickness="${link_thickness}" 
+    color="${l2_color}" 
+  />
+
+  <xacro:slot_link 
+    name="${prefix}elbow" 
+    link_width="${link_width}" 
+    link_length="${L_elbow}" 
+    link_thickness="${link_thickness}" 
+    color="${l2_color}" 
+  />
+
+  <joint name="${prefix}L2_to_elbow" type="fixed">
+    <parent link="${prefix}L2"/>
+    <child link="${prefix}elbow"/>
+    <origin xyz="0 0 0" rpy="0 0 -${pi - theta_elbow_offset}"/> 
+  </joint>
+
+
+</robot>

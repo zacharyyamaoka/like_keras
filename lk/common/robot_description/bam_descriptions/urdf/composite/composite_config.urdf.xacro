@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="composite">
+
+  <!-- Auto-generated Composite Config URDF -->
+
+  <xacro:arg name="bam_descriptions" default="$(env BAM_DESCRIPTIONS_PATH)"/>
+  <!-- Include common utilities -->
+  <xacro:include filename="$(arg bam_descriptions)/urdf/common.xacro"/>
+
+  <!-- Load config file from argument -->
+  <xacro:arg name="config_file" default="$(arg bam_descriptions)/urdf/composite/config/composite_sku_v0.0.0_config.yaml"/>
+  <xacro:property name="config_file" value="$(arg config_file)"/>
+  <xacro:property name="cfg" value="${xacro.load_yaml(config_file)}"/>
+  
+  <xacro:property name="world_xyz" value="${cfg['world_xyz']}"/>
+  <xacro:property name="world_rpy" value="${cfg['world_rpy']}"/>
+  <xacro:property name="base_xyz" value="${cfg['base_xyz']}"/>
+  <xacro:property name="base_rpy" value="${cfg['base_rpy']}"/>
+  
+  <!-- Determine base mount link from first description -->
+  <xacro:property name="base_mount_link" value="${cfg['base_mount']}"/>
+  
+  <!-- Create world link -->
+  <link name="world"/>
+  
+  <!-- Attach base_link to world -->
+  <joint name="world_to_base_link" type="fixed">
+    <origin xyz="${world_xyz}" rpy="${world_rpy}"/>
+    <parent link="world"/>
+    <child link="base_link"/>
+  </joint>
+  
+  <link name="base_link"/>
+  
+  <!-- Attach first component's base to base_link -->
+  <joint name="base_link_joint" type="fixed">
+    <origin xyz="${base_xyz}" rpy="${base_rpy}"/>
+    <parent link="base_link"/>
+    <child link="${base_mount_link}"/>
+  </joint>
+  
+  <!-- Include and call the composite macro -->
+  <xacro:include filename="$(arg bam_descriptions)/urdf/composite/composite_macro.xacro"/>
+  <xacro:make_composite config_file="${config_file}"/>
+
+</robot>

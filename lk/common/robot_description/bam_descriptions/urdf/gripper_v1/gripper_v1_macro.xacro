@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="crab_claw_v1">
+
+    <xacro:macro name="crab_claw_v1" params="prefix reflect">
+
+        <link name="${prefix}eef_link_1">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://bam_descriptions/urdf/crab_claw_v1/meshes/hand.stl" />
+                </geometry>
+                <material name="StoglRobotics/LightGrey"/>
+            </visual>
+
+            <!-- For collision inspiration see other gazebo grippers -->
+
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://bam_descriptions/urdf/crab_claw_v1/meshes/fixed_finger.stl" />
+                </geometry>
+            </collision>
+
+            <!-- <collision>
+                <origin xyz="0 0 ${0.06/2}" rpy="0 0 0"/>
+                <geometry>
+                    <box size="0.05 0.06 0.06"/>
+                </geometry>
+            </collision> -->
+
+            <inertial>
+                <origin xyz="-0.000055 0.002094 0.039905"/>
+                <mass value="0.273365"/>
+                <inertia 
+                    ixx="2.159000e-04" ixy="-3.180614e-07" ixz="1.297688e-07"
+                    iyy="1.938000e-04" iyz="-2.499850e-05"
+                    izz="1.044000e-04"/>
+            </inertial>
+        </link>
+
+        <!-- <gazebo reference="${prefix}eef_link_1">
+        <collision name="collision">
+            <surface>
+            <contact>
+                <collide_bitmask>0x01</collide_bitmask>
+            </contact>
+            </surface>
+        </collision>
+        </gazebo> -->
+
+        <joint name="${prefix}eef_joint_1" type="revolute">
+            <origin xyz="${16.5/1000} 0 ${37.5/1000}" rpy="${pi/2} 0 ${pi/2}" />
+            <parent link="${prefix}eef_link_1" />
+            <child link="${prefix}eef_link_2" />
+            <axis xyz="0 0 1" />
+            <limit effort="5.0" lower="0" upper="${pi/2}" velocity="10.0"/>
+        </joint>
+
+        <joint name="${prefix}crab_claw_joint" type="fixed">
+            <origin xyz="${16.5/1000} 0 ${37.5/1000}" rpy="${pi/2} 0 ${pi/2}" />
+            <parent link="${prefix}eef_link_1" />
+            <child link="${prefix}crab_claw_center" />
+        </joint>
+
+        <!-- Fixed at centered pose of crab claw, doesn't rotate, so its a stable reference -->
+        <link name="${prefix}crab_claw_center">
+        <!-- Dummy interia for gazebo -->
+            <xacro:dummy_inertial/>
+
+        </link>
+
+        <link name="${prefix}eef_link_2">
+            <visual>
+                <!-- rotate around a bit to close finger in starting position -->
+                <!-- <origin rpy="0 0.204 0 " /> -->
+                <geometry>
+                    <mesh filename="package://bam_descriptions/urdf/crab_claw_v1/meshes/finger.stl"/>
+                </geometry>
+                <material name="StoglRobotics/LightGrey"/>
+            </visual>
+
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://bam_descriptions/urdf/crab_claw_v1/meshes/rotating_finger.stl"/>
+                </geometry>
+            </collision>
+
+            <inertial>
+                <origin xyz="-0.017182 0.044419 -0.009845"/>
+                <mass value="0.029933"/>
+                <inertia 
+                    ixx="2.294500e-05" ixy="7.081339e-07" ixz="-5.446646e-07"
+                    iyy="5.181561e-06" iyz="3.769770e-06"
+                    izz="2.285568e-05"/>
+            </inertial>
+        </link>
+
+        <gazebo reference="${prefix}eef_link_2">
+            <selfCollide>'false'</selfCollide>
+
+        <!-- <collision name="collision">
+            <surface>
+            <contact>
+                <collide_bitmask>0x02</collide_bitmask>
+            </contact>
+            </surface>
+        </collision> -->
+        </gazebo>
+
+
+        <link name="${prefix}tcp_world">
+            <xacro:dummy_inertial/>
+        </link>
+
+        <link name="${prefix}tcp_tool">
+            <xacro:dummy_inertial/>
+        </link>
+
+        <!-- Easier for Pick and Place as orientated with world -->
+        <joint name="${prefix}joint_tcp_world" type="fixed">
+            <origin xyz="0 0 ${144/1000}" rpy="${pi} 0 0" /> 
+            <parent link="${prefix}eef_link_1" />
+            <child link="${prefix}tcp_world" />
+        </joint>
+
+        <joint name="${prefix}joint_tcp_tool" type="fixed">
+            <origin xyz="0 0 ${144/1000}" rpy="0 0 0" /> 
+            <parent link="${prefix}eef_link_1" />
+            <child link="${prefix}tcp_tool" />
+        </joint>
+
+<!-- 
+        <link name="${prefix}virtual_finger">
+            <inertial>
+                <mass value="1e-5"/>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <inertia 
+                ixx="1e-6" ixy="0.0" ixz="0.0"
+                iyy="1e-6" iyz="0.0"
+                izz="1e-6"/>
+            </inertial>
+        </link>
+
+        <joint name="${prefix}joint_virtual_finger" type="revolute">
+            <origin xyz="${16.5/1000} 0 ${37.5/1000}" rpy="${pi/2} 0 ${pi/2}" />
+            <parent link="${prefix}eef_link_1" />
+            <child link="${prefix}virtual_finger" />
+            <axis xyz="0 0 1" />
+            <mimic joint="${prefix}eef_joint_1" multiplier="0.5" offset="0.0"/>
+
+            <limit effort="5.0" lower="0" upper="${pi/2}" velocity="10.0"/>
+        </joint>
+
+        <link name="${prefix}floating_tcp_frame">
+            <inertial>
+                <mass value="1e-5"/>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <inertia 
+                ixx="1e-6" ixy="0.0" ixz="0.0"
+                iyy="1e-6" iyz="0.0"
+                izz="1e-6"/>
+            </inertial>
+        </link>
+
+        <joint name="${prefix}joint_floating_tcp" type="fixed">
+            <parent link="${prefix}virtual_finger"/>
+            <child link="${prefix}floating_tcp_frame"/>
+            <origin xyz="0 ${106.5/1000} ${-16.5/1000}" rpy="${pi/2} ${pi/2} 0"/>
+        </joint> -->
+
+    </xacro:macro>
+
+</robot>

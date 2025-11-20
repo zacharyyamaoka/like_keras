@@ -1,5 +1,6 @@
 """
     RequestHeader for API requests.
+    cursor://file/home/bam/bam_ws/src/like_keras/lk/msgs/lk/api/client_response.py
     
     ROS-free version using Python dataclasses.
 """

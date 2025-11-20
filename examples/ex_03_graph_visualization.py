@@ -82,7 +82,7 @@ def create_example_system() -> System:
     # Create system and add components
     system = System(
         components=[sensor1, sensor2, processor, filter_comp, actuator],
-        config=SystemConfig(name="RobotSystem", verbose=True)
+        config=System.Config(name="RobotSystem", verbose=True)
     )
     
     # Connect components to create a dataflow graph

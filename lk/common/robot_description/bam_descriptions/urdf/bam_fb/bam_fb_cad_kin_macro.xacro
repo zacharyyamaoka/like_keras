@@ -1,0 +1,421 @@
+<?xml version="1.0"?>
+
+
+<!-- 
+
+
+- Goal basiclly the simplest description possible, that basic api 
+- Really the only args I want are the basic ones, and then, the fusion 360 ones... I am not concerned with visual accuracy here... 
+
+- By Convention we want the z axis to always go through the joint. that makes it easy to joint component to origin and then just read the points 
++z is up, +y is forward, +x is right 
+
+- We define cylindrical servos in the frame that allows us to visually confirm the orientation 
+- Fight the complexity, keep this basically as simple as possible to show that fusion 360 kinematic values are reasonable! 
+
+
+- To match the UR we can reflect the axis rotation ie. <0 0 -1> 
+
+What is the effect of the reflect?
+
+The goal is to still maintain the general same structure, so that closed form IK can still be used.
+
+To achieve this via joint motor, imagine you rotate, l1 and c1 180 degress, and then wrist 1 you rotate to be straight down agian.
+- That is essentially what we are doing! we reflect by +-pi/2 which gives you the 180 deg diff
+
+Ok this is good, one missing thing though is to align with the Rotation direction of the UR arm...
+Its essntial that you actually don't apply any offset to the visual mesh.
+That mesh corresponds to the same mesh that is used for Interia, so you don't want to adjust it at all!
+-->
+
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="bam_fb_cad_kin">
+    
+
+     
+
+    <!-- Wrapper macro for consistency with other robot descriptions -->
+    <xacro:macro name="make_config" params="config_file">
+        <xacro:make_arm config_file="${config_file}"/>
+    </xacro:macro>
+
+    <!-- Main macro that loads config file and instantiates the arm -->
+    <xacro:macro name="make_arm" params="config_file">
+        
+        <!-- Load configuration from YAML file -->
+        <xacro:property name="cfg" value="${xacro.load_yaml(config_file)}"/>
+        <!-- Extract cad_kin_params -->
+        <xacro:property name="ckp" value="${cfg['args']['cad_kin_params']}"/>
+
+        <!-- Instantiate the arm with unpacked parameters -->
+        <xacro:bam_fb_cad_kin 
+            plugin="${cfg['args']['plugin']}"
+            prefix="${cfg['info']['prefix']}"
+            reflect="${cfg['args']['reflect']}"
+            shoulder_servo_radius="${ckp['shoulder_servo_radius']}"
+            shoulder_servo_length="${ckp['shoulder_servo_length']}"
+            wrist_servo_radius="${ckp['wrist_servo_radius']}"
+            wrist_servo_length="${ckp['wrist_servo_length']}"
+            base_to_shoulder_z="${ckp['base_to_shoulder_z']}"
+            shoulder_to_l1_z="${ckp['shoulder_to_l1_z']}"
+            shoulder_to_l1_y="${ckp['shoulder_to_l1_y']}"
+            l1_to_c1_z="${ckp['l1_to_c1_z']}"
+            l1_to_l2_z="${ckp['l1_to_l2_z']}"
+            l1_to_l2_y="${ckp['l1_to_l2_y']}"
+            l2_to_wrist_1_z="${ckp['l2_to_wrist_1_z']}"
+            l2_to_wrist_1_y="${ckp['l2_to_wrist_1_y']}"
+            l2_to_sticker_anchor_z="${ckp['l2_to_sticker_anchor_z']}"
+            l2_to_sticker_anchor_y="${ckp['l2_to_sticker_anchor_y']}"
+            l2_to_elbow_tip_z="${ckp['l2_to_elbow_tip_z']}"
+            l2_to_elbow_tip_y="${ckp['l2_to_elbow_tip_y']}"
+            l2_to_elbow_tip_theta="${ckp['l2_to_elbow_tip_theta']}"
+            wrist_1_to_wrist_2_z="${ckp['wrist_1_to_wrist_2_z']}"
+            wrist_1_to_wrist_2_y="${ckp['wrist_1_to_wrist_2_y']}"
+            wrist_2_to_wrist_3_z="${ckp['wrist_2_to_wrist_3_z']}"
+            wrist_2_to_wrist_3_y="${ckp['wrist_2_to_wrist_3_y']}"
+            c1_to_c2_z="${ckp['c1_to_c2_z']}"
+            c1_to_c2_y="${ckp['c1_to_c2_y']}"
+            c2_to_c2_tip_z="${ckp['c2_to_c2_tip_z']}"
+            c2_to_c2_tip_y="${ckp['c2_to_c2_tip_y']}"
+        />
+
+    </xacro:macro>
+
+    <!-- Core macro definition with all kinematic parameters -->
+    <xacro:macro name="bam_fb_cad_kin" params="
+        plugin:=none
+        prefix:=''
+        reflect:=1
+        shoulder_servo_radius:=${80/2*mm2m}
+        shoulder_servo_length:=${120*mm2m}
+        wrist_servo_radius:=${60/2*mm2m}
+        wrist_servo_length:=${40*mm2m}
+        base_to_shoulder_z:=${30*mm2m}
+        shoulder_to_l1_z:=${120*mm2m}
+        shoulder_to_l1_y:=${80*mm2m}
+        l1_to_c1_z:=${80*mm2m}
+        l1_to_l2_z:=${50*mm2m}
+        l1_to_l2_y:=${300*mm2m}
+        l2_to_wrist_1_z:=${50*mm2m}
+        l2_to_wrist_1_y:=${300*mm2m}
+        l2_to_sticker_anchor_z:=${25*mm2m}
+        l2_to_sticker_anchor_y:=${250*mm2m}
+        l2_to_elbow_tip_z:=${0*mm2m}
+        l2_to_elbow_tip_y:=${120*mm2m}
+        l2_to_elbow_tip_theta:=${45*deg2rad}
+        wrist_1_to_wrist_2_z:=${50*mm2m}
+        wrist_1_to_wrist_2_y:=${30*mm2m}
+        wrist_2_to_wrist_3_z:=${50*mm2m}
+        wrist_2_to_wrist_3_y:=${30*mm2m}
+        c1_to_c2_z:=${50*mm2m}
+        c1_to_c2_y:=${150*mm2m}
+        c2_to_c2_tip_z:=${20*mm2m}
+        c2_to_c2_tip_y:=${350*mm2m}
+        ">
+
+        <!-- Dervied Properties -->
+        <xacro:property name="shoulder_flange_length" value="${10*mm2m}" />
+        <xacro:property name="shoulder_width" value="${shoulder_servo_radius*2*1.2}" />
+        <xacro:property name="shoulder_length" value="${(shoulder_to_l1_y*2)}" />
+        <xacro:property name="shoulder_height" value="${shoulder_to_l1_z + shoulder_servo_radius}" />
+
+        <xacro:property name="pos_reflect_1_neg_reflect_0" value="${(reflect+1)*0.5}"/>
+        <xacro:property name="pos_reflect_0_neg_reflect_1" value="${(reflect-1)*-0.5}"/>
+
+        <!-- REGION - SERIAL CHAIN -->
+
+        <!-- Base mesh is just of the servo, makes it easy to mount onto different bases -->
+        <!-- Joint goes from front face of flange to front face of servo -->
+            <link name="${prefix}arm_base_link">
+            <visual>
+                <geometry>
+                    <cylinder radius="${shoulder_servo_radius}" length="${shoulder_servo_length}"/>
+                </geometry>
+                <origin xyz="0 0 ${-shoulder_servo_length/2 + base_to_shoulder_z}" rpy="0 0 0"/>
+            </visual>
+
+            <visual>
+                <geometry>
+                    <cylinder radius="${shoulder_servo_radius*1.2}" length="${shoulder_flange_length}"/>
+                </geometry>
+                <origin xyz="0 0 ${-shoulder_flange_length/2}" rpy="0 0 0"/>
+            </visual>
+        </link>
+
+        <joint name="${prefix}shoulder_joint" type="revolute">
+            <parent link="${prefix}arm_base_link"/>
+            <child link="${prefix}shoulder_link"/>
+            <!-- UR kinematics expects for arm to go along positive x axis -->
+            <origin xyz="0 0 ${base_to_shoulder_z}" rpy="0 0 ${pi}"/>
+            <axis xyz="0 0 1"/>
+            <limit lower="${-pi}" upper="${pi}" velocity="100" effort="100"/>
+        </joint>
+
+    
+        <link name="${prefix}shoulder_link">
+            <visual>
+                <geometry>
+                    <box size="${shoulder_width} ${shoulder_length} ${shoulder_height}"/>
+                </geometry>
+                <origin xyz="0 ${-base_to_shoulder_z} ${shoulder_height/2}" rpy="0 0 0"/>
+            </visual>
+        </link>
+
+
+        <joint name="${prefix}l1_joint" type="revolute">
+            <parent link="${prefix}shoulder_link"/>
+            <child link="${prefix}l1_link"/>
+            <origin xyz="0 ${shoulder_to_l1_y} ${shoulder_to_l1_z}" rpy="${-pi/2} ${reflect*pi/2} 0"/>
+            <axis xyz="0 0 -1"/> <!-- Match direction of rotation of UR -->
+            <limit lower="${-pi}" upper="${pi}" velocity="100" effort="100"/>
+        </joint>
+
+        <link name="${prefix}l1_link">
+            <visual>
+                <geometry>
+                    <cylinder radius="${shoulder_servo_radius}" length="${shoulder_servo_length}"/>
+                </geometry>
+                <origin xyz="0 0 ${-shoulder_servo_length/2}" rpy="0 0 0"/>
+            </visual>
+            <!-- l1 offset cylinder to give clearance for c1-->
+            <visual>
+                <geometry>
+                    <cylinder radius="${shoulder_servo_radius*0.75}" length="${c1_to_c2_z}"/>
+                </geometry>
+                <origin xyz="0 0 ${c1_to_c2_z/2}" rpy="0 0 0"/>
+            </visual>
+
+            <visual>
+                <geometry>
+                    <box size="${shoulder_servo_radius*1.5} ${l1_to_l2_y} 0.05"/>
+                </geometry>
+                <origin xyz="0 ${l1_to_l2_y/2} ${0.05/2 + c1_to_c2_z}" rpy="0 0 0"/>
+            </visual>
+        </link>
+
+        <joint name="${prefix}l2_joint" type="revolute">
+            <parent link="${prefix}l1_link"/>
+            <child link="${prefix}l2_link"/>
+            <origin xyz="0 ${l1_to_l2_y} ${l1_to_l2_z}" rpy="0 ${pi} 0"/>
+            <axis xyz="0 0 1"/>
+            <limit lower="${-pi}" upper="${pi}" velocity="100" effort="100"/>
+        </joint>
+
+
+
+        <link name="${prefix}l2_link">
+            <visual>
+                <geometry>
+                    <box size="${wrist_servo_radius*1.5} ${l2_to_wrist_1_y} ${l2_to_wrist_1_z}"/>
+                </geometry>
+                <origin xyz="0 ${l2_to_wrist_1_y/2} ${l2_to_wrist_1_z/2}" rpy="0 0 0"/>
+            </visual>
+        </link>
+
+        <joint name="${prefix}l2_to_sticker_anchor" type="fixed">
+            <parent link="${prefix}l2_link"/>
+            <child link="${prefix}sticker_anchor"/>
+            <origin xyz="0 ${l2_to_sticker_anchor_y} ${l2_to_sticker_anchor_z}" rpy="0 0 0"/>
+        </joint>
+
+
+        <!-- Sticker anchor is at virtual point in forearm, if you rotate around easy to flip what is top surface of sticker -->
+        <link name="${prefix}sticker_anchor"/>
+
+
+        <joint name="${prefix}wrist_1_joint" type="revolute">
+            <parent link="${prefix}l2_link"/>
+            <child link="${prefix}wrist_1_link"/>
+            <origin xyz="0 ${l2_to_wrist_1_y} ${l2_to_wrist_1_z}" rpy="0 0 ${reflect*pi/2}"/> <!-- yaw sets wrist 1 rot. -->
+            <axis xyz="0 0 1"/>
+            <limit lower="${-pi}" upper="${pi}" velocity="100" effort="100"/>
+        </joint>
+
+
+        <link name="${prefix}wrist_1_link">
+            <!-- wrist servo 1 -->
+            <visual>
+                <geometry>
+                    <cylinder radius="${wrist_servo_radius}" length="${wrist_servo_length}"/>
+                </geometry>
+                <origin xyz="0 0 ${-wrist_servo_length/2}" rpy="0 0 0"/>
+            </visual>
+
+            <visual>
+                <geometry>
+                    <cylinder radius="${wrist_servo_radius*0.6}" length="${wrist_1_to_wrist_2_z}"/>
+                </geometry>
+                <origin xyz="0 0 ${wrist_1_to_wrist_2_z/2}" rpy="0 0 0"/>
+            </visual>
+
+        </link>
+
+        <joint name="${prefix}wrist_2_joint" type="revolute">
+            <parent link="${prefix}wrist_1_link"/>
+            <child link="${prefix}wrist_2_link"/>
+            <origin xyz="0 ${wrist_1_to_wrist_2_y} ${wrist_1_to_wrist_2_z}" rpy="${-pi/2} ${pi} 0"/> <!-- pitch sets wrist 2 rot. -->
+            <axis xyz="0 0 1"/>
+            <limit lower="${-pi}" upper="${pi}" velocity="100" effort="100"/>
+        </joint>
+
+        <link name="${prefix}wrist_2_link">
+            <!-- wrist servo 2 -->
+            <visual>
+                <geometry>
+                    <cylinder radius="${wrist_servo_radius}" length="${wrist_servo_length}"/>
+                </geometry>
+                <origin xyz="0 0 ${-wrist_servo_length/2}" rpy="0 0 0"/>
+            </visual>
+
+            <visual>
+                <geometry>
+                    <cylinder radius="${wrist_servo_radius*0.6}" length="${wrist_1_to_wrist_2_z}"/>
+                </geometry>
+                <origin xyz="0 0 ${wrist_1_to_wrist_2_z/2}" rpy="0 0 0"/>
+            </visual>
+        </link>
+
+        <joint name="${prefix}wrist_3_joint" type="revolute">
+            <parent link="${prefix}wrist_2_link"/>
+            <child link="${prefix}wrist_3_link"/>
+            <origin xyz="0 ${wrist_2_to_wrist_3_y} ${wrist_2_to_wrist_3_z}" rpy="${-pi/2} ${pi} 0"/> <!-- pitch sets wrist 3 rot. -->
+            <axis xyz="0 0 1"/>
+            <limit lower="${-pi}" upper="${pi}" velocity="100" effort="100"/>
+        </joint>
+
+        <link name="${prefix}wrist_3_link">
+            <!-- wrist servo 3 -->
+            <visual>
+                <geometry>
+                    <cylinder radius="${wrist_servo_radius}" length="${wrist_servo_length}"/>
+                </geometry>
+                <origin xyz="0 0 ${-wrist_servo_length/2}" rpy="0 0 0"/>
+            </visual>
+
+        </link>
+
+        <joint name="${prefix}wrist_3_to_tool0" type="fixed">
+            <parent link="${prefix}wrist_3_link"/>
+            <child link="${prefix}tool0"/>
+        </joint>
+
+        <link name="${prefix}tool0"/>
+    
+        <joint name="${prefix}tool0_to_ee_link" type="fixed">
+            <parent link="${prefix}wrist_3_link"/>
+            <child link="${prefix}ee_link"/>
+            <origin xyz="0 0 0" rpy="${-pi/2} ${-pi/2} 0"/>
+        </joint>
+
+        <link name="${prefix}tool0_flip"/>
+
+        <joint name="${prefix}tool0_to_tool0_flip" type="fixed">
+          <parent link="${prefix}tool0"/>
+          <child link="${prefix}tool0_flip"/>
+          <origin xyz="0 0 0" rpy="${pi} 0 0"/>
+        </joint>
+    
+        <link name="${prefix}ee_link"/>
+
+        <joint name="${prefix}tool0_to_tcp_world_test" type="fixed">
+            <parent link="${prefix}tool0"/>
+            <child link="${prefix}tcp_world_test"/>
+            <origin xyz="0 0 ${50*mm2m}" rpy="0 0 0"/>
+        </joint>
+
+        <link name="${prefix}tcp_world_test"/>
+
+
+        <!-- ENDREGION - SERIAL CHAIN -->
+
+
+        <!-- REGION - PARALLEL LINKS -->
+
+        <joint name="${prefix}elbow_joint" type="fixed">
+            <parent link="${prefix}l2_link"/>
+            <child link="${prefix}elbow_link"/>
+            <origin xyz="0 0 0" rpy="0 0 ${reflect*(pi-l2_to_elbow_tip_theta)}"/>
+        </joint>
+
+        <link name="${prefix}elbow_link">
+
+            <visual>
+                <geometry>
+                    <box size="${wrist_servo_radius*1.5} ${l2_to_elbow_tip_y} ${10*mm2m}"/>
+                </geometry>
+                <origin xyz="0 ${l2_to_elbow_tip_y/2} ${10*mm2m/2}" rpy="0 0 0"/>
+            </visual>
+        </link> 
+
+        <joint name="${prefix}elbow_tip_joint" type="fixed">
+            <parent link="${prefix}elbow_link"/>
+            <child link="${prefix}elbow_tip"/>
+            <origin xyz="0 ${l2_to_elbow_tip_y} ${l2_to_elbow_tip_z}" rpy="0 0 0"/>
+        </joint>
+
+        <link name="${prefix}elbow_tip"/>
+
+
+        <!-- Has to be between shoulder and c1, if you do l1 to c1 then it will rotate as l1 rotates -->
+        <joint name="${prefix}c1_joint" type="revolute">
+            <parent link="${prefix}shoulder_link"/>
+            <child link="${prefix}c1_link"/>
+            <origin xyz="0 ${shoulder_to_l1_y} ${shoulder_to_l1_z-l1_to_c1_z}" rpy="${-pi/2} ${reflect*pi/2} 0"/>
+            <axis xyz="0 0 1"/>
+            <limit lower="${-pi}" upper="${pi}" velocity="100" effort="100"/>
+        </joint>
+
+        <!-- One option is to flip both the c1 and l1 links, one is to do c1 then offset to l1, one is to do l1 then offset to c1 -->
+        <!-- goning to l1 and then offseting to c1 seems more inline with intent of design, we match on the main linkage first -->
+        <link name="${prefix}c1_link">
+            <visual>
+                <geometry>
+                    <cylinder radius="${shoulder_servo_radius}" length="${shoulder_servo_length}"/>
+                </geometry>
+                <origin xyz="0 0 ${-shoulder_servo_length/2}" rpy="0 0 0"/>
+            </visual>
+            <visual>
+                <geometry>
+                    <box size="${shoulder_servo_radius*1.5} ${c1_to_c2_y} ${c1_to_c2_z}"/>
+                </geometry>
+                <origin xyz="0 ${c1_to_c2_y/2} ${c1_to_c2_z/2}" rpy="0 0 0"/>
+            </visual>
+        </link>
+
+
+        <joint name="${prefix}c2_joint" type="revolute">
+            <parent link="${prefix}c1_link"/>
+            <child link="${prefix}c2_link"/>
+            <origin xyz="0 ${c1_to_c2_y} ${c1_to_c2_z}" rpy="0 0 0"/>
+            <axis xyz="0 0 1"/>
+            <limit lower="${-pi}" upper="${pi}" velocity="100" effort="100"/>
+        </joint>
+
+        <link name="${prefix}c2_link">
+            <visual>
+                <geometry>
+                    <box size="${shoulder_servo_radius*0.75} ${c2_to_c2_tip_y} ${c2_to_c2_tip_z}"/>
+                </geometry>
+                <origin xyz="0 ${c2_to_c2_tip_y/2} ${c2_to_c2_tip_z/2}" rpy="0 0 0"/>
+            </visual>
+        </link>
+
+        <joint name="${prefix}c2_tip_joint" type="fixed">
+            <parent link="${prefix}c2_link"/>
+            <child link="${prefix}c2_tip"/>
+            <origin xyz="0 ${c2_to_c2_tip_y} 0" rpy="0 0 0"/>
+        </joint>
+
+        <link name="${prefix}c2_tip"/>
+
+        <!-- ENDREGION - PARALLEL LINKS -->
+ 
+    </xacro:macro>
+
+    <!-- Uncomment to test standalone, uncomment arg -> fing above -->
+    <!-- <xacro:arg name="bam_descriptions" default="$(find bam_descriptions)"/> -->
+    <!-- <xacro:include filename="$(arg bam_descriptions)/urdf/common.xacro" /> -->
+    <!-- <xacro:include filename="$(arg bam_descriptions)/urdf/texture_cube/texture_cube_macro.xacro" /> -->
+    <!-- <xacro:bam_fb_cad_kin/> -->
+
+</robot>

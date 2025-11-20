@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/ros2_control/moteus_macro.xacro"/>
+
+    <xacro:macro name="five_bar_ros2_control" params="prefix controllers_file_path ros_namespace plugin:=mock couple_arms:=true">  
+
+        <ros2_control name="${prefix}arm_interface" type="system">
+
+            <hardware>
+
+                <xacro:if value="${plugin == 'real'}">
+                    <plugin>bam_hardware_interface/MoteusHardwareInterface</plugin>
+                </xacro:if>
+
+                <xacro:if value="${plugin == 'gazebo'}">
+                    <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+                </xacro:if>
+
+                <!-- fallback to mock if not real or gazebo -->
+                <xacro:unless value="${(plugin == 'real') or (plugin == 'gazebo')}">
+                    <plugin>mock_components/GenericSystem</plugin>
+                    <param name="mock_sensor_commands">"true"</param>
+                </xacro:unless>
+                
+                <param name="prefix">${prefix}</param>
+
+                <param name="L_l1">${150/1000}</param>
+                <param name="L_l2">${200/1000}</param>
+                <param name="L_c1">${150/1000}</param>
+                <param name="L_c2">${150/1000}</param>
+                <param name="L_shoulder">${87/1000}</param>
+                <param name="L_elbow">${75/1000}</param>
+                <param name="theta_elbow_offset">${70/180 * pi}</param>
+
+            </hardware>
+
+<!-- {'joint_c1': 0, 'joint_c2': 1, 'C2_to_C2_coupler': 2, 'joint_2': 3, 'joint_3': 4, 'L2_coupler_joint': 5} -->
+<!-- [ 4.14868753 -2.83063156  0.          1.57079633  0.          0.        ] -->
+
+            <xacro:moteus joint_name="${prefix}joint_c1" can_id="11" init_pos="4.148688"/>
+            <xacro:moteus joint_name="${prefix}joint_c2" can_id="12" init_pos="-2.830632"/>
+            <xacro:moteus joint_name="${prefix}joint_2" can_id="13" init_pos="1.570796"/>
+            <xacro:moteus joint_name="${prefix}joint_3" can_id="14" init_pos="0"/>
+            <!-- <xacro:moteus joint_name="${prefix}joint_4" can_id="15" init_pos="0"/> -->
+            <!-- <xacro:moteus joint_name="${prefix}joint_6" can_id="16" init_pos="0"/> -->
+
+            <sensor name="joint_3_fts" type="force_torque">
+                <state_interface name="force.x"/>
+                <state_interface name="force.y"/>
+                <state_interface name="force.z"/>
+                <state_interface name="torque.x"/>
+                <state_interface name="torque.y"/>
+                <state_interface name="torque.z"/>
+            </sensor>
+
+            <sensor name="L2_coupler_joint_fts" type="force_torque">
+                <state_interface name="force.x"/>
+                <state_interface name="force.y"/>
+                <state_interface name="force.z"/>
+                <state_interface name="torque.x"/>
+                <state_interface name="torque.y"/>
+                <state_interface name="torque.z"/>
+            </sensor>
+
+        </ros2_control>
+
+        <xacro:if value="${plugin == 'gazebo'}">
+            <gazebo>
+                <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+                    <parameters>${controllers_file_path}</parameters>
+                      <hold_joints>true</hold_joints>
+                      <position_proportional_gain>0.5</position_proportional_gain>
+
+                    <ros>
+                        <namespace>${ros_namespace}</namespace>
+                    </ros>
+                </plugin>
+            </gazebo>
+
+
+            <!-- 
+            
+            How to use force torque sensors?
+
+            1. Include plugin inside the world.sdf (See: https://github.com/gazebosim/docs/issues/331)
+
+            2. Set the paramters properly: http://sdformat.org/spec?ver=1.12&elem=sensor#sensor_force_torque
+
+            3. See example of setting up ros2 control to read the values:
+
+            https://github.com/ros-controls/gz_ros2_control/pull/610/files
+
+            -->
+
+
+            <gazebo reference="${prefix}joint_3">
+                <sensor name="joint_3_fts" type="force_torque">
+                    <always_on>true</always_on>
+                    <update_rate>10</update_rate>
+                    <visualize>true</visualize>
+                    <topic>force_torque_sensor/joint_3</topic>
+                    <!-- <enable_metrics>true</enable_metrics> -->
+                    <!-- <force_torque> -->
+                    <!-- <frame>parent</frame> -->
+                    <!-- <measure_direction>parent_to_child</measure_direction> -->
+                    <!-- check the sign of the force along -Y or +Y -->
+                    <!-- </force_torque>  -->
+                </sensor>
+            </gazebo>
+
+            <!-- A detached joint will have two parents though... I am guessing it should be the orginal parent... -->
+
+            <gazebo reference="${prefix}L2_coupler_joint">
+                <sensor name="L2_coupler_joint_fts" type="force_torque">
+                    <always_on>true</always_on>
+                    <update_rate>10</update_rate>
+                    <visualize>true</visualize>
+                    <topic>force_torque_sensor/L2_coupler_joint</topic>
+                    <!-- <enable_metrics>true</enable_metrics> -->
+                    <force_torque>
+                        <!-- Parent of l2_coupler_joint is elbow, child is L2_coupler -->
+                        <!-- If its attached, then its illdefined who the actual parent is... I am guessing it should be the orginal parent, also ABS value is backup... -->
+                        <frame>parent</frame>
+                        <measure_direction>parent_to_child</measure_direction>
+                    </force_torque> 
+                </sensor>
+            </gazebo>
+
+            <!-- 
+            How to use detachable joint system?
+
+            See that github issue
+
+
+             -->
+            <xacro:if value="${couple_arms}">
+                <gazebo>
+                    <!-- Some plugins can be defined per model, some need to be defined in world.sdf -->
+                    <plugin filename="libgz-sim-detachable-joint-system.so" name="gz::sim::systems::DetachableJoint"> 
+                        <parent_link>${prefix}C2</parent_link>
+                        <!-- <child_model>dummy_five_bar</child_model> -->
+                        <child_model>robot</child_model>  <!-- BUG this needs to match the urdf robot name -->
+                        <child_link>${prefix}L2_coupler</child_link>
+
+                        <attach_topic>loop/attach</attach_topic>
+                        <detach_topic>loop/detach</detach_topic>
+                        <output_topic>loop/state</output_topic>
+                    </plugin>
+                </gazebo>
+            </xacro:if>
+
+
+
+
+
+
+        </xacro:if>
+        
+    </xacro:macro>
+
+</robot>

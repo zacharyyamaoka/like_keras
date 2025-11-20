@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/ros2_control/moteus_macro.xacro"/>
+
+    <xacro:macro name="bam_arm_ros2_control"
+        params="
+            prefix
+            ros_namespace
+            transport_path
+            plugin:=mock
+            disable_wrist:=false
+            disable_C1:=false
+            disable_C2:=false
+            config_file:=''
+            controllers_file_path:=''
+        ">
+
+        <ros2_control name="${prefix}arm_interface" type="system">
+
+            <hardware>
+
+                <xacro:if value="${plugin == 'real'}">
+                    <!-- <plugin>bam_hardware_interface/MoteusHardwareInterface</plugin> -->
+                    <plugin>bam_hardware_interface/FiveBarHardwareInterface</plugin>
+
+                </xacro:if>
+
+                <xacro:if value="${plugin == 'gazebo'}">
+                    <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+                </xacro:if>
+
+                <!-- fallback to mock if not real or gazebo -->
+                <xacro:unless value="${(plugin == 'real') or (plugin == 'gazebo')}">
+                    <plugin>mock_components/GenericSystem</plugin>
+                    <param name="mock_sensor_commands">"true"</param>
+                </xacro:unless>
+                
+                <param name="transport_path">${transport_path}</param>
+                <param name="prefix">${prefix}</param>
+
+                <param name="watchdog_timeout">0.01</param>
+
+                <xacro:if value="${config_file != ''}">
+                    <param name="watchdog_timeout">${xacro.load_yaml(config_file)['io_config']['watchdog_timeout']}</param>
+                </xacro:if>
+
+
+
+                <!-- START - LOAD FIVE BAR PARAMETERS -->
+                    <param name="L_l1">${150/1000}</param>
+                    <param name="L_l2">${200/1000}</param>
+                    <param name="L_c1">${150/1000}</param>
+                    <param name="L_c2">${150/1000}</param>
+                    <param name="L_shoulder">${87/1000}</param>
+                    <param name="L_elbow">${75/1000}</param>
+                    <param name="theta_elbow_offset">${70/180 * pi}</param>
+
+                    <xacro:if value="${config_file != ''}">
+                        <xacro:property name="five_bar_dict" value="${xacro.load_yaml(config_file)['five_bar_dict']}"/>
+                        <param name="L_l1">${five_bar_dict['L_l1']}</param>
+                        <param name="L_l2">${five_bar_dict['L_l2']}</param>
+                        <param name="L_c1">${five_bar_dict['L_c1']}</param>
+                        <param name="L_c2">${five_bar_dict['L_c2']}</param>
+                        <param name="L_shoulder">${five_bar_dict['L_shoulder']}</param>
+                        <param name="L_elbow">${five_bar_dict['L_elbow']}</param>
+                        <param name="theta_elbow_offset">${five_bar_dict['theta_elbow_offset']}</param>
+                    </xacro:if>
+                <!-- END - LOAD FIVE BAR PARAMETERS -->
+
+
+
+            </hardware>
+
+            <!-- 
+            In order to test subsets of robot joints you can use mock and virtual
+            This is useful if you want to test for example just the shoulder, and don't have the other joints
+
+            A virtual joint don't exist, and a CAN driver won't be made for it, it's starting positon will be zero or the "init_pos"
+            Its states values won't be updated by the controller (as its not connected), but if you write a custom kinematic package, etc
+            You can forward the value to it.
+
+            (mock)disable joint does exist, but it won't recivie any commands, it will always just hold it's current position. it will report its
+            state values though. This is helpful if you want to run the entire system, but want to disable motors, without having to recompile code, etc.
+            
+            It will accept commands and just send them back, as though its moving, but the actual motor will stay still
+
+            init_pos are used in your mocking the hardware interface (so moteus_hardware_interface is not used), of if your are using the real interface
+            and virtual is true.
+            
+             -->
+
+             <!-- 
+             To avoid errors you need to hide joints that are not in the URDF!
+             [ros2_control_node-8] terminate called after throwing an instance of 'std::runtime_error'
+             [ros2_control_node-8]   what():  Joint 'joint_4' not found in URDF
+
+             
+              -->
+            <!-- START - LOAD INITIAL POSITIONS -->
+                <xacro:property name="shoulder_joint_init_pos" value="0"/>
+                <xacro:property name="l1_joint_init_pos" value="0"/>
+                <xacro:property name="l2_joint_init_pos" value="0"/>
+                <xacro:property name="wrist_1_joint_init_pos" value="0"/>
+                <xacro:property name="wrist_2_joint_init_pos" value="0"/>
+                <xacro:property name="wrist_3_joint_init_pos" value="0"/>
+                <xacro:property name="c2_joint_init_pos" value="0"/>
+                <xacro:property name="c1_joint_init_pos" value="0"/>
+                <xacro:property name="eef_joint_1_init_pos" value="0"/>
+
+                <xacro:property name="shoulder_joint_hardstop_pos" value="0"/>
+                <xacro:property name="l1_joint_hardstop_pos" value="0"/>
+                <xacro:property name="l2_joint_hardstop_pos" value="0"/>
+                <xacro:property name="wrist_1_joint_hardstop_pos" value="0"/>
+                <xacro:property name="wrist_2_joint_hardstop_pos" value="0"/>
+                <xacro:property name="wrist_3_joint_hardstop_pos" value="0"/>
+                <xacro:property name="c2_joint_hardstop_pos" value="0"/>
+                <xacro:property name="c1_joint_hardstop_pos" value="0"/>
+                <xacro:property name="eef_joint_1_hardstop_pos" value="0"/>
+
+                <xacro:property name="shoulder_joint_home_pos" value="0"/>
+                <xacro:property name="l1_joint_home_pos" value="0"/>
+                <xacro:property name="l2_joint_home_pos" value="0"/>
+                <xacro:property name="wrist_1_joint_home_pos" value="0"/>
+                <xacro:property name="wrist_2_joint_home_pos" value="0"/>
+                <xacro:property name="wrist_3_joint_home_pos" value="0"/>
+                <xacro:property name="c2_joint_home_pos" value="0"/>
+                <xacro:property name="c1_joint_home_pos" value="0"/>
+                <xacro:property name="eef_joint_1_home_pos" value="0"/>
+
+                <xacro:if value="${config_file != ''}">
+                    <xacro:property name="inital_joint_positions" value="${xacro.load_yaml(config_file)['initial_state']['joint_positions']}"/>
+                    <xacro:property name="shoulder_joint_init_pos" value="${inital_joint_positions['shoulder_joint']}"/>
+                    <xacro:property name="l1_joint_init_pos" value="${inital_joint_positions['l1_joint']}"/>
+                    <xacro:property name="l2_joint_init_pos" value="${inital_joint_positions['l2_joint']}"/>
+                    <xacro:property name="wrist_1_joint_init_pos" value="${inital_joint_positions['wrist_1_joint']}"/>
+                    <xacro:property name="wrist_2_joint_init_pos" value="${inital_joint_positions['wrist_2_joint']}"/>
+                    <xacro:property name="wrist_3_joint_init_pos" value="${inital_joint_positions['wrist_3_joint']}"/>
+                    <xacro:property name="c2_joint_init_pos" value="${inital_joint_positions['c2_joint']}"/>
+                    <xacro:property name="c1_joint_init_pos" value="${inital_joint_positions['c1_joint']}"/>
+                    <xacro:property name="eef_joint_1_init_pos" value="${inital_joint_positions['eef_joint_1']}"/>
+
+                    <xacro:property name="hardstop_positions" value="${xacro.load_yaml(config_file)['calibration_config']['hardstop_positions']}"/>
+                    <xacro:property name="shoulder_joint_hardstop_pos" value="${hardstop_positions['shoulder_joint']}"/>
+                    <xacro:property name="l1_joint_hardstop_pos" value="${hardstop_positions['l1_joint']}"/>
+                    <xacro:property name="l2_joint_hardstop_pos" value="${hardstop_positions['l2_joint']}"/>
+                    <xacro:property name="wrist_1_joint_hardstop_pos" value="${hardstop_positions['wrist_1_joint']}"/>
+                    <xacro:property name="wrist_2_joint_hardstop_pos" value="${hardstop_positions['wrist_2_joint']}"/>
+                    <xacro:property name="wrist_3_joint_hardstop_pos" value="${hardstop_positions['wrist_3_joint']}"/>
+                    <xacro:property name="c2_joint_hardstop_pos" value="${hardstop_positions['c2_joint']}"/>
+                    <xacro:property name="c1_joint_hardstop_pos" value="${hardstop_positions['c1_joint']}"/>
+                    <xacro:property name="eef_joint_1_hardstop_pos" value="${hardstop_positions['eef_joint_1']}"/>
+
+                    <xacro:property name="home_positions" value="${xacro.load_yaml(config_file)['calibration_config']['home_positions']}"/>
+                    <xacro:property name="shoulder_joint_home_pos" value="${home_positions['shoulder_joint']}"/>
+                    <xacro:property name="l1_joint_home_pos" value="${home_positions['l1_joint']}"/>
+                    <xacro:property name="l2_joint_home_pos" value="${home_positions['l2_joint']}"/>
+                    <xacro:property name="wrist_1_joint_home_pos" value="${home_positions['wrist_1_joint']}"/>
+                    <xacro:property name="wrist_2_joint_home_pos" value="${home_positions['wrist_2_joint']}"/>
+                    <xacro:property name="wrist_3_joint_home_pos" value="${home_positions['wrist_3_joint']}"/>
+                    <xacro:property name="c2_joint_home_pos" value="${home_positions['c2_joint']}"/>
+                    <xacro:property name="c1_joint_home_pos" value="${home_positions['c1_joint']}"/>
+                    <xacro:property name="eef_joint_1_home_pos" value="${home_positions['eef_joint_1']}"/>
+                </xacro:if>
+            <!-- END - LOAD INITIAL POSITIONS -->
+
+            <xacro:moteus joint_name="${prefix}shoulder_joint" can_id="11" init_pos="${shoulder_joint_init_pos}" hardstop_pos="${shoulder_joint_hardstop_pos}" home_pos="${shoulder_joint_home_pos}"/>
+            <xacro:moteus joint_name="${prefix}l1_joint" can_id="12" init_pos="${l1_joint_init_pos}" hardstop_pos="${l1_joint_hardstop_pos}" home_pos="${l1_joint_home_pos}"/>
+            <xacro:moteus joint_name="${prefix}l2_joint" init_pos="${l2_joint_init_pos}" hardstop_pos="${l2_joint_hardstop_pos}" home_pos="${l2_joint_home_pos}" virtual='true'/>
+
+            <xacro:unless value="${disable_wrist}">
+                <xacro:moteus joint_name="${prefix}wrist_1_joint" can_id="14" init_pos="${wrist_1_joint_init_pos}" hardstop_pos="${wrist_1_joint_hardstop_pos}" home_pos="${wrist_1_joint_home_pos}"/>
+                <xacro:moteus joint_name="${prefix}wrist_2_joint" can_id="15" init_pos="${wrist_2_joint_init_pos}" hardstop_pos="${wrist_2_joint_hardstop_pos}" home_pos="${wrist_2_joint_home_pos}"/>
+                <xacro:moteus joint_name="${prefix}wrist_3_joint" can_id="16" init_pos="${wrist_3_joint_init_pos}" hardstop_pos="${wrist_3_joint_hardstop_pos}" home_pos="${wrist_3_joint_home_pos}"/>
+            </xacro:unless>
+
+            <xacro:unless value="${disable_C1}">
+                <xacro:moteus joint_name="${prefix}c2_joint" can_id="13" init_pos="${c2_joint_init_pos}" hardstop_pos="${c2_joint_hardstop_pos}" home_pos="${c2_joint_home_pos}"/>
+            </xacro:unless>
+
+            <xacro:unless value="${disable_C2}">
+                <xacro:moteus joint_name="${prefix}c1_joint" init_pos="${c1_joint_init_pos}" hardstop_pos="${c1_joint_hardstop_pos}" home_pos="${c1_joint_home_pos}" mock='false' virtual='true'/>
+            </xacro:unless> 
+
+        </ros2_control>
+
+        <xacro:if value="${plugin == 'gazebo'}">
+            <gazebo>
+                <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+                    <parameters>${controllers_file_path}</parameters>
+                    <ros>
+                        <namespace>${ros_namespace}</namespace>
+                    </ros>
+                </plugin>
+            </gazebo>
+        </xacro:if>
+        
+    </xacro:macro>
+
+</robot>

@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+
+<!-- When testing you can run this URDF. Previously I had to comment/uncomment on the macro.xacro, but now I have a standalone file-->
+<!-- default values for properties should be "pure" for when its included in another xacro (ie. moveit) -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="dummy_bam_fb">
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+    <xacro:include filename="$(find bam_descriptions)/urdf/texture_cube/texture_cube_macro.xacro" />
+
+    <xacro:arg name="config_file" default="$(find bam_descriptions)/urdf/bam_fb/config/bam_fb_sku_v0.0.0_config.yaml"/>
+    <xacro:property name="config_file" value="$(arg config_file)"/>
+    <xacro:property name="cfg" value="${xacro.load_yaml(config_file)}"/>
+
+    <xacro:property name="plugin" value="${cfg['args']['plugin']}" />
+    <xacro:property name="reflect" value="${cfg['args']['reflect']}" />    
+    <xacro:property name="prefix" value="${cfg['info']['prefix']}" />
+
+    <xacro:property name="world_xyz" value="${cfg['world_xyz']}" />
+    <xacro:property name="world_rpy" value="${cfg['world_rpy']}" />
+    <xacro:property name="base_xyz" value="${cfg['base_xyz']}" />
+    <xacro:property name="base_rpy" value="${cfg['base_rpy']}" />
+
+    <!-- <xacro:if value="${plugin != 'none'}">
+        <xacro:include filename="$(find bam_descriptions)/urdf/dummy_bam_fb/dummy_bam_fb.ros2_control.xacro"/>
+        <xacro:BAMARMMM prefix="${prefix}" plugin="${plugin}"/>
+    </xacro:if> -->
+
+    <link name="world"/>
+
+    <joint name="world_to_base" type="fixed">
+        <origin xyz="${world_xyz}" rpy="${world_rpy}"/>
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint>
+
+   <link name="base_link"/>
+    
+    <joint name="base_link_joint" type="fixed">
+        <origin xyz="${base_xyz}" rpy="${base_rpy}"/>
+        <parent link="base_link"/>
+        <child link="${prefix}base_link_1"/>
+    </joint>
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/dummy_bam_fb/dummy_bam_fb_macro.xacro" />
+    <xacro:make_arm config_file="${config_file}"/>
+
+</robot>

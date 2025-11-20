@@ -1,0 +1,2436 @@
+REGISTRY: {}
+args: {}
+arm:
+    REGISTRY: {}
+    args:
+        collision_mode: simple
+        disable_C1: 'false'
+        disable_C2: 'false'
+        disable_L1: 'false'
+        disable_L2: 'false'
+        disable_sticker: 'false'
+        disable_wrist: 'false'
+        params:
+            C1_length: '0.12'
+            C1_mass: '-1.0'
+            C1_thickness: '0.006'
+            C1_to_C2_spacing: '0.003'
+            C1_width: '0.045'
+            C2_length: '0.26'
+            C2_mass: '-1.0'
+            C2_thickness: '0.006'
+            C2_width: '0.03'
+            L1_length: '0.24'
+            L1_mass: '-1.0'
+            L1_offset: '0.009'
+            L1_to_L2_spacing: '0.009'
+            L1_width: '0.0508'
+            L2_length: '0.292'
+            L2_mass: '-1.0'
+            L2_width: '0.0381'
+            elbow_length: '0.12'
+            five_bar_offset: '0.02'
+            link_density: '2700.0'
+            link_wall_thickness: '0.001587'
+            shoulder_C1_offset: '0.08'
+            shoulder_J2_offset: '0.16'
+            shoulder_driver_length: '0.02'
+            shoulder_front_plate_offset: '0.1'
+            shoulder_gearbox_diameter: '0.064'
+            shoulder_gearbox_flange_diameter: '0.0768'
+            shoulder_gearbox_front_offset: '0.019'
+            shoulder_gearbox_length: '0.0815'
+            shoulder_gearbox_mass: '-1.0'
+            shoulder_motor_length: '0.06'
+            shoulder_motor_mass: '-1.0'
+            shoulder_motor_width: '0.06'
+            shoulder_mount_plate_thickness: '0.006'
+            shoulder_plate_thickness: '0.003'
+            theta_elbow_offset: '0.785398'
+            wrist_driver_length: '0.01'
+            wrist_front_offset: '0.015'
+            wrist_length: '0.05'
+            wrist_pipe_density: '2700.0'
+            wrist_pipe_diameter: '0.04'
+            wrist_pipe_mass: '-1.0'
+            wrist_pipe_wall_thickness: '0.0015'
+            wrist_servo_diameter: '0.05'
+            wrist_servo_length: '0.03'
+            wrist_servo_mass: '0.01'
+            wrist_to_wrist_spacing: '0.003'
+        transport_path: /dev/serial/by-id/usb-mjbots_fdcanusb_28B3A25D-if00
+        watchdog_timeout: '0.01'
+    base_link: base_link
+    base_mount: arm_arm_base_link
+    base_rpy: 0 0 0
+    base_xyz: 0 0 0
+    cad_kin: 'false'
+    cad_kin_params:
+        base_to_shoulder_z: '0.019'
+        c1_to_c2_y: '0.12'
+        c1_to_c2_z: '0.006'
+        c2_to_c2_tip_y: '0.26'
+        c2_to_c2_tip_z: '0.0'
+        l1_to_c1_z: '0.087'
+        l1_to_l2_y: '0.24'
+        l1_to_l2_z: '0.009'
+        l2_to_elbow_tip_theta: '0.785398'
+        l2_to_elbow_tip_y: '0.12'
+        l2_to_elbow_tip_z: '0.0'
+        l2_to_sticker_anchor_y: '0.25'
+        l2_to_sticker_anchor_z: '0.02505'
+        l2_to_wrist_1_y: '0.299658'
+        l2_to_wrist_1_z: '0.0451'
+        shoulder_servo_length: '0.16'
+        shoulder_servo_radius: '0.043'
+        shoulder_to_l1_y: '0.069'
+        shoulder_to_l1_z: '0.1375'
+        wrist_1_to_wrist_2_y: '0.017'
+        wrist_1_to_wrist_2_z: '0.06'
+        wrist_2_to_wrist_3_y: '0.017'
+        wrist_2_to_wrist_3_z: '0.06'
+        wrist_servo_length: '0.041'
+        wrist_servo_radius: '0.0265'
+    config_dir: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/bam_fb/config
+    config_file_name: bam_fb_dev_v0.0.0_config
+    config_file: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/bam_fb/config/bam_fb_dev_v0.0.0_config.yaml
+    dh:
+        a2: '-0.24'
+        a3: '-0.299658'
+        d1: '0.1565'
+        d4: '0.0271'
+        d5: '0.077'
+        d6: '0.017'
+    five_bar:
+        L_c1: '0.12'
+        L_c2: '0.26'
+        L_elbow: '0.12'
+        L_l1: '0.24'
+        L_l2: '0.299658'
+        L_shoulder: '0.069'
+        theta_elbow_offset: '0.785398'
+    force_srdf_gen: 'false'
+    hand_mount: arm_tool0
+    ik_base_link: arm_arm_base_link
+    ik_sol_preference:
+    -   Elbow: Down
+        Shoulder: Left
+        Wrist: Down
+    -   Elbow: Down
+        Shoulder: Left
+        Wrist: Up
+    ik_tip: arm_tool0
+    ik_tip_flip: tool0_flip
+    info:
+        calib_hash: ''
+        config_key: ''
+        name: bam_fb
+        prefix: ''
+        sku: dev
+        type: bam_fb
+        uuid: 00000000-0000-0000-0000-000000000000
+        version: 0.0.0
+    joints:
+        c1_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            is_fixed: 'false'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '10.0'
+                max_jerk: '10.0'
+                max_position: '3.14'
+                max_velocity: '10.0'
+                min_acceleration: '-1.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.14'
+                min_velocity: '-1.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'true'
+            name: arm_c1_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                child_frame_id: c1_link
+                frame_id: shoulder_link
+                rpy: -1.5707959999738352 1.5707959999999999 0.0
+                xyz: 0.0 0.069 0.0505
+            unprefixed_name: c1_joint
+        c2_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            is_fixed: 'false'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '10.0'
+                max_jerk: '10.0'
+                max_position: '3.14'
+                max_velocity: '10.0'
+                min_acceleration: '-1.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.14'
+                min_velocity: '-1.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'true'
+            name: arm_c2_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                child_frame_id: c2_link
+                frame_id: c1_link
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.12 0.006
+            unprefixed_name: c2_joint
+        c2_tip_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            is_fixed: 'true'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: arm_c2_tip_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                child_frame_id: c2_tip
+                frame_id: c2_link
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.26 0.0
+            unprefixed_name: c2_tip_joint
+        elbow_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            is_fixed: 'true'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: arm_elbow_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                child_frame_id: elbow_link
+                frame_id: l2_link
+                rpy: 0.0 -0.0 2.356195
+                xyz: 0.0 0.0 0.0
+            unprefixed_name: elbow_joint
+        elbow_tip_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            is_fixed: 'true'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: arm_elbow_tip_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                child_frame_id: elbow_tip
+                frame_id: elbow_link
+                rpy: 0.0 -0.0 0.0
+                xyz: -0.0 0.12 -0.0
+            unprefixed_name: elbow_tip_joint
+        l1_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            is_fixed: 'false'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '10.0'
+                max_jerk: '10.0'
+                max_position: '3.14'
+                max_velocity: '10.0'
+                min_acceleration: '-1.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.14'
+                min_velocity: '-1.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: arm_l1_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                child_frame_id: l1_link
+                frame_id: shoulder_link
+                rpy: -1.5707959999738352 1.5707959999999999 0.0
+                xyz: 0.0 0.069 0.1375
+            unprefixed_name: l1_joint
+        l2_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            is_fixed: 'false'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '10.0'
+                max_jerk: '10.0'
+                max_position: '3.14'
+                max_velocity: '10.0'
+                min_acceleration: '-1.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.14'
+                min_velocity: '-1.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: arm_l2_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                child_frame_id: l2_link
+                frame_id: l1_link
+                rpy: -3.141592307179587 -0.0 -3.141592307179587
+                xyz: 0.0 0.24 0.009
+            unprefixed_name: l2_joint
+        shoulder_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            is_fixed: 'false'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '10.0'
+                max_jerk: '10.0'
+                max_position: '3.14'
+                max_velocity: '10.0'
+                min_acceleration: '-1.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.14'
+                min_velocity: '-1.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: arm_shoulder_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                child_frame_id: shoulder_link
+                frame_id: arm_base_link
+                rpy: 0.0 -0.0 -3.141592307179587
+                xyz: 0.0 0.0 0.019
+            unprefixed_name: shoulder_joint
+        wrist_1_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            is_fixed: 'false'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '10.0'
+                max_jerk: '10.0'
+                max_position: '3.14'
+                max_velocity: '10.0'
+                min_acceleration: '-1.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.14'
+                min_velocity: '-1.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: arm_wrist_1_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                child_frame_id: wrist_1_link
+                frame_id: l2_link
+                rpy: 0.0 -0.0 1.5707959999999999
+                xyz: 0.0 0.299658 0.0451
+            unprefixed_name: wrist_1_joint
+        wrist_2_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            is_fixed: 'false'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '10.0'
+                max_jerk: '10.0'
+                max_position: '3.14'
+                max_velocity: '10.0'
+                min_acceleration: '-1.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.14'
+                min_velocity: '-1.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: arm_wrist_2_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                child_frame_id: wrist_2_link
+                frame_id: wrist_1_link
+                rpy: 1.570796 -0.0 -3.141592307179587
+                xyz: 0.0 0.017 0.06
+            unprefixed_name: wrist_2_joint
+        wrist_3_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            is_fixed: 'false'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '10.0'
+                max_jerk: '10.0'
+                max_position: '3.14'
+                max_velocity: '10.0'
+                min_acceleration: '-1.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.14'
+                min_velocity: '-1.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: arm_wrist_3_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                child_frame_id: wrist_3_link
+                frame_id: wrist_2_link
+                rpy: 1.570796 -0.0 -3.141592307179587
+                xyz: 0.0 0.017 0.06
+            unprefixed_name: wrist_3_joint
+    links:
+        arm_base_link:
+            collision_geometry_size: 0.09 0.09 0.158846
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 -0.060423
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.004853'
+                    ixy: 4e-06
+                    ixz: '5.6e-05'
+                    iyy: '0.00491'
+                    iyz: -8e-06
+                    izz: '0.001526'
+                mass: '2.462518'
+                origin:
+                    x: '0.000415'
+                    y: -6e-05
+                    z: '-0.053854'
+            is_frame: 'false'
+            name: arm_arm_base_link
+            scene_obj_collision: 'false'
+            unprefixed_name: arm_base_link
+            visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/arm_base_link.stl
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        c1_link:
+            collision_geometry_size: 0.045 0.1525 0.006
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.042143 0.002926
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '8.8e-05'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: 7e-06
+                    iyz: '-0.0'
+                    izz: '9.4e-05'
+                mass: '0.046321'
+                origin:
+                    x: '0.0'
+                    y: '0.042143'
+                    z: '0.002926'
+            is_frame: 'false'
+            name: arm_c1_link
+            scene_obj_collision: 'false'
+            unprefixed_name: c1_link
+            visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/c1_link.stl
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        c2_link:
+            collision_geometry_size: 0.211366 0.30118 0.0075
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: -0.000258 0.13 0.003335
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.001291'
+                    ixy: 3e-06
+                    ixz: '0.0'
+                    iyy: 7e-06
+                    iyz: '0.0'
+                    izz: '0.001297'
+                mass: '0.137577'
+                origin:
+                    x: '-0.000258'
+                    y: '0.13'
+                    z: '0.003335'
+            is_frame: 'false'
+            name: arm_c2_link
+            scene_obj_collision: 'false'
+            unprefixed_name: c2_link
+            visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/c2_link.stl
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        c2_tip:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: arm_c2_tip
+            scene_obj_collision: 'false'
+            unprefixed_name: c2_tip
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        ee_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: arm_ee_link
+            scene_obj_collision: 'false'
+            unprefixed_name: ee_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        elbow_link:
+            collision_geometry_size: 0.161083 0.161083 0.006
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: -5.3e-05 0.048986 0.002985
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.000102'
+                    ixy: '-0.0'
+                    ixz: '0.0'
+                    iyy: 5e-06
+                    iyz: '-0.0'
+                    izz: '0.000106'
+                mass: '0.065172'
+                origin:
+                    x: '-5.3e-05'
+                    y: '0.048986'
+                    z: '0.002985'
+            is_frame: 'false'
+            name: arm_elbow_link
+            scene_obj_collision: 'false'
+            unprefixed_name: elbow_link
+            visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/elbow_link.stl
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        elbow_tip:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: arm_elbow_tip
+            scene_obj_collision: 'false'
+            unprefixed_name: elbow_tip
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        l1_link:
+            collision_geometry_size: 0.0508 0.279 0.0508
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.117692 0.034483
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.002473'
+                    ixy: -1e-05
+                    ixz: -4e-06
+                    iyy: '0.000273'
+                    iyz: '-6.3e-05'
+                    izz: '0.002416'
+                mass: '0.316152'
+                origin:
+                    x: '-0.000392'
+                    y: '0.083754'
+                    z: '0.03217'
+            is_frame: 'false'
+            name: arm_l1_link
+            scene_obj_collision: 'false'
+            unprefixed_name: l1_link
+            visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/l1_link.stl
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        l2_link:
+            collision_geometry_size: 0.29851 0.0381 0.0381
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.129811 0.0 0.025036
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0002'
+                    ixy: 1e-06
+                    ixz: '5.3e-05'
+                    iyy: '0.004761'
+                    iyz: -1e-06
+                    izz: '0.004748'
+                mass: '0.476478'
+                origin:
+                    x: '0.233009'
+                    y: '-3.2e-05'
+                    z: '0.023521'
+            is_frame: 'false'
+            name: arm_l2_link
+            scene_obj_collision: 'false'
+            unprefixed_name: l2_link
+            visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/l2_link.stl
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        shoulder_link:
+            collision_geometry_size: 0.123608 0.145836 0.1805
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 -0.018954 0.09025
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.02251'
+                    ixy: '-0.000144'
+                    ixz: '1.5e-05'
+                    iyy: '0.01587'
+                    iyz: '0.00017'
+                    izz: '0.01174'
+                mass: '5.476897'
+                origin:
+                    x: '0.000294'
+                    y: '-0.000894'
+                    z: '0.090286'
+            is_frame: 'false'
+            name: arm_shoulder_link
+            scene_obj_collision: 'false'
+            unprefixed_name: shoulder_link
+            visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/shoulder_link.stl
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        tool0:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: arm_tool0
+            scene_obj_collision: 'false'
+            unprefixed_name: tool0
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        wrist_1_link:
+            collision_geometry_size: 0.055523 0.049731 0.09
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 -0.004218 0.045
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.000413'
+                    ixy: -1e-06
+                    ixz: '0.0'
+                    iyy: '0.000423'
+                    iyz: 6e-06
+                    izz: '0.000368'
+                mass: '1.059153'
+                origin:
+                    x: '-2.5e-05'
+                    y: '-0.005215'
+                    z: '0.058851'
+            is_frame: 'false'
+            name: arm_wrist_1_link
+            scene_obj_collision: 'false'
+            unprefixed_name: wrist_1_link
+            visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/wrist_1_link.stl
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        wrist_2_link:
+            collision_geometry_size: 0.055523 0.049731 0.09
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 -0.004218 0.045
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.000413'
+                    ixy: -1e-06
+                    ixz: '0.0'
+                    iyy: '0.000423'
+                    iyz: 6e-06
+                    izz: '0.000368'
+                mass: '1.059153'
+                origin:
+                    x: '-2.5e-05'
+                    y: '-0.005215'
+                    z: '0.058851'
+            is_frame: 'false'
+            name: arm_wrist_2_link
+            scene_obj_collision: 'false'
+            unprefixed_name: wrist_2_link
+            visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/wrist_2_link.stl
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        wrist_3_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: arm_wrist_3_link
+            scene_obj_collision: 'false'
+            unprefixed_name: wrist_3_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    lock_joints: 'false'
+    parametric: 'false'
+    plugin: none
+    points_of_interest: []
+    positions:
+        default_positions: initial
+        joint_names: shoulder_joint l1_joint l2_joint wrist_1_joint wrist_2_joint
+            wrist_3_joint c1_joint c2_joint
+        positions:
+            initial: 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+    prefix: arm_
+    reach_map_path: ''
+    reflect: '1'
+    root_link: world
+    srdf:
+        loaded_from_cache: 'true'
+        macro_path: ''
+        newly_generated: 'false'
+        path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/bam_fb/config/srdf_cache/bam_fb_dev_v0.0.0_config.srdf
+        xacro_path: ''
+    trajectory_topic: trajectory_controller/follow_trajectory
+    urdf:
+        macro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/bam_fb/bam_fb_macro.xacro
+        mesh_dirs: /home/bam/bam_ws/src/bam_common
+        path: ''
+        xacro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/bam_fb/bam_fb_config.urdf.xacro
+    world_rpy: 0 0 0
+    world_xyz: 0 0 0
+arm_to_hand_link: arm_tool0
+base_link: base_link
+base_mount: ''
+base_rpy: 0 0 0
+base_xyz: 0 0 0
+config_dir: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/arm_hand/config
+config_file_name: __v0.0.0_config
+config_file: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/arm_hand/config/__v0.0.0_config.yaml
+force_srdf_gen: 'false'
+hand:
+    REGISTRY: {}
+    args:
+        center_link: crab_claw_center
+        disable_floating_tcp: 'false'
+        opening_angles: 0.0 0.04363323129985824 0.09599310885968812 0.2007128639793479
+            0.30543261909900765 0.6544984694978736 1.335176877775662
+        poly_degree: '3'
+        widths: 0.0 0.005 0.01 0.02 0.03 0.06 0.12
+    arm_mount: arm_eef_link_1
+    base_link: base_link
+    base_mount: arm_eef_link_1
+    base_rpy: 0 0 0
+    base_xyz: 0 0 0
+    config_dir: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/crab_claw_v1/config
+    config_file_name: crab_claw_Bam_v0.0.0_config
+    config_file: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/crab_claw_v1/config/crab_claw_Bam_v0.0.0_config.yaml
+    force_srdf_gen: 'false'
+    info:
+        calib_hash: ''
+        config_key: ''
+        name: crab_claw
+        prefix: ''
+        sku: Bam
+        type: CrabClaw
+        uuid: 00000000-0000-0000-0000-000000000000
+        version: 0.0.0
+    joints:
+        eef_joint_1:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            is_fixed: 'false'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: arm_eef_joint_1
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                child_frame_id: ''
+                frame_id: ''
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            unprefixed_name: eef_joint_1
+        joint_virtual_finger:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            is_fixed: 'false'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'true'
+            name: arm_joint_virtual_finger
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                child_frame_id: ''
+                frame_id: ''
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            unprefixed_name: joint_virtual_finger
+    links:
+        crab_claw_center:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: arm_crab_claw_center
+            scene_obj_collision: 'false'
+            unprefixed_name: crab_claw_center
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        eef_link_1:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: arm_eef_link_1
+            scene_obj_collision: 'true'
+            unprefixed_name: eef_link_1
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        eef_link_2:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: arm_eef_link_2
+            scene_obj_collision: 'true'
+            unprefixed_name: eef_link_2
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        floating_tcp_world:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: arm_floating_tcp_world
+            scene_obj_collision: 'false'
+            unprefixed_name: floating_tcp_world
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        tcp_tool:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: arm_tcp_tool
+            scene_obj_collision: 'false'
+            unprefixed_name: tcp_tool
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        tcp_world:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: arm_tcp_world
+            scene_obj_collision: 'false'
+            unprefixed_name: tcp_world
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        virtual_finger:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: arm_virtual_finger
+            scene_obj_collision: 'true'
+            unprefixed_name: virtual_finger
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    lock_joints: 'false'
+    max_width: '0.1'
+    plugin: none
+    points_of_interest: []
+    positions:
+        default_positions: initial
+        joint_names: eef_joint_1 joint_virtual_finger
+        positions:
+            initial: 0.0 0.0
+    prefix: arm_
+    reflect: '1'
+    root_link: world
+    srdf:
+        loaded_from_cache: 'true'
+        macro_path: ''
+        newly_generated: 'false'
+        path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/crab_claw_v1/config/srdf_cache/crab_claw_Bam_v0.0.0_config.srdf
+        xacro_path: ''
+    tcp_tool: arm_tcp_tool
+    tcp_world: arm_tcp_world
+    tcp_world_floating: arm_tcp_world_floating
+    urdf:
+        macro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/crab_claw_v1/crab_claw_v1_macro.xacro
+        mesh_dirs: /home/bam/bam_ws/src/bam_common/bam_descriptions
+        path: ''
+        xacro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/crab_claw_v1/crab_claw_v1_config.urdf.xacro
+    world_rpy: 0 0 0
+    world_xyz: 0 0 0
+    z_into_table: 'false'
+hand_to_arm_link: arm_eef_link_1
+info:
+    calib_hash: ''
+    config_key: ''
+    name: ''
+    sku: ''
+    type: ''
+    uuid: 00000000-0000-0000-0000-000000000000
+    version: 0.0.0
+joints:
+    c1_joint:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'false'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '10.0'
+            max_jerk: '10.0'
+            max_position: '3.14'
+            max_velocity: '10.0'
+            min_acceleration: '-1.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.14'
+            min_velocity: '-1.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'true'
+        name: arm_c1_joint
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: c1_link
+            frame_id: shoulder_link
+            rpy: -1.5707959999738352 1.5707959999999999 0.0
+            xyz: 0.0 0.069 0.0505
+        unprefixed_name: c1_joint
+    c2_joint:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'false'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '10.0'
+            max_jerk: '10.0'
+            max_position: '3.14'
+            max_velocity: '10.0'
+            min_acceleration: '-1.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.14'
+            min_velocity: '-1.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'true'
+        name: arm_c2_joint
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: c2_link
+            frame_id: c1_link
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.12 0.006
+        unprefixed_name: c2_joint
+    c2_tip_joint:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'true'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'false'
+        name: arm_c2_tip_joint
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: c2_tip
+            frame_id: c2_link
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.26 0.0
+        unprefixed_name: c2_tip_joint
+    eef_joint_1:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'false'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'false'
+        name: arm_eef_joint_1
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: ''
+            frame_id: ''
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        unprefixed_name: eef_joint_1
+    elbow_joint:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'true'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'false'
+        name: arm_elbow_joint
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: elbow_link
+            frame_id: l2_link
+            rpy: 0.0 -0.0 2.356195
+            xyz: 0.0 0.0 0.0
+        unprefixed_name: elbow_joint
+    elbow_tip_joint:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'true'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'false'
+        name: arm_elbow_tip_joint
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: elbow_tip
+            frame_id: elbow_link
+            rpy: 0.0 -0.0 0.0
+            xyz: -0.0 0.12 -0.0
+        unprefixed_name: elbow_tip_joint
+    joint_virtual_finger:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'false'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'true'
+        name: arm_joint_virtual_finger
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: ''
+            frame_id: ''
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        unprefixed_name: joint_virtual_finger
+    l1_joint:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'false'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '10.0'
+            max_jerk: '10.0'
+            max_position: '3.14'
+            max_velocity: '10.0'
+            min_acceleration: '-1.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.14'
+            min_velocity: '-1.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'false'
+        name: arm_l1_joint
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: l1_link
+            frame_id: shoulder_link
+            rpy: -1.5707959999738352 1.5707959999999999 0.0
+            xyz: 0.0 0.069 0.1375
+        unprefixed_name: l1_joint
+    l2_joint:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'false'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '10.0'
+            max_jerk: '10.0'
+            max_position: '3.14'
+            max_velocity: '10.0'
+            min_acceleration: '-1.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.14'
+            min_velocity: '-1.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'false'
+        name: arm_l2_joint
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: l2_link
+            frame_id: l1_link
+            rpy: -3.141592307179587 -0.0 -3.141592307179587
+            xyz: 0.0 0.24 0.009
+        unprefixed_name: l2_joint
+    shoulder_joint:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'false'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '10.0'
+            max_jerk: '10.0'
+            max_position: '3.14'
+            max_velocity: '10.0'
+            min_acceleration: '-1.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.14'
+            min_velocity: '-1.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'false'
+        name: arm_shoulder_joint
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: shoulder_link
+            frame_id: arm_base_link
+            rpy: 0.0 -0.0 -3.141592307179587
+            xyz: 0.0 0.0 0.019
+        unprefixed_name: shoulder_joint
+    wrist_1_joint:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'false'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '10.0'
+            max_jerk: '10.0'
+            max_position: '3.14'
+            max_velocity: '10.0'
+            min_acceleration: '-1.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.14'
+            min_velocity: '-1.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'false'
+        name: arm_wrist_1_joint
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: wrist_1_link
+            frame_id: l2_link
+            rpy: 0.0 -0.0 1.5707959999999999
+            xyz: 0.0 0.299658 0.0451
+        unprefixed_name: wrist_1_joint
+    wrist_2_joint:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'false'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '10.0'
+            max_jerk: '10.0'
+            max_position: '3.14'
+            max_velocity: '10.0'
+            min_acceleration: '-1.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.14'
+            min_velocity: '-1.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'false'
+        name: arm_wrist_2_joint
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: wrist_2_link
+            frame_id: wrist_1_link
+            rpy: 1.570796 -0.0 -3.141592307179587
+            xyz: 0.0 0.017 0.06
+        unprefixed_name: wrist_2_joint
+    wrist_3_joint:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'false'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '10.0'
+            max_jerk: '10.0'
+            max_position: '3.14'
+            max_velocity: '10.0'
+            min_acceleration: '-1.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.14'
+            min_velocity: '-1.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'false'
+        name: arm_wrist_3_joint
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: wrist_3_link
+            frame_id: wrist_2_link
+            rpy: 1.570796 -0.0 -3.141592307179587
+            xyz: 0.0 0.017 0.06
+        unprefixed_name: wrist_3_joint
+links:
+    arm_base_link:
+        collision_geometry_size: 0.09 0.09 0.158846
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 -0.060423
+        disable: 'false'
+        display: 'true'
+        inertial:
+            inertia:
+                ixx: '0.004853'
+                ixy: 4e-06
+                ixz: '5.6e-05'
+                iyy: '0.00491'
+                iyz: -8e-06
+                izz: '0.001526'
+            mass: '2.462518'
+            origin:
+                x: '0.000415'
+                y: -6e-05
+                z: '-0.053854'
+        is_frame: 'false'
+        name: arm_arm_base_link
+        scene_obj_collision: 'false'
+        unprefixed_name: arm_base_link
+        visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/arm_base_link.stl
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    c1_link:
+        collision_geometry_size: 0.045 0.1525 0.006
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.042143 0.002926
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '8.8e-05'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: 7e-06
+                iyz: '-0.0'
+                izz: '9.4e-05'
+            mass: '0.046321'
+            origin:
+                x: '0.0'
+                y: '0.042143'
+                z: '0.002926'
+        is_frame: 'false'
+        name: arm_c1_link
+        scene_obj_collision: 'false'
+        unprefixed_name: c1_link
+        visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/c1_link.stl
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    c2_link:
+        collision_geometry_size: 0.211366 0.30118 0.0075
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: -0.000258 0.13 0.003335
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.001291'
+                ixy: 3e-06
+                ixz: '0.0'
+                iyy: 7e-06
+                iyz: '0.0'
+                izz: '0.001297'
+            mass: '0.137577'
+            origin:
+                x: '-0.000258'
+                y: '0.13'
+                z: '0.003335'
+        is_frame: 'false'
+        name: arm_c2_link
+        scene_obj_collision: 'false'
+        unprefixed_name: c2_link
+        visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/c2_link.stl
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    c2_tip:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'true'
+        name: arm_c2_tip
+        scene_obj_collision: 'false'
+        unprefixed_name: c2_tip
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    crab_claw_center:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'true'
+        name: arm_crab_claw_center
+        scene_obj_collision: 'false'
+        unprefixed_name: crab_claw_center
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    ee_link:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'true'
+        name: arm_ee_link
+        scene_obj_collision: 'false'
+        unprefixed_name: ee_link
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    eef_link_1:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'true'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: arm_eef_link_1
+        scene_obj_collision: 'true'
+        unprefixed_name: eef_link_1
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    eef_link_2:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: arm_eef_link_2
+        scene_obj_collision: 'true'
+        unprefixed_name: eef_link_2
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    elbow_link:
+        collision_geometry_size: 0.161083 0.161083 0.006
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: -5.3e-05 0.048986 0.002985
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.000102'
+                ixy: '-0.0'
+                ixz: '0.0'
+                iyy: 5e-06
+                iyz: '-0.0'
+                izz: '0.000106'
+            mass: '0.065172'
+            origin:
+                x: '-5.3e-05'
+                y: '0.048986'
+                z: '0.002985'
+        is_frame: 'false'
+        name: arm_elbow_link
+        scene_obj_collision: 'false'
+        unprefixed_name: elbow_link
+        visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/elbow_link.stl
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    elbow_tip:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'true'
+        name: arm_elbow_tip
+        scene_obj_collision: 'false'
+        unprefixed_name: elbow_tip
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    floating_tcp_world:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'true'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'true'
+        name: arm_floating_tcp_world
+        scene_obj_collision: 'false'
+        unprefixed_name: floating_tcp_world
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    l1_link:
+        collision_geometry_size: 0.0508 0.279 0.0508
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.117692 0.034483
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.002473'
+                ixy: -1e-05
+                ixz: -4e-06
+                iyy: '0.000273'
+                iyz: '-6.3e-05'
+                izz: '0.002416'
+            mass: '0.316152'
+            origin:
+                x: '-0.000392'
+                y: '0.083754'
+                z: '0.03217'
+        is_frame: 'false'
+        name: arm_l1_link
+        scene_obj_collision: 'false'
+        unprefixed_name: l1_link
+        visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/l1_link.stl
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    l2_link:
+        collision_geometry_size: 0.29851 0.0381 0.0381
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.129811 0.0 0.025036
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0002'
+                ixy: 1e-06
+                ixz: '5.3e-05'
+                iyy: '0.004761'
+                iyz: -1e-06
+                izz: '0.004748'
+            mass: '0.476478'
+            origin:
+                x: '0.233009'
+                y: '-3.2e-05'
+                z: '0.023521'
+        is_frame: 'false'
+        name: arm_l2_link
+        scene_obj_collision: 'false'
+        unprefixed_name: l2_link
+        visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/l2_link.stl
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    shoulder_link:
+        collision_geometry_size: 0.123608 0.145836 0.1805
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 -0.018954 0.09025
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.02251'
+                ixy: '-0.000144'
+                ixz: '1.5e-05'
+                iyy: '0.01587'
+                iyz: '0.00017'
+                izz: '0.01174'
+            mass: '5.476897'
+            origin:
+                x: '0.000294'
+                y: '-0.000894'
+                z: '0.090286'
+        is_frame: 'false'
+        name: arm_shoulder_link
+        scene_obj_collision: 'false'
+        unprefixed_name: shoulder_link
+        visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/shoulder_link.stl
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    tcp_tool:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'true'
+        name: arm_tcp_tool
+        scene_obj_collision: 'false'
+        unprefixed_name: tcp_tool
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    tcp_world:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'true'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'true'
+        name: arm_tcp_world
+        scene_obj_collision: 'false'
+        unprefixed_name: tcp_world
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    tool0:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'true'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'true'
+        name: arm_tool0
+        scene_obj_collision: 'false'
+        unprefixed_name: tool0
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    virtual_finger:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: arm_virtual_finger
+        scene_obj_collision: 'true'
+        unprefixed_name: virtual_finger
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    wrist_1_link:
+        collision_geometry_size: 0.055523 0.049731 0.09
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 -0.004218 0.045
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.000413'
+                ixy: -1e-06
+                ixz: '0.0'
+                iyy: '0.000423'
+                iyz: 6e-06
+                izz: '0.000368'
+            mass: '1.059153'
+            origin:
+                x: '-2.5e-05'
+                y: '-0.005215'
+                z: '0.058851'
+        is_frame: 'false'
+        name: arm_wrist_1_link
+        scene_obj_collision: 'false'
+        unprefixed_name: wrist_1_link
+        visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/wrist_1_link.stl
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    wrist_2_link:
+        collision_geometry_size: 0.055523 0.049731 0.09
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 -0.004218 0.045
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.000413'
+                ixy: -1e-06
+                ixz: '0.0'
+                iyy: '0.000423'
+                iyz: 6e-06
+                izz: '0.000368'
+            mass: '1.059153'
+            origin:
+                x: '-2.5e-05'
+                y: '-0.005215'
+                z: '0.058851'
+        is_frame: 'false'
+        name: arm_wrist_2_link
+        scene_obj_collision: 'false'
+        unprefixed_name: wrist_2_link
+        visual_mesh_path: package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/wrist_2_link.stl
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    wrist_3_link:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'true'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'true'
+        name: arm_wrist_3_link
+        scene_obj_collision: 'false'
+        unprefixed_name: wrist_3_link
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+lock_joints: 'false'
+mount_rpy: 0 0 0
+mount_xyz: 0 0 0
+plugin: none
+points_of_interest: []
+positions:
+    default_positions: initial
+    joint_names: shoulder_joint l1_joint l2_joint wrist_1_joint wrist_2_joint wrist_3_joint
+        c1_joint c2_joint eef_joint_1 joint_virtual_finger
+    positions: {}
+prefix: ''
+reflect: '1'
+root_link: world
+srdf:
+    loaded_from_cache: 'true'
+    macro_path: ''
+    newly_generated: 'false'
+    path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/bam_fb/config/srdf_cache/bam_fb_dev_v0.0.0_config.srdf
+    xacro_path: ''
+urdf:
+    macro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/arm_hand/arm_hand_macro.xacro
+    mesh_dirs: /home/bam/bam_ws/src/bam_common
+    path: ''
+    xacro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/arm_hand/arm_hand_config.urdf.xacro
+world_rpy: 0 0 0
+world_xyz: 0 0 0

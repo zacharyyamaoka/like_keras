@@ -1,0 +1,3282 @@
+REGISTRY: {}
+args: {}
+arm:
+    REGISTRY: {}
+    args: {}
+    bam_descriptions: /home/bam/bam_ws/src/bam_machine/bam/descriptions
+    base_link: base_link
+    base_mount: front_right_base_link_ur
+    base_rpy: 0 0 0
+    base_xyz: 0 0 0
+    config_dir: /home/bam/bam_ws/src/ur_description/urdf/config
+    config_file_name: front_right_ur_ur5e_v0.0.0
+    config_file: /home/bam/bam_ws/src/ur_description/urdf/config/front_right_ur_ur5e_v0.0.0.yaml
+    dh:
+        a2: '-0.425'
+        a3: '-0.3922'
+        d1: '0.1625'
+        d4: '0.1333'
+        d5: '0.0997'
+        d6: '0.0996'
+    force_srdf_gen: 'false'
+    hand_mount: front_right_tool0
+    hash_config_file: 'false'
+    ik_base_link: front_right_base_link_ur
+    ik_sol_preference:
+    -   Elbow: Up
+        Shoulder: Left
+        Wrist: Down
+    -   Elbow: Up
+        Shoulder: Left
+        Wrist: Up
+    ik_tip: front_right_tool0
+    ik_tip_flip: tool0_flip
+    info:
+        config_key: ''
+        name: ur
+        sku: ur5e
+        type: ur
+        urdf_hash: ''
+        uuid: ''
+        version: 0.0.0
+    joints:
+        elbow_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_elbow_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: elbow_joint
+        entities:
+            front_right_front_right_elbow_joint:
+                can_id: '0'
+                hardstop_position: '0.0'
+                home_position: '0.0'
+                initial_position: '0.0'
+                limits:
+                    has_acceleration_limits: 'true'
+                    has_effort_limits: 'false'
+                    has_jerk_limits: 'true'
+                    has_position_limits: 'true'
+                    has_velocity_limits: 'true'
+                    max_acceleration: '10.0'
+                    max_effort: '0.0'
+                    max_jerk: '100.0'
+                    max_position: '3.141593'
+                    max_velocity: '10.0'
+                    min_acceleration: '-10.0'
+                    min_effort: '-0.0'
+                    min_jerk: '-100.0'
+                    min_position: '-3.141593'
+                    min_velocity: '-10.0'
+                lock: 'false'
+                lock_position: '0.0'
+                mimic: 'false'
+                name: front_right_elbow_joint
+                physics:
+                    damping: '0.0'
+                    friction: '0.0'
+                transform:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                type: revolute
+                unprefixed_name: elbow_joint
+            front_right_front_right_shoulder_lift_joint:
+                can_id: '0'
+                hardstop_position: '0.0'
+                home_position: '0.0'
+                initial_position: '-1.5707'
+                limits:
+                    has_acceleration_limits: 'true'
+                    has_effort_limits: 'false'
+                    has_jerk_limits: 'true'
+                    has_position_limits: 'true'
+                    has_velocity_limits: 'true'
+                    max_acceleration: '10.0'
+                    max_effort: '0.0'
+                    max_jerk: '100.0'
+                    max_position: '3.141593'
+                    max_velocity: '10.0'
+                    min_acceleration: '-10.0'
+                    min_effort: '-0.0'
+                    min_jerk: '-100.0'
+                    min_position: '-3.141593'
+                    min_velocity: '-10.0'
+                lock: 'false'
+                lock_position: '0.0'
+                mimic: 'false'
+                name: front_right_shoulder_lift_joint
+                physics:
+                    damping: '0.0'
+                    friction: '0.0'
+                transform:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                type: revolute
+                unprefixed_name: shoulder_lift_joint
+            front_right_front_right_shoulder_pan_joint:
+                can_id: '0'
+                hardstop_position: '0.0'
+                home_position: '0.0'
+                initial_position: '0.0'
+                limits:
+                    has_acceleration_limits: 'true'
+                    has_effort_limits: 'false'
+                    has_jerk_limits: 'true'
+                    has_position_limits: 'true'
+                    has_velocity_limits: 'true'
+                    max_acceleration: '10.0'
+                    max_effort: '0.0'
+                    max_jerk: '100.0'
+                    max_position: '3.141593'
+                    max_velocity: '10.0'
+                    min_acceleration: '-10.0'
+                    min_effort: '-0.0'
+                    min_jerk: '-100.0'
+                    min_position: '-3.141593'
+                    min_velocity: '-10.0'
+                lock: 'false'
+                lock_position: '0.0'
+                mimic: 'false'
+                name: front_right_shoulder_pan_joint
+                physics:
+                    damping: '0.0'
+                    friction: '0.0'
+                transform:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                type: revolute
+                unprefixed_name: shoulder_pan_joint
+            front_right_front_right_wrist_1_joint:
+                can_id: '0'
+                hardstop_position: '0.0'
+                home_position: '0.0'
+                initial_position: '0.0'
+                limits:
+                    has_acceleration_limits: 'true'
+                    has_effort_limits: 'false'
+                    has_jerk_limits: 'true'
+                    has_position_limits: 'true'
+                    has_velocity_limits: 'true'
+                    max_acceleration: '10.0'
+                    max_effort: '0.0'
+                    max_jerk: '100.0'
+                    max_position: '3.141593'
+                    max_velocity: '10.0'
+                    min_acceleration: '-10.0'
+                    min_effort: '-0.0'
+                    min_jerk: '-100.0'
+                    min_position: '-3.141593'
+                    min_velocity: '-10.0'
+                lock: 'false'
+                lock_position: '0.0'
+                mimic: 'false'
+                name: front_right_wrist_1_joint
+                physics:
+                    damping: '0.0'
+                    friction: '0.0'
+                transform:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                type: revolute
+                unprefixed_name: wrist_1_joint
+            front_right_front_right_wrist_2_joint:
+                can_id: '0'
+                hardstop_position: '0.0'
+                home_position: '0.0'
+                initial_position: '0.0'
+                limits:
+                    has_acceleration_limits: 'true'
+                    has_effort_limits: 'false'
+                    has_jerk_limits: 'true'
+                    has_position_limits: 'true'
+                    has_velocity_limits: 'true'
+                    max_acceleration: '10.0'
+                    max_effort: '0.0'
+                    max_jerk: '100.0'
+                    max_position: '3.141593'
+                    max_velocity: '10.0'
+                    min_acceleration: '-10.0'
+                    min_effort: '-0.0'
+                    min_jerk: '-100.0'
+                    min_position: '-3.141593'
+                    min_velocity: '-10.0'
+                lock: 'false'
+                lock_position: '0.0'
+                mimic: 'false'
+                name: front_right_wrist_2_joint
+                physics:
+                    damping: '0.0'
+                    friction: '0.0'
+                transform:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                type: revolute
+                unprefixed_name: wrist_2_joint
+            front_right_front_right_wrist_3_joint:
+                can_id: '0'
+                hardstop_position: '0.0'
+                home_position: '0.0'
+                initial_position: '0.0'
+                limits:
+                    has_acceleration_limits: 'true'
+                    has_effort_limits: 'false'
+                    has_jerk_limits: 'true'
+                    has_position_limits: 'true'
+                    has_velocity_limits: 'true'
+                    max_acceleration: '10.0'
+                    max_effort: '0.0'
+                    max_jerk: '100.0'
+                    max_position: '3.141593'
+                    max_velocity: '10.0'
+                    min_acceleration: '-10.0'
+                    min_effort: '-0.0'
+                    min_jerk: '-100.0'
+                    min_position: '-3.141593'
+                    min_velocity: '-10.0'
+                lock: 'false'
+                lock_position: '0.0'
+                mimic: 'false'
+                name: front_right_wrist_3_joint
+                physics:
+                    damping: '0.0'
+                    friction: '0.0'
+                transform:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                type: revolute
+                unprefixed_name: wrist_3_joint
+        shoulder_lift_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '-1.5707'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_shoulder_lift_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: shoulder_lift_joint
+        shoulder_pan_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_shoulder_pan_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: shoulder_pan_joint
+        wrist_1_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_wrist_1_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: wrist_1_joint
+        wrist_2_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_wrist_2_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: wrist_2_joint
+        wrist_3_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_wrist_3_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: wrist_3_joint
+    links:
+        base_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_base_link
+            scene_obj_collision: 'false'
+            unprefixed_name: base_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        base_link_ur:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: front_right_base_link_ur
+            scene_obj_collision: 'false'
+            unprefixed_name: base_link_ur
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        ee_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: front_right_ee_link
+            scene_obj_collision: 'false'
+            unprefixed_name: ee_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        entities:
+            front_right_front_right_base_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_base_link
+                scene_obj_collision: 'false'
+                unprefixed_name: base_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_base_link_ur:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'true'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'true'
+                name: front_right_base_link_ur
+                scene_obj_collision: 'false'
+                unprefixed_name: base_link_ur
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_ee_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'true'
+                name: front_right_ee_link
+                scene_obj_collision: 'false'
+                unprefixed_name: ee_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_forearm_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_forearm_link
+                scene_obj_collision: 'true'
+                unprefixed_name: forearm_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_shoulder_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_shoulder_link
+                scene_obj_collision: 'false'
+                unprefixed_name: shoulder_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_tool0:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'true'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'true'
+                name: front_right_tool0
+                scene_obj_collision: 'false'
+                unprefixed_name: tool0
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_upper_arm_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_upper_arm_link
+                scene_obj_collision: 'false'
+                unprefixed_name: upper_arm_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_wrist_1_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_wrist_1_link
+                scene_obj_collision: 'true'
+                unprefixed_name: wrist_1_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_wrist_2_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_wrist_2_link
+                scene_obj_collision: 'true'
+                unprefixed_name: wrist_2_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_wrist_3_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_wrist_3_link
+                scene_obj_collision: 'true'
+                unprefixed_name: wrist_3_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        forearm_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_forearm_link
+            scene_obj_collision: 'true'
+            unprefixed_name: forearm_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        shoulder_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_shoulder_link
+            scene_obj_collision: 'false'
+            unprefixed_name: shoulder_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        tool0:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: front_right_tool0
+            scene_obj_collision: 'false'
+            unprefixed_name: tool0
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        upper_arm_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_upper_arm_link
+            scene_obj_collision: 'false'
+            unprefixed_name: upper_arm_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        wrist_1_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_wrist_1_link
+            scene_obj_collision: 'true'
+            unprefixed_name: wrist_1_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        wrist_2_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_wrist_2_link
+            scene_obj_collision: 'true'
+            unprefixed_name: wrist_2_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        wrist_3_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_wrist_3_link
+            scene_obj_collision: 'true'
+            unprefixed_name: wrist_3_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    lock_joints: 'false'
+    name: ur
+    plugin: none
+    points_of_interest: []
+    positions:
+        default_positions: initial
+        joint_names: shoulder_pan_joint shoulder_lift_joint elbow_joint wrist_1_joint
+            wrist_2_joint wrist_3_joint
+        positions:
+            initial: 0.0 -1.5707 0.0 0.0 0.0 0.0
+            ready: 1.4 -1.62 1.54 -1.2 -1.6 -0.11
+            up: 0 -1.5707 0 -1.5707 0 0
+    prefix: front_right_
+    reach_map_path: /maps/ur/ur5e/ur5e_table_0.8x1.5x0.8_0.30_180x45x360_09_aug_2025.pkl
+    reflect: '1'
+    root_link: world
+    srdf:
+        loaded_from_cache: 'false'
+        macro_path: ''
+        newly_generated: 'false'
+        path: ''
+        xacro_path: /home/bam/public_ws/src/Universal_Robots_ROS2_Driver/ur_moveit_config/srdf/ur.srdf.xacro
+    trajectory_topic: scaled_joint_trajectory_controller/follow_joint_trajectory
+    urdf:
+        abs_package_dirs:
+            ur_description: /home/bam/bam_ws/src
+        macro_path: /home/bam/bam_ws/src/ur_description/urdf/ur_macro.xacro
+        path: ''
+        xacro_path: /home/bam/bam_ws/src/ur_description/urdf/ur_config.urdf.xacro
+    world_rpy: 0 0 0
+    world_xyz: 0 0 0
+arm_to_hand_link: front_right_tool0
+bam_descriptions: /home/bam/bam_ws/src/bam_machine/bam/descriptions
+base_link: base_link
+base_mount: ''
+base_rpy: 0 0 0
+base_xyz: 0 0 0
+config_dir: /home/bam/bam_ws/src/bam_machine/bam/descriptions/urdf/arm_hand/config
+config_file_name: front_right_ur_ur5e_v0.0.0_front_right_robotiq_2f_85_2f_85_v0.0.0__v0.0.0
+config_file: /home/bam/bam_ws/src/bam_machine/bam/descriptions/urdf/arm_hand/config/front_right_ur_ur5e_v0.0.0_front_right_robotiq_2f_85_2f_85_v0.0.0__v0.0.0.yaml
+force_srdf_gen: 'false'
+hand:
+    REGISTRY: {}
+    args:
+        com_port: /dev/ttyUSB0
+        gripper_closed_position: '0.7929'
+        gripper_force_multiplier: '0.5'
+        gripper_max_force: '235.0'
+        gripper_max_speed: '0.15'
+        gripper_max_width: '0.085'
+        gripper_speed_multiplier: '1.0'
+        include_ros2_control: 'true'
+        isaac_joint_commands: /isaac_joint_commands
+        isaac_joint_states: /isaac_joint_states
+        mock_sensor_commands: 'false'
+        parent_link: front_right_robotiq_85_base_link
+        sim_gazebo: 'false'
+        sim_isaac: 'false'
+        use_fake_hardware: 'false'
+    arm_mount: front_right_robotiq_85_base_link
+    bam_descriptions: /home/bam/bam_ws/src/bam_machine/bam/descriptions
+    base_link: base_link
+    base_mount: front_right_robotiq_85_base_link
+    base_rpy: 0.0 0.0 0.0
+    base_xyz: 0.0 0.0 0.0
+    config_dir: /home/bam/bam_ws/src/robotiq_description/urdf/config
+    config_file_name: front_right_robotiq_2f_85_2f_85_v0.0.0
+    config_file: /home/bam/bam_ws/src/robotiq_description/urdf/config/front_right_robotiq_2f_85_2f_85_v0.0.0.yaml
+    force_srdf_gen: 'false'
+    hash_config_file: 'false'
+    info:
+        config_key: ''
+        name: robotiq_2f_85
+        sku: 2f_85
+        type: Robotiq
+        urdf_hash: ''
+        uuid: ''
+        version: 0.0.0
+    joints:
+        entities:
+            front_right_front_right_robotiq_85_left_finger_tip_joint:
+                can_id: '0'
+                hardstop_position: '0.0'
+                home_position: '0.0'
+                initial_position: '0.0'
+                limits:
+                    has_acceleration_limits: 'true'
+                    has_effort_limits: 'false'
+                    has_jerk_limits: 'true'
+                    has_position_limits: 'true'
+                    has_velocity_limits: 'true'
+                    max_acceleration: '10.0'
+                    max_effort: '0.0'
+                    max_jerk: '100.0'
+                    max_position: '3.141593'
+                    max_velocity: '10.0'
+                    min_acceleration: '-10.0'
+                    min_effort: '-0.0'
+                    min_jerk: '-100.0'
+                    min_position: '-3.141593'
+                    min_velocity: '-10.0'
+                lock: 'false'
+                lock_position: '0.0'
+                mimic: 'true'
+                name: front_right_robotiq_85_left_finger_tip_joint
+                physics:
+                    damping: '0.0'
+                    friction: '0.0'
+                transform:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                type: revolute
+                unprefixed_name: robotiq_85_left_finger_tip_joint
+            front_right_front_right_robotiq_85_left_inner_knuckle_joint:
+                can_id: '0'
+                hardstop_position: '0.0'
+                home_position: '0.0'
+                initial_position: '0.0'
+                limits:
+                    has_acceleration_limits: 'true'
+                    has_effort_limits: 'false'
+                    has_jerk_limits: 'true'
+                    has_position_limits: 'true'
+                    has_velocity_limits: 'true'
+                    max_acceleration: '10.0'
+                    max_effort: '0.0'
+                    max_jerk: '100.0'
+                    max_position: '3.141593'
+                    max_velocity: '10.0'
+                    min_acceleration: '-10.0'
+                    min_effort: '-0.0'
+                    min_jerk: '-100.0'
+                    min_position: '-3.141593'
+                    min_velocity: '-10.0'
+                lock: 'false'
+                lock_position: '0.0'
+                mimic: 'true'
+                name: front_right_robotiq_85_left_inner_knuckle_joint
+                physics:
+                    damping: '0.0'
+                    friction: '0.0'
+                transform:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                type: revolute
+                unprefixed_name: robotiq_85_left_inner_knuckle_joint
+            front_right_front_right_robotiq_85_left_knuckle_joint:
+                can_id: '0'
+                hardstop_position: '0.0'
+                home_position: '0.0'
+                initial_position: '0.0'
+                limits:
+                    has_acceleration_limits: 'true'
+                    has_effort_limits: 'false'
+                    has_jerk_limits: 'true'
+                    has_position_limits: 'true'
+                    has_velocity_limits: 'true'
+                    max_acceleration: '10.0'
+                    max_effort: '0.0'
+                    max_jerk: '100.0'
+                    max_position: '3.141593'
+                    max_velocity: '10.0'
+                    min_acceleration: '-10.0'
+                    min_effort: '-0.0'
+                    min_jerk: '-100.0'
+                    min_position: '-3.141593'
+                    min_velocity: '-10.0'
+                lock: 'false'
+                lock_position: '0.0'
+                mimic: 'false'
+                name: front_right_robotiq_85_left_knuckle_joint
+                physics:
+                    damping: '0.0'
+                    friction: '0.0'
+                transform:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                type: revolute
+                unprefixed_name: robotiq_85_left_knuckle_joint
+            front_right_front_right_robotiq_85_right_finger_tip_joint:
+                can_id: '0'
+                hardstop_position: '0.0'
+                home_position: '0.0'
+                initial_position: '0.0'
+                limits:
+                    has_acceleration_limits: 'true'
+                    has_effort_limits: 'false'
+                    has_jerk_limits: 'true'
+                    has_position_limits: 'true'
+                    has_velocity_limits: 'true'
+                    max_acceleration: '10.0'
+                    max_effort: '0.0'
+                    max_jerk: '100.0'
+                    max_position: '3.141593'
+                    max_velocity: '10.0'
+                    min_acceleration: '-10.0'
+                    min_effort: '-0.0'
+                    min_jerk: '-100.0'
+                    min_position: '-3.141593'
+                    min_velocity: '-10.0'
+                lock: 'false'
+                lock_position: '0.0'
+                mimic: 'true'
+                name: front_right_robotiq_85_right_finger_tip_joint
+                physics:
+                    damping: '0.0'
+                    friction: '0.0'
+                transform:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                type: revolute
+                unprefixed_name: robotiq_85_right_finger_tip_joint
+            front_right_front_right_robotiq_85_right_inner_knuckle_joint:
+                can_id: '0'
+                hardstop_position: '0.0'
+                home_position: '0.0'
+                initial_position: '0.0'
+                limits:
+                    has_acceleration_limits: 'true'
+                    has_effort_limits: 'false'
+                    has_jerk_limits: 'true'
+                    has_position_limits: 'true'
+                    has_velocity_limits: 'true'
+                    max_acceleration: '10.0'
+                    max_effort: '0.0'
+                    max_jerk: '100.0'
+                    max_position: '3.141593'
+                    max_velocity: '10.0'
+                    min_acceleration: '-10.0'
+                    min_effort: '-0.0'
+                    min_jerk: '-100.0'
+                    min_position: '-3.141593'
+                    min_velocity: '-10.0'
+                lock: 'false'
+                lock_position: '0.0'
+                mimic: 'true'
+                name: front_right_robotiq_85_right_inner_knuckle_joint
+                physics:
+                    damping: '0.0'
+                    friction: '0.0'
+                transform:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                type: revolute
+                unprefixed_name: robotiq_85_right_inner_knuckle_joint
+            front_right_front_right_robotiq_85_right_knuckle_joint:
+                can_id: '0'
+                hardstop_position: '0.0'
+                home_position: '0.0'
+                initial_position: '0.0'
+                limits:
+                    has_acceleration_limits: 'true'
+                    has_effort_limits: 'false'
+                    has_jerk_limits: 'true'
+                    has_position_limits: 'true'
+                    has_velocity_limits: 'true'
+                    max_acceleration: '10.0'
+                    max_effort: '0.0'
+                    max_jerk: '100.0'
+                    max_position: '3.141593'
+                    max_velocity: '10.0'
+                    min_acceleration: '-10.0'
+                    min_effort: '-0.0'
+                    min_jerk: '-100.0'
+                    min_position: '-3.141593'
+                    min_velocity: '-10.0'
+                lock: 'false'
+                lock_position: '0.0'
+                mimic: 'true'
+                name: front_right_robotiq_85_right_knuckle_joint
+                physics:
+                    damping: '0.0'
+                    friction: '0.0'
+                transform:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                type: revolute
+                unprefixed_name: robotiq_85_right_knuckle_joint
+        robotiq_85_left_finger_tip_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'true'
+            name: front_right_robotiq_85_left_finger_tip_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: robotiq_85_left_finger_tip_joint
+        robotiq_85_left_inner_knuckle_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'true'
+            name: front_right_robotiq_85_left_inner_knuckle_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: robotiq_85_left_inner_knuckle_joint
+        robotiq_85_left_knuckle_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_robotiq_85_left_knuckle_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: robotiq_85_left_knuckle_joint
+        robotiq_85_right_finger_tip_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'true'
+            name: front_right_robotiq_85_right_finger_tip_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: robotiq_85_right_finger_tip_joint
+        robotiq_85_right_inner_knuckle_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'true'
+            name: front_right_robotiq_85_right_inner_knuckle_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: robotiq_85_right_inner_knuckle_joint
+        robotiq_85_right_knuckle_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'true'
+            name: front_right_robotiq_85_right_knuckle_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: robotiq_85_right_knuckle_joint
+    links:
+        entities:
+            front_right_front_right_robotiq_85_base_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'true'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_robotiq_85_base_link
+                scene_obj_collision: 'true'
+                unprefixed_name: robotiq_85_base_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_robotiq_85_left_finger_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_robotiq_85_left_finger_link
+                scene_obj_collision: 'true'
+                unprefixed_name: robotiq_85_left_finger_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_robotiq_85_left_finger_tip_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_robotiq_85_left_finger_tip_link
+                scene_obj_collision: 'true'
+                unprefixed_name: robotiq_85_left_finger_tip_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_robotiq_85_left_inner_knuckle_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_robotiq_85_left_inner_knuckle_link
+                scene_obj_collision: 'true'
+                unprefixed_name: robotiq_85_left_inner_knuckle_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_robotiq_85_left_knuckle_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_robotiq_85_left_knuckle_link
+                scene_obj_collision: 'true'
+                unprefixed_name: robotiq_85_left_knuckle_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_robotiq_85_right_finger_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_robotiq_85_right_finger_link
+                scene_obj_collision: 'true'
+                unprefixed_name: robotiq_85_right_finger_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_robotiq_85_right_finger_tip_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_robotiq_85_right_finger_tip_link
+                scene_obj_collision: 'true'
+                unprefixed_name: robotiq_85_right_finger_tip_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_robotiq_85_right_inner_knuckle_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_robotiq_85_right_inner_knuckle_link
+                scene_obj_collision: 'true'
+                unprefixed_name: robotiq_85_right_inner_knuckle_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_robotiq_85_right_knuckle_link:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'false'
+                name: front_right_robotiq_85_right_knuckle_link
+                scene_obj_collision: 'true'
+                unprefixed_name: robotiq_85_right_knuckle_link
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_robotiq_85_tcp_tool:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'false'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'true'
+                name: front_right_robotiq_85_tcp_tool
+                scene_obj_collision: 'false'
+                unprefixed_name: robotiq_85_tcp_tool
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            front_right_front_right_robotiq_85_tcp_world:
+                collision_geometry_size: 0.0 0.0 0.0
+                collision_geometry_type: box
+                collision_mesh_path: ''
+                collision_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+                disable: 'false'
+                display: 'true'
+                inertial:
+                    inertia:
+                        ixx: '0.0'
+                        ixy: '0.0'
+                        ixz: '0.0'
+                        iyy: '0.0'
+                        iyz: '0.0'
+                        izz: '0.0'
+                    mass: '0.0'
+                    origin:
+                        x: '0.0'
+                        y: '0.0'
+                        z: '0.0'
+                is_frame: 'true'
+                name: front_right_robotiq_85_tcp_world
+                scene_obj_collision: 'false'
+                unprefixed_name: robotiq_85_tcp_world
+                visual_mesh_path: ''
+                visual_origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        robotiq_85_base_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_base_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_base_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        robotiq_85_left_finger_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_left_finger_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_left_finger_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        robotiq_85_left_finger_tip_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_left_finger_tip_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_left_finger_tip_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        robotiq_85_left_inner_knuckle_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_left_inner_knuckle_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_left_inner_knuckle_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        robotiq_85_left_knuckle_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_left_knuckle_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_left_knuckle_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        robotiq_85_right_finger_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_right_finger_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_right_finger_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        robotiq_85_right_finger_tip_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_right_finger_tip_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_right_finger_tip_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        robotiq_85_right_inner_knuckle_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_right_inner_knuckle_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_right_inner_knuckle_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        robotiq_85_right_knuckle_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_right_knuckle_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_right_knuckle_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        robotiq_85_tcp_tool:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: front_right_robotiq_85_tcp_tool
+            scene_obj_collision: 'false'
+            unprefixed_name: robotiq_85_tcp_tool
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        robotiq_85_tcp_world:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: front_right_robotiq_85_tcp_world
+            scene_obj_collision: 'false'
+            unprefixed_name: robotiq_85_tcp_world
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    lock_joints: 'false'
+    max_width: '0.085'
+    plugin: none
+    points_of_interest: []
+    positions:
+        default_positions: initial
+        joint_names: robotiq_85_left_knuckle_joint robotiq_85_right_knuckle_joint
+            robotiq_85_left_inner_knuckle_joint robotiq_85_right_inner_knuckle_joint
+            robotiq_85_left_finger_tip_joint robotiq_85_right_finger_tip_joint
+        positions:
+            initial: 0.0 0.0 0.0 0.0 0.0 0.0
+    prefix: front_right_
+    reflect: '1'
+    root_link: world
+    srdf:
+        loaded_from_cache: 'true'
+        macro_path: ''
+        newly_generated: 'false'
+        path: /home/bam/bam_ws/src/robotiq_description/urdf/config/srdf_cache/front_right_robotiq_2f_85_2f_85_v0.0.0.srdf
+        xacro_path: ''
+    tcp_tool: front_right_tcp_tool
+    tcp_world: front_right_tcp_world
+    tcp_world_floating: front_right_tcp_world_floating
+    urdf:
+        abs_package_dirs:
+            robotiq_description: /home/bam/bam_ws/src
+        macro_path: /home/bam/bam_ws/src/robotiq_description/urdf/robotiq_2f_85_macro.urdf.xacro
+        path: ''
+        xacro_path: /home/bam/bam_ws/src/robotiq_description/urdf/robotiq_2f_85_config.urdf.xacro
+    world_rpy: 0.0 0.0 0.0
+    world_xyz: 0.0 0.0 0.0
+    z_into_table: 'false'
+hand_to_arm_link: front_right_robotiq_85_base_link
+hash_config_file: 'false'
+info:
+    config_key: ''
+    name: front_right_ur_ur5e_v0.0.0_front_right_robotiq_2f_85_2f_85_v0.0.0
+    sku: ''
+    type: ''
+    urdf_hash: ''
+    uuid: ''
+    version: 0.0.0
+joints:
+    entities:
+        front_right_elbow_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_elbow_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: elbow_joint
+        front_right_robotiq_85_left_finger_tip_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'true'
+            name: front_right_robotiq_85_left_finger_tip_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: robotiq_85_left_finger_tip_joint
+        front_right_robotiq_85_left_inner_knuckle_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'true'
+            name: front_right_robotiq_85_left_inner_knuckle_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: robotiq_85_left_inner_knuckle_joint
+        front_right_robotiq_85_left_knuckle_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_robotiq_85_left_knuckle_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: robotiq_85_left_knuckle_joint
+        front_right_robotiq_85_right_finger_tip_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'true'
+            name: front_right_robotiq_85_right_finger_tip_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: robotiq_85_right_finger_tip_joint
+        front_right_robotiq_85_right_inner_knuckle_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'true'
+            name: front_right_robotiq_85_right_inner_knuckle_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: robotiq_85_right_inner_knuckle_joint
+        front_right_robotiq_85_right_knuckle_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'true'
+            name: front_right_robotiq_85_right_knuckle_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: robotiq_85_right_knuckle_joint
+        front_right_shoulder_lift_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '-1.5707'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_shoulder_lift_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: shoulder_lift_joint
+        front_right_shoulder_pan_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_shoulder_pan_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: shoulder_pan_joint
+        front_right_wrist_1_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_wrist_1_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: wrist_1_joint
+        front_right_wrist_2_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_wrist_2_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: wrist_2_joint
+        front_right_wrist_3_joint:
+            can_id: '0'
+            hardstop_position: '0.0'
+            home_position: '0.0'
+            initial_position: '0.0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            lock: 'false'
+            lock_position: '0.0'
+            mimic: 'false'
+            name: front_right_wrist_3_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: wrist_3_joint
+links:
+    entities:
+        front_right_base_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_base_link
+            scene_obj_collision: 'false'
+            unprefixed_name: base_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_base_link_ur:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: front_right_base_link_ur
+            scene_obj_collision: 'false'
+            unprefixed_name: base_link_ur
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_ee_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: front_right_ee_link
+            scene_obj_collision: 'false'
+            unprefixed_name: ee_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_forearm_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_forearm_link
+            scene_obj_collision: 'true'
+            unprefixed_name: forearm_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_robotiq_85_base_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_base_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_base_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_robotiq_85_left_finger_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_left_finger_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_left_finger_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_robotiq_85_left_finger_tip_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_left_finger_tip_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_left_finger_tip_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_robotiq_85_left_inner_knuckle_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_left_inner_knuckle_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_left_inner_knuckle_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_robotiq_85_left_knuckle_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_left_knuckle_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_left_knuckle_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_robotiq_85_right_finger_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_right_finger_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_right_finger_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_robotiq_85_right_finger_tip_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_right_finger_tip_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_right_finger_tip_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_robotiq_85_right_inner_knuckle_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_right_inner_knuckle_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_right_inner_knuckle_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_robotiq_85_right_knuckle_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_robotiq_85_right_knuckle_link
+            scene_obj_collision: 'true'
+            unprefixed_name: robotiq_85_right_knuckle_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_robotiq_85_tcp_tool:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: front_right_robotiq_85_tcp_tool
+            scene_obj_collision: 'false'
+            unprefixed_name: robotiq_85_tcp_tool
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_robotiq_85_tcp_world:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: front_right_robotiq_85_tcp_world
+            scene_obj_collision: 'false'
+            unprefixed_name: robotiq_85_tcp_world
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_shoulder_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_shoulder_link
+            scene_obj_collision: 'false'
+            unprefixed_name: shoulder_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_tool0:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: front_right_tool0
+            scene_obj_collision: 'false'
+            unprefixed_name: tool0
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_upper_arm_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_upper_arm_link
+            scene_obj_collision: 'false'
+            unprefixed_name: upper_arm_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_wrist_1_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_wrist_1_link
+            scene_obj_collision: 'true'
+            unprefixed_name: wrist_1_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_wrist_2_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_wrist_2_link
+            scene_obj_collision: 'true'
+            unprefixed_name: wrist_2_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        front_right_wrist_3_link:
+            collision_geometry_size: 0.0 0.0 0.0
+            collision_geometry_type: box
+            collision_mesh_path: ''
+            collision_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: front_right_wrist_3_link
+            scene_obj_collision: 'true'
+            unprefixed_name: wrist_3_link
+            visual_mesh_path: ''
+            visual_origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+lock_joints: 'false'
+mount_rpy: 0 0 0
+mount_xyz: 0 0 0
+plugin: none
+points_of_interest: []
+positions:
+    default_positions: initial
+    joint_names: shoulder_pan_joint shoulder_lift_joint elbow_joint wrist_1_joint
+        wrist_2_joint wrist_3_joint robotiq_85_left_knuckle_joint robotiq_85_right_knuckle_joint
+        robotiq_85_left_inner_knuckle_joint robotiq_85_right_inner_knuckle_joint robotiq_85_left_finger_tip_joint
+        robotiq_85_right_finger_tip_joint
+    positions:
+        initial: 0.0 -1.5707 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+prefix: ''
+reflect: '1'
+root_link: world
+srdf:
+    loaded_from_cache: 'false'
+    macro_path: ''
+    newly_generated: 'false'
+    path: ''
+    xacro_path: /home/bam/public_ws/src/Universal_Robots_ROS2_Driver/ur_moveit_config/srdf/ur.srdf.xacro
+urdf:
+    abs_package_dirs:
+        robotiq_description: /home/bam/bam_ws/src
+        ur_description: /home/bam/bam_ws/src
+    macro_path: /home/bam/bam_ws/src/bam_machine/bam/descriptions/urdf/arm_hand/arm_hand_macro.xacro
+    path: ''
+    xacro_path: /home/bam/bam_ws/src/bam_machine/bam/descriptions/urdf/arm_hand/arm_hand_config.urdf.xacro
+world_rpy: 0 0 0
+world_xyz: 0 0 0

@@ -37,5 +37,10 @@ from .description_types import (
     ConfigFileInfo,
 )
 
+from .robot_description import RobotDescription
+
+# URDF conversion functionality
+from . import urdf_converter
+
 # PYTHON
 

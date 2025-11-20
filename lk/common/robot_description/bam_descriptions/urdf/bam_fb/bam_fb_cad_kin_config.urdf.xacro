@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+
+<!-- When testing you can run this URDF. Previously I had to comment/uncomment on the macro.xacro, but now I have a standalone file-->
+<!-- default values for properties should be "pure" for when its included in another xacro (ie. moveit) -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="bam_fb">
+
+    <xacro:arg name="bam_descriptions" default="$(env BAM_DESCRIPTIONS_PATH)"/>
+    <!-- <xacro:arg name="bam_descriptions" default="$(find bam_descriptions)"/> -->
+
+    <xacro:include filename="$(arg bam_descriptions)/urdf/common.xacro" />
+    <xacro:include filename="$(arg bam_descriptions)/urdf/texture_cube/texture_cube_macro.xacro" />
+    
+    <xacro:arg name="config_file" default=""/>
+    <xacro:property name="config_file" value="$(arg config_file)"/>
+    <xacro:property name="cfg" value="${xacro.load_yaml(config_file)}"/>    
+
+    <link name="world"/>
+
+    <joint name="world_to_base" type="fixed">
+        <origin xyz="${cfg['args']['world_xyz']}" rpy="${cfg['args']['world_rpy']}"/>
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint>
+
+    <link name="base_link"/>
+
+    <joint name="base_link_joint" type="fixed">
+        <origin xyz="${cfg['args']['base_xyz']}" rpy="${cfg['args']['base_rpy']}"/>
+        <parent link="base_link"/>
+        <child link="${cfg['info']['prefix']}arm_base_link"/>
+    </joint>
+
+    <!-- Include the bam_fb_cad_kin_macro -->
+    <xacro:include filename="$(arg bam_descriptions)/urdf/bam_fb/bam_fb_cad_kin_macro.xacro" />
+    <xacro:make_arm config_file="${config_file}"/>
+
+
+
+</robot>

@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Generic macro to compose an arm (or arm+hand) macro with a conveyor macro.
+
+    Assumptions:
+    - The arm macro is already composed (could be arm alone or arm+hand)
+    - The conveyor macro accepts: config_file
+    - The arm is mounted relative to the conveyor's surface_center frame
+
+    Notes:
+    - Use xacro:call for dynamic macro names.
+    - Include files are passed in as absolute paths so they can live in different packages.
+  -->
+
+  <xacro:macro name="make_arm_conveyor" params="config_file">
+
+    <xacro:property name="cfg" value="${xacro.load_yaml(config_file)}"/>
+    
+    <xacro:arm_with_conveyor
+      arm_macro_path="${cfg['arm']['urdf']['macro_path']}"
+      conveyor_macro_path="${cfg['conveyor']['urdf']['macro_path']}"
+      arm_config_file="${cfg['arm']['config_file']}"
+      conveyor_config_file="${cfg['conveyor']['config_file']}"
+      conveyor_to_arm_link="${cfg['conveyor_to_arm_link']}"
+      arm_base_link="${cfg['arm_base_link']}"
+      mount_xyz="${cfg['arm_mount_xyz']}"
+      mount_rpy="${cfg['arm_mount_rpy']}"/>
+
+  </xacro:macro>
+
+  <xacro:macro name="arm_with_conveyor" params="
+      arm_macro_path
+      conveyor_macro_path
+      arm_config_file
+      conveyor_config_file
+      conveyor_to_arm_link
+      arm_base_link
+      mount_xyz:='0 0 0'
+      mount_rpy:='0 0 0'
+    ">
+
+    <!-- Create conveyor first -->
+    <xacro:include filename="${conveyor_macro_path}"/>
+    <xacro:make_conveyor config_file="${conveyor_config_file}"/>
+
+    <!-- Mount arm on top of conveyor -->
+    <joint name="conveyor_to_arm_mount" type="fixed">
+        <origin xyz="${mount_xyz}" rpy="${mount_rpy}"/>
+        <parent link="${conveyor_to_arm_link}"/>
+        <child  link="${arm_base_link}"/>
+    </joint>
+
+    <!-- Create arm (or arm+hand if the macro includes both) -->
+    <xacro:include filename="${arm_macro_path}"/>
+    <xacro:make_arm config_file="${arm_config_file}"/>
+
+  </xacro:macro>
+
+</robot>

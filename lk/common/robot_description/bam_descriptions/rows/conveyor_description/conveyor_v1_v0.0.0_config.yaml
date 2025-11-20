@@ -1,0 +1,613 @@
+args:
+    base_rpy: 0 0 0
+    base_xyz: 0 0 0
+    height: '0.05'
+    length: '1.5'
+    max_acceleration: '0.5'
+    max_speed: '0.8'
+    plugin: none
+    railing_height_above: '0.05'
+    railing_height_below: '0.0'
+    railing_width: '0.02'
+    reflect: '1'
+    width: '0.4'
+    world_rpy: 0 0 0
+    world_xyz: 0 0 0
+children: []
+config_file: /home/bam/bam_ws/src/bam_machine/bam/descriptions/bam_descriptions/rows/conveyor_description/conveyor_v1_v0.0.0_config.yaml
+hash_file_name: 'false'
+info:
+    config_key: ''
+    name: conveyor
+    prefix: ''
+    prefix_raw: 'true'
+    save_dir: /home/bam/bam_ws/src/bam_machine/bam/descriptions/bam_descriptions/rows/conveyor_description
+    sku: v1
+    type: conveyor
+    urdf_hash: ''
+    uuid: ''
+    version: 0.0.0
+joint_positions:
+    default_positions: initial
+    joint_names: []
+    positions:
+        initial: []
+joints:
+    belt_joint:
+        axis:
+            x: '0.0'
+            y: '0.0'
+            z: '0.0'
+        calibration:
+            falling_hardstop_position: '0.0'
+            falling_home_position: '0.0'
+            rising_hardstop_position: '0.0'
+            rising_home_position: '0.0'
+        initial_position: '0.0'
+        io:
+            can_id: '0'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'true'
+            has_jerk_limits: 'true'
+            has_position_limits: 'false'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '10.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-10.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        mimic:
+            enabled: 'false'
+            joint: ''
+            multiplier: '1.0'
+            offset: '0.0'
+        name: belt_joint
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        prefixes: []
+        tags: []
+        transform:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        type: fixed
+        unprefixed_name: belt_joint
+    entities:
+        belt_joint:
+            axis:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+            calibration:
+                falling_hardstop_position: '0.0'
+                falling_home_position: '0.0'
+                rising_hardstop_position: '0.0'
+                rising_home_position: '0.0'
+            initial_position: '0.0'
+            io:
+                can_id: '0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'true'
+                has_jerk_limits: 'true'
+                has_position_limits: 'false'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '10.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-10.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            mimic:
+                enabled: 'false'
+                joint: ''
+                multiplier: '1.0'
+                offset: '0.0'
+            name: belt_joint
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            prefixes: []
+            tags: []
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: fixed
+            unprefixed_name: belt_joint
+lazy_init: 'false'
+links:
+    center:
+        collision:
+            geometry:
+                filename: ''
+                scale: 1.0 1.0 1.0
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: center
+        prefixes: []
+        scene_obj_collision: 'false'
+        tags: []
+        unprefixed_name: center
+        visual:
+            geometry:
+                filename: ''
+                scale: 1.0 1.0 1.0
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    entities:
+        center:
+            collision:
+                geometry:
+                    filename: ''
+                    scale: 1.0 1.0 1.0
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: center
+            prefixes: []
+            scene_obj_collision: 'false'
+            tags: []
+            unprefixed_name: center
+            visual:
+                geometry:
+                    filename: ''
+                    scale: 1.0 1.0 1.0
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        roller_back:
+            collision:
+                geometry:
+                    filename: ''
+                    scale: 1.0 1.0 1.0
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: roller_back
+            prefixes: []
+            scene_obj_collision: 'false'
+            tags: []
+            unprefixed_name: roller_back
+            visual:
+                geometry:
+                    filename: ''
+                    scale: 1.0 1.0 1.0
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        roller_front:
+            collision:
+                geometry:
+                    filename: ''
+                    scale: 1.0 1.0 1.0
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: roller_front
+            prefixes: []
+            scene_obj_collision: 'false'
+            tags: []
+            unprefixed_name: roller_front
+            visual:
+                geometry:
+                    filename: ''
+                    scale: 1.0 1.0 1.0
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        surface_center:
+            collision:
+                geometry:
+                    filename: ''
+                    scale: 1.0 1.0 1.0
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: surface_center
+            prefixes: []
+            scene_obj_collision: 'false'
+            tags: []
+            unprefixed_name: surface_center
+            visual:
+                geometry:
+                    filename: ''
+                    scale: 1.0 1.0 1.0
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        surface_front:
+            collision:
+                geometry:
+                    filename: ''
+                    scale: 1.0 1.0 1.0
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: surface_front
+            prefixes: []
+            scene_obj_collision: 'false'
+            tags: []
+            unprefixed_name: surface_front
+            visual:
+                geometry:
+                    filename: ''
+                    scale: 1.0 1.0 1.0
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+    roller_back:
+        collision:
+            geometry:
+                filename: ''
+                scale: 1.0 1.0 1.0
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: roller_back
+        prefixes: []
+        scene_obj_collision: 'false'
+        tags: []
+        unprefixed_name: roller_back
+        visual:
+            geometry:
+                filename: ''
+                scale: 1.0 1.0 1.0
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    roller_front:
+        collision:
+            geometry:
+                filename: ''
+                scale: 1.0 1.0 1.0
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: roller_front
+        prefixes: []
+        scene_obj_collision: 'false'
+        tags: []
+        unprefixed_name: roller_front
+        visual:
+            geometry:
+                filename: ''
+                scale: 1.0 1.0 1.0
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    surface_center:
+        collision:
+            geometry:
+                filename: ''
+                scale: 1.0 1.0 1.0
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: surface_center
+        prefixes: []
+        scene_obj_collision: 'false'
+        tags: []
+        unprefixed_name: surface_center
+        visual:
+            geometry:
+                filename: ''
+                scale: 1.0 1.0 1.0
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    surface_front:
+        collision:
+            geometry:
+                filename: ''
+                scale: 1.0 1.0 1.0
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: surface_front
+        prefixes: []
+        scene_obj_collision: 'false'
+        tags: []
+        unprefixed_name: surface_front
+        visual:
+            geometry:
+                filename: ''
+                scale: 1.0 1.0 1.0
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+points_of_interest: []
+srdf:
+    force_regenerate: 'false'
+    loaded_from_cache: 'false'
+    macro_path: ''
+    newly_generated: 'false'
+    path: ''
+    xacro_path: ''
+urdf:
+    abs_package_dirs:
+        descriptions: /home/bam/bam_ws/src/bam_machine/bam/descriptions
+    macro_path: /home/bam/bam_ws/src/bam_machine/bam/descriptions/bam_descriptions/urdf/conveyor/conveyor_macro.xacro
+    path: ''
+    xacro_imports: /home/bam/bam_ws/src/bam_machine/bam/descriptions/bam_descriptions/urdf/common.xacro
+    xacro_path: /home/bam/bam_ws/src/bam_machine/bam/descriptions/bam_descriptions/urdf/conveyor/conveyor_config.urdf.xacro
+    xml_body: ''
+    xml_footer: '</robot>
+
+        '
+    xml_header: '<?xml version="1.0"?>
+
+        <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="composite">
+
+        '

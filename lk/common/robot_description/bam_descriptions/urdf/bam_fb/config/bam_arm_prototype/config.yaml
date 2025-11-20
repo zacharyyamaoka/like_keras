@@ -1,0 +1,177 @@
+calibration_config:
+  hardstop_positions:
+    joint_c1: 4.242344
+    joint_c2: 0.0
+    joint_1: 1.570796
+    joint_2: -1.463982
+    joint_3: 0.0
+    joint_4: 0.0
+    joint_5: 0.0
+    joint_6: 0.0
+  home_positions:
+    joint_c1: 0.0
+    joint_c2: 0.0
+    joint_1: 0.0
+    joint_2: 0.0
+    joint_3: 1.570796
+    joint_4: 0.0
+    joint_5: 0.0
+    joint_6: 0.0
+five_bar_dict:
+  L_c1: 0.12
+  L_c2: 0.265
+  L_elbow: 0.12
+  L_l1: 0.24
+  L_l2: 0.24
+  L_shoulder: 0.087
+  theta_elbow_offset: 0.785398
+friction_parameters:
+  joint_1:
+    damping: 0.001
+    friction: 0.01
+  joint_2:
+    damping: 0.001
+    friction: 0.01
+  joint_3:
+    damping: 0.001
+    friction: 0.01
+  joint_4:
+    damping: 0.001
+    friction: 0.01
+  joint_5:
+    damping: 0.001
+    friction: 0.01
+  joint_6:
+    damping: 0.001
+    friction: 0.01
+initial_state:
+  joint_positions:
+    joint_c1: 2.577891
+    joint_c2: -2.830632
+    joint_1: 0.0
+    joint_2: 0.0
+    joint_3: 0.0
+    joint_4: 0.0
+    joint_5: 0.0
+    joint_6: 0.0
+io_config:
+  transport_path: /dev/serial/by-id/usb-mjbots_fdcanusb_28B3A25D-if00
+  watchdog_timeout: 0.01
+joint_limits:
+  joint_1:
+    has_acceleration_limits: 'false'
+    has_effort_limits: 'true'
+    has_position_limits: 'true'
+    has_velocity_limits: 'true'
+    max_acceleration: 10.0
+    max_effort: 3.14
+    max_position: 3.14
+    max_velocity: 3.14
+    min_position: -3.14
+  joint_2:
+    has_acceleration_limits: 'false'
+    has_effort_limits: 'true'
+    has_position_limits: 'true'
+    has_velocity_limits: 'true'
+    max_acceleration: 10.0
+    max_effort: 3.14
+    max_position: 3.14
+    max_velocity: 3.14
+    min_position: -3.14
+  joint_3:
+    has_acceleration_limits: 'false'
+    has_effort_limits: 'true'
+    has_position_limits: 'true'
+    has_velocity_limits: 'true'
+    max_acceleration: 10.0
+    max_effort: 3.14
+    max_position: 3.14
+    max_velocity: 3.14
+    min_position: -3.14
+  joint_4:
+    has_acceleration_limits: 'false'
+    has_effort_limits: 'true'
+    has_position_limits: 'true'
+    has_velocity_limits: 'true'
+    max_acceleration: 10.0
+    max_effort: 3.14
+    max_position: 3.14
+    max_velocity: 3.14
+    min_position: -3.14
+  joint_5:
+    has_acceleration_limits: 'false'
+    has_effort_limits: 'true'
+    has_position_limits: 'true'
+    has_velocity_limits: 'true'
+    max_acceleration: 10.0
+    max_effort: 3.14
+    max_position: 3.14
+    max_velocity: 3.14
+    min_position: -3.14
+  joint_6:
+    has_acceleration_limits: 'false'
+    has_effort_limits: 'true'
+    has_position_limits: 'true'
+    has_velocity_limits: 'true'
+    max_acceleration: 10.0
+    max_effort: 3.14
+    max_position: 3.14
+    max_velocity: 3.14
+    min_position: -3.14
+kinematic_parameters: {}
+link_parameters:
+  C1:
+    length: 0.12
+    mass: '-1'
+    thickness: 0.006
+    to_C2_spacing: 0.003
+    width: 0.045
+  C2:
+    length: 0.265
+    mass: '-1'
+    thickness: 0.006
+    width: 0.03
+  L1:
+    length: 0.24
+    mass: '-1'
+    to_L2_spacing: 0.009
+    width: 0.0508
+  L2:
+    length: 0.24
+    mass: '-1'
+    width: 0.0381
+  elbow_length: 0.12
+  five_bar_offset: 0.012
+  link_density: '7800'
+  link_wall_thickness: 0.001587
+  shoulder:
+    gearbox_diameter: 0.064
+    gearbox_front_offset: 0.019
+    gearbox_length: 0.0815
+    gearbox_mass: '-1'
+    motor_length: 0.06
+    motor_mass: '-1'
+    motor_width: 0.06
+  theta_elbow_offset: 0.785398
+  wrist:
+    driver_length: 0.01
+    length: 0.05
+    servo_diameter: 0.05
+    servo_length: 0.03
+    servo_mass: 0.01
+    to_wrist_spacing: 0.003
+urdf_xacro_args:
+  arm_type: default
+  base_rpy: 0 0 0
+  config_file: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/bam_arm/config/bam_arm_prototype/config.yaml
+  hand_type: none
+  linkage_type: six_dof
+  plugin: none
+  reflect: '1'
+  six_dof_mode: 'false'
+  sticker_type: default
+  transport_path: /dev/serial/by-id/usb-mjbots_fdcanusb_28B3A25D-if00
+  world_rpy: 0 0 0
+  world_xyz: 0 0 0
+  wrist_type: default
+visual_parameters: {}

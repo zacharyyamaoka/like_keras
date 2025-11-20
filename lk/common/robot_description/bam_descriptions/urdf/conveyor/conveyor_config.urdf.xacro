@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<!-- Standalone URDF xacro for conveyor belt -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="conveyor">
+
+    <xacro:arg name="bam_descriptions" default="$(env BAM_DESCRIPTIONS_PATH)"/>
+    <xacro:include filename="$(arg bam_descriptions)/urdf/common.xacro" />
+
+    <!-- DescriptionArgs -->
+    <xacro:arg name="config_file" default="$(arg bam_descriptions)/urdf/conveyor/config/conveyor_skuv1_v0.0.0_config.yaml"/>
+    <xacro:property name="config_file" value="$(arg config_file)"/>
+    <xacro:property name="cfg" value="${xacro.load_yaml(config_file)}"/>
+    <xacro:property name="prefix" value="${cfg['info']['prefix']}"/>
+
+    <xacro:arg name="world_xyz" default="${cfg['args']['world_xyz']}"/>
+    <xacro:arg name="world_rpy" default="${cfg['args']['world_rpy']}"/>
+    <xacro:arg name="base_xyz" default="${cfg['args']['base_xyz']}"/>
+    <xacro:arg name="base_rpy" default="${cfg['args']['base_rpy']}"/>
+
+    <xacro:property name="world_xyz" value="$(arg world_xyz)"/>
+    <xacro:property name="world_rpy" value="$(arg world_rpy)"/>
+    <xacro:property name="base_xyz" value="$(arg base_xyz)"/>
+    <xacro:property name="base_rpy" value="$(arg base_rpy)"/>
+
+    <link name="world"/>
+
+    <joint name="world_to_base_link" type="fixed">
+        <origin xyz="${world_xyz}" rpy="${world_rpy}"/>
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint>
+
+    <link name="base_link"/>
+
+    <joint name="base_link_to_conveyor" type="fixed">
+        <origin xyz="${base_xyz}" rpy="${base_rpy}"/>
+        <parent link="base_link"/>
+        <child link="${prefix}surface_center"/>
+    </joint>
+
+    <xacro:include filename="$(arg bam_descriptions)/urdf/conveyor/conveyor_macro.xacro"/>
+    <xacro:make_conveyor config_file="${config_file}"/>
+
+</robot>

@@ -284,6 +284,68 @@ class RobotDescription(ConfigMixin):
             generate_py_xml=True,  # Descriptions from entities are Python-generated
         )
 
+    @classmethod
+    def from_urdf_xml(cls, urdf_xml: str, robot_name: Optional[str] = None) -> 'RobotDescription':
+        """Create RobotDescription from URDF XML string.
+        
+        Args:
+            urdf_xml: URDF XML string
+            robot_name: Optional name override for robot
+            
+        Returns:
+            RobotDescription instance
+        """
+        from .urdf_converter import from_urdf_string
+        
+        links_list, joints_list, robot_info = from_urdf_string(urdf_xml, robot_name)
+        
+        # Create Links and Joints containers
+        links = Links()
+        for link in links_list:
+            links.add(link)
+        
+        joints = Joints()
+        for joint in joints_list:
+            joints.add(joint)
+        
+        return cls(
+            info=robot_info,
+            links=links,
+            joints=joints,
+            generate_py_xml=True,  # URDF imports generate Python representation
+        )
+    
+    @classmethod
+    def from_urdf_file(cls, urdf_path: str | Path, robot_name: Optional[str] = None) -> 'RobotDescription':
+        """Create RobotDescription from URDF file.
+        
+        Args:
+            urdf_path: Path to URDF file
+            robot_name: Optional name override for robot
+            
+        Returns:
+            RobotDescription instance
+        """
+        from .urdf_converter import from_urdf_file
+        
+        links_list, joints_list, robot_info = from_urdf_file(urdf_path, robot_name)
+        
+        # Create Links and Joints containers
+        links = Links()
+        for link in links_list:
+            links.add(link)
+        
+        joints = Joints()
+        for joint in joints_list:
+            joints.add(joint)
+        
+        return cls(
+            info=robot_info,
+            links=links,
+            joints=joints,
+            generate_py_xml=True,  # URDF imports generate Python representation
+        )
+
     @staticmethod
     def combine(descriptions: list['RobotDescription'], entities_to_add: Optional[list[LinkDescription | JointDescription]] = None, robot_info: Optional[RobotInfo] = None) -> 'RobotDescription':
         """Combine multiple RobotDescriptions into one.
@@ -418,6 +480,14 @@ class RobotDescription(ConfigMixin):
         # If no children AND not generate_py_xml: use urdf.get_xml() directly
         if not self.children and not self.generate_py_xml:
             return self.urdf.get_xml(xacro_args=self.to_xacro_args(), resolve_packages=False)
+        elif self.generate_py_xml:
+            # Generate URDF directly from Python description
+            from .urdf_converter import to_urdf_string
+            return to_urdf_string(
+                list(self.links.entities.values()),
+                list(self.joints.entities.values()),
+                self.info.name
+            )
         else:
             return self.urdf.get_combined_xml(self.get_body_xml())
 

@@ -1,0 +1,48 @@
+C1:
+  length: 0.12
+  mass: -1.0
+  thickness: 0.006
+  to_C2_spacing: 0.003
+  width: 0.045
+C2:
+  length: 0.265
+  mass: -1.0
+  thickness: 0.006
+  width: 0.03
+L1:
+  length: 0.24
+  mass: -1.0
+  to_L2_spacing: 0.009000000000000001
+  width: 0.0508
+L2:
+  length: 0.24
+  mass: -1.0
+  width: 0.038099999999999995
+elbow_length: 0.12
+five_bar_dict:
+  L_c1: 0.12
+  L_c2: 0.265
+  L_elbow: 0.12
+  L_l1: 0.24
+  L_l2: 0.24
+  L_shoulder: 0.08700000000000001
+  theta_elbow_offset: 0.7853981633974483
+five_bar_offset: 0.012
+link_density: 7800.0
+link_wall_thickness: 0.0015875
+shoulder:
+  gearbox_diameter: 0.064
+  gearbox_front_offset: 0.019
+  gearbox_length: 0.0815
+  gearbox_mass: -1.0
+  motor_length: 0.06
+  motor_mass: -1.0
+  motor_width: 0.06
+theta_elbow_offset: 0.7853981633974483
+wrist:
+  driver_length: 0.01
+  length: 0.05
+  servo_diameter: 0.05
+  servo_length: 0.03
+  servo_mass: 0.01
+  to_wrist_spacing: 0.003

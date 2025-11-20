@@ -1,0 +1,113 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="robot">
+
+  <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+
+  <!-- Five-Bar Mechanism Parameters (in meters) -->
+  <xacro:arg name="L_l1" default="0.240"/>      <!-- Length of link 1 -->
+  <xacro:arg name="L_l2" default="0.240"/>      <!-- Length of link 2 -->
+  <xacro:arg name="L_c1" default="0.120"/>      <!-- Length of coupler 1 -->
+  <xacro:arg name="L_c2" default="0.265"/>      <!-- Length of coupler 2 -->
+  <xacro:arg name="L_shoulder" default="0.087"/> <!-- Shoulder offset length -->
+  <xacro:arg name="L_elbow" default="0.120"/>   <!-- Elbow offset length -->
+  <xacro:arg name="theta_elbow_offset" default="0.785398"/> <!-- Elbow offset angle in radians (45 degrees) -->
+
+  <xacro:property name="L_l1" value="$(arg L_l1)"/>
+  <xacro:property name="L_l2" value="$(arg L_l2)"/>
+  <xacro:property name="L_c1" value="$(arg L_c1)"/>
+  <xacro:property name="L_c2" value="$(arg L_c2)"/>
+  <xacro:property name="L_shoulder" value="$(arg L_shoulder)"/>
+  <xacro:property name="L_elbow" value="$(arg L_elbow)"/>
+  <xacro:property name="theta_elbow_offset" value="$(arg theta_elbow_offset)"/>
+
+
+  <xacro:arg name="plugin" default="mock"/>  <!-- none, mock, gazebo, real -->
+  <xacro:property name="plugin" value="$(arg plugin)" />
+
+  <xacro:arg name="controllers_file_path" default="/home/bam/bam_ws/src/bam_core/bam_core_bringup/config/controllers/five_bar_controllers.yaml"/>
+  <xacro:property name="controllers_file_path" value="$(arg controllers_file_path)"/>
+
+  <xacro:arg name="ros_namespace" default=""/>
+  <xacro:property name="ros_namespace" value="$(arg ros_namespace)"/>
+
+  <xacro:arg name="world_xyz" default="0 0 1"/>
+  <xacro:property name="world_xyz" value="$(arg world_xyz)"/>
+
+  <xacro:arg name="world_rpy" default="0 0 0"/>
+  <xacro:property name="world_rpy" value="$(arg world_rpy)"/>
+
+  <xacro:arg name="base_xyz" default="0 0 0"/>
+  <xacro:property name="base_xyz" value="$(arg base_xyz)"/>
+
+  <!-- Rotation to match bam robot -->
+  <!-- <xacro:arg name="base_rpy" default="0 0 ${-pi/2}"/> -->
+  <xacro:arg name="base_rpy" default="0 0 0"/>
+  <xacro:property name="base_rpy" value="$(arg base_rpy)"/>
+
+  <xacro:arg name="ros2_control" default="true"/>
+  <xacro:property name="ros2_control" value="$(arg ros2_control)"/>
+
+  <xacro:arg name="prefix" default=""/>
+  <xacro:property name="prefix" value="$(arg prefix)"/>
+
+  <xacro:arg name="k_damping" default="0.001"/>
+  <xacro:property name="k_damping" value="$(arg k_damping)"/>
+
+  <xacro:arg name="k_friction" default="0.01"/>
+  <xacro:property name="k_friction" value="$(arg k_friction)"/>
+
+  <xacro:arg name="couple_arms" default="true"/>
+  <xacro:property name="couple_arms" value="$(arg couple_arms)"/>
+
+<!-- World is used to position robot in the world, Assuming that it's already orietnated correctly -->
+    <link name="world"/>
+
+    <joint name="world_to_base" type="fixed">
+        <origin xyz="${world_xyz}" rpy="${world_rpy}"/>
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint>
+
+    <link name="base_link">
+        <xacro:dummy_inertial/>
+    </link>
+
+<!-- Base link is used to position the robot correctly relative to its self -->
+<!--  -->
+    <joint name="base_link_joint" type="fixed">
+        <origin xyz="${base_xyz}" rpy="${base_rpy}"/>
+        <parent link="base_link"/>
+        <child link="shoulder"/>
+    </joint>
+
+
+
+  <xacro:include filename="$(find bam_descriptions)/urdf/dummy_five_bar/five_bar_marco.xacro"/>
+
+  <xacro:five_bar 
+    prefix=""
+    L_l1="${L_l1}" 
+    L_l2="${L_l2}" 
+    L_c1="${L_c1}" 
+    L_c2="${L_c2}" 
+    L_shoulder="${L_shoulder}" 
+    L_elbow="${L_elbow}" 
+    theta_elbow_offset="${theta_elbow_offset}"
+    k_damping="${k_damping}"
+    k_friction="${k_friction}"/>
+
+
+    <xacro:if value="${ros2_control}">
+    <xacro:include filename="$(find bam_descriptions)/urdf/dummy_five_bar/five_bar.ros2_control.xacro" />
+        <xacro:five_bar_ros2_control 
+        prefix="${prefix}"
+        plugin="${plugin}"
+        controllers_file_path="${controllers_file_path}"
+        ros_namespace="${ros_namespace}"
+        couple_arms="${couple_arms}"/>
+
+    </xacro:if>
+
+
+
+</robot>

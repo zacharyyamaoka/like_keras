@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+
+    <xacro:arg name="bam_descriptions" default="$(env BAM_DESCRIPTIONS_PATH)"/>
+    <!-- <xacro:arg name="bam_descriptions" default="$(find bam_descriptions)"/> -->
+    <xacro:include filename="$(arg bam_descriptions)/urdf/ros2_control/moteus_macro.xacro"/>
+
+    <xacro:macro name="gripper_v1_ros2_control" params="prefix plugin">  
+
+        <ros2_control name="${prefix}gripper_interface" type="system">
+
+            <hardware>
+
+                <xacro:if value="${plugin == 'gazebo'}">
+                    <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+                </xacro:if>
+
+                <xacro:unless value="${plugin == 'gazebo'}">
+                    <plugin>mock_components/GenericSystem</plugin>
+                    <param name="mock_sensor_commands">"true"</param>
+                </xacro:unless>
+
+                
+                <param name="prefix">${prefix}</param>
+
+            </hardware>
+
+            <!-- <xacro:moteus joint_name="${prefix}eef_joint_1" can_id="17" init_pos="0" mock='true' virtual='true'/>  -->
+            <!-- set init_pos > 0 so fingers don't start in collision -->
+            <xacro:moteus joint_name="${prefix}eef_joint_1" can_id="17" init_pos="0.1" max_vel='3.14' mock='true' virtual='true'/> 
+
+        </ros2_control>
+        
+    </xacro:macro>
+
+</robot>

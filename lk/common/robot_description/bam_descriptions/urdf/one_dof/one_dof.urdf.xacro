@@ -1,0 +1,97 @@
+<?xml version="1.0"?>
+<robot name="one_dof_pendulum" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/one_dof/one_dof_macro.xacro" />
+
+    <xacro:arg name="ros2_control" default="true"/>
+    <xacro:property name="ros2_control" value="$(arg ros2_control)" />
+
+    <xacro:arg name="transport_path" default=""/>
+    <xacro:property name="transport_path" value="$(arg transport_path)" />
+
+    <xacro:arg name="plugin" default="mock"/>  <!-- none, mock, gazebo, real -->
+    <xacro:property name="plugin" value="$(arg plugin)" />
+
+    <xacro:arg name="controllers_file_path" default="$(find bam_core_bringup)/config/controllers/one_dof_controllers.yaml"/>
+    <xacro:property name="controllers_file_path" value="$(arg controllers_file_path)" />
+
+    <xacro:arg name="ros_namespace" default="bam_GPU"/>
+    <xacro:property name="ros_namespace" value="$(arg ros_namespace)" />
+
+
+    <!-- Define args for all macro parameters with defaults, so they can be set from the outside -->
+    <xacro:arg name="rotor_diameter" default="0.05"/>
+    <xacro:arg name="rotor_length" default="0.1"/>
+    <xacro:arg name="rotor_mass" default="0.2"/>
+    <xacro:arg name="gearbox_diameter" default="0.04"/>
+    <xacro:arg name="gearbox_length" default="0.08"/>
+    <xacro:arg name="gearbox_mass" default="0.15"/>
+    <xacro:arg name="arm_width" default="0.02"/>
+    <xacro:arg name="arm_length" default="1.0"/>
+    <xacro:arg name="arm_mass" default="0.05"/>
+    <xacro:arg name="payload_diameter" default="0.06"/>
+    <xacro:arg name="payload_thickness" default="0.02"/>
+    <xacro:arg name="payload_mass" default="0.1"/>
+    <xacro:arg name="payload_distance" default="1.0"/>
+    <xacro:arg name="mounting_angle" default="0.0"/>
+
+    <!-- Set properties from args for convenience -->
+    <xacro:property name="rotor_diameter" value="$(arg rotor_diameter)"/>
+    <xacro:property name="rotor_length" value="$(arg rotor_length)"/>
+    <xacro:property name="rotor_mass" value="$(arg rotor_mass)"/>
+    <xacro:property name="gearbox_diameter" value="$(arg gearbox_diameter)"/>
+    <xacro:property name="gearbox_length" value="$(arg gearbox_length)"/>
+    <xacro:property name="gearbox_mass" value="$(arg gearbox_mass)"/>
+    <xacro:property name="arm_width" value="$(arg arm_width)"/>
+    <xacro:property name="arm_length" value="$(arg arm_length)"/>
+    <xacro:property name="arm_mass" value="$(arg arm_mass)"/>
+    <xacro:property name="payload_diameter" value="$(arg payload_diameter)"/>
+    <xacro:property name="payload_thickness" value="$(arg payload_thickness)"/>
+    <xacro:property name="payload_mass" value="$(arg payload_mass)"/>
+    <xacro:property name="payload_distance" value="$(arg payload_distance)"/>
+    <xacro:property name="mounting_angle" value="$(arg mounting_angle)"/>
+
+
+    <link name="world"/>   <!-- Attach to Gazebo World -->
+
+    <joint name="world_to_base" type="fixed">
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint>
+
+    <link name="base_link">
+        <xacro:dummy_inertial/>
+    </link>
+
+    <joint name="base_link_to_motor_housing" type="fixed">
+        <parent link="base_link"/>
+        <child link="motor_housing"/>
+        <origin xyz="0 0 0.0" rpy="${mounting_angle} 0 0"/>
+    </joint>
+
+        <!-- Instantiate the macro with all parameters -->
+    <xacro:one_dof
+        rotor_diameter="${rotor_diameter}"
+        rotor_length="${rotor_length}"
+        rotor_mass="${rotor_mass}"
+        gearbox_diameter="${gearbox_diameter}"
+        gearbox_length="${gearbox_length}"
+        gearbox_mass="${gearbox_mass}"
+        arm_width="${arm_width}"
+        arm_length="${arm_length}"
+        arm_mass="${arm_mass}"
+        payload_diameter="${payload_diameter}"
+        payload_thickness="${payload_thickness}"
+        payload_mass="${payload_mass}"
+        payload_distance="${payload_distance}"
+    />
+
+    <xacro:if value="${ros2_control}">
+        <xacro:include filename="$(find bam_descriptions)/urdf/one_dof/one_dof.ros2_control.xacro"/>
+        <xacro:one_dof_ros2_control plugin="${plugin}" transport_path="${transport_path}" controllers_file_path="${controllers_file_path}" ros_namespace="${ros_namespace}"/>
+    </xacro:if>
+
+</robot>

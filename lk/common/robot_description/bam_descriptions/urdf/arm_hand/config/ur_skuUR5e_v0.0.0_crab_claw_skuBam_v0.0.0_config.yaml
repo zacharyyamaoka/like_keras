@@ -1,0 +1,397 @@
+REGISTRY: {}
+_file_name: ''
+_file_name_stamped: ''
+_metadata:
+    created_at: 08_47pm_29_oct_2025
+    created_by: Zach Yamaoka
+    version: '1.0'
+_save_dir: ''
+arm:
+    REGISTRY: {}
+    _file_name: ''
+    _file_name_stamped: ''
+    _metadata:
+        created_at: 08_47pm_29_oct_2025
+        created_by: Zach Yamaoka
+        version: '1.0'
+    _save_dir: ''
+    base_link: base_link_ur
+    base_mount: base_link_ur
+    config_dir: /home/bam/public_ws/install/ur_description/share/ur_description/urdf/config
+    config_file_name: ur_skuUR5e_v0.0.0_config
+    dh:
+        a2: '-0.425'
+        a3: '-0.3922'
+        d1: '0.1625'
+        d4: '0.1333'
+        d5: '0.0997'
+        d6: '0.0996'
+    five_bar:
+        L_c1: '0.0'
+        L_c2: '0.0'
+        L_elbow: '0.0'
+        L_l1: '0.0'
+        L_l2: '0.0'
+        L_shoulder: '0.0'
+        theta_elbow_offset: '0.0'
+    ik_sol_preference:
+    -   Elbow: Up
+        Shoulder: Left
+        Wrist: Down
+    -   Elbow: Up
+        Shoulder: Left
+        Wrist: Up
+    ik_tip: tool0
+    info:
+        config_key: ''
+        name: ur
+        prefix: ''
+        sku: UR5e
+        type: ur
+        uuid: 00000000-0000-0000-0000-000000000000
+        version: 0.0.0
+    joints:
+    -   can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        lock: 'false'
+        lock_position: '0.0'
+        name: shoulder_pan_joint
+        passive: 'false'
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+    -   can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '-1.5707'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        lock: 'false'
+        lock_position: '0.0'
+        name: shoulder_lift_joint
+        passive: 'false'
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+    -   can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        lock: 'false'
+        lock_position: '0.0'
+        name: elbow_joint
+        passive: 'false'
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+    -   can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        lock: 'false'
+        lock_position: '0.0'
+        name: wrist_1_joint
+        passive: 'false'
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+    -   can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        lock: 'false'
+        lock_position: '0.0'
+        name: wrist_2_joint
+        passive: 'false'
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+    -   can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        lock: 'false'
+        lock_position: '0.0'
+        name: wrist_3_joint
+        passive: 'false'
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+    links: []
+    move_group_arm: ur_manipulator
+    move_group_gripper: gripper
+    named_positions:
+        ready: 1.4 -1.62 1.54 -1.2 -1.6 -0.11
+        up: 0 -1.5707 0 -1.5707 0 0
+    points_of_interest: []
+    reach_map_path: /home/bam/bam_ws/src/bam_core/traj_gen/bam_reach/maps/ur/ur5e/ur5e_table_0.8x1.5x0.8_0.30_180x45x360_09_aug_2025.pkl
+    srdf:
+        macro_name: ''
+        macro_path: ''
+        path: ''
+        xacro_args:
+            base_rpy: 0 0 0
+            base_xyz: 0 0 0
+            name: ur5e
+            plugin: none
+            reflect: '1'
+            world_rpy: 0 0 0
+            world_xyz: 0 0 0
+        xacro_path: /home/bam/public_ws/src/Universal_Robots_ROS2_Driver/ur_moveit_config/srdf/ur.srdf.xacro
+    trajectory_topic: scaled_joint_trajectory_controller/follow_joint_trajectory
+    urdf:
+        macro_name: ''
+        macro_path: /home/bam/public_ws/install/ur_description/share/ur_description/urdf/ur_macro.xacro
+        mesh_dirs: /home/bam/public_ws/install/ur_description/share
+        path: ''
+        xacro_args:
+            base_rpy: 0 0 0
+            base_xyz: 0 0 0
+            name: ur5e
+            plugin: none
+            reflect: '1'
+            ur_type: ur5e
+            world_rpy: 0 0 0
+            world_xyz: 0 0 0
+        xacro_path: /home/bam/public_ws/install/ur_description/share/ur_description/urdf/ur.urdf.xacro
+    world_link: world
+    config_file: /home/bam/public_ws/install/ur_description/share/ur_description/urdf/config/ur_skuUR5e_v0.0.0_config.yaml
+config_dir: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/arm_hand/config
+config_file_name: ur_skuUR5e_v0.0.0_crab_claw_skuBam_v0.0.0_config
+hand:
+    REGISTRY: {}
+    _file_name: ''
+    _file_name_stamped: ''
+    _metadata:
+        created_at: 08_47pm_29_oct_2025
+        created_by: Zach Yamaoka
+        version: '1.0'
+    _save_dir: ''
+    center_link: crab_claw_center
+    claw_config:
+        degrees: '3'
+        opening_angles: []
+        widths: []
+    config_dir: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/crab_claw_v1/config
+    config_file_name: crab_claw_skuBam_v0.0.0_config
+    arm_mount: eef_link_1
+    info:
+        config_key: ''
+        name: crab_claw
+        prefix: ''
+        sku: Bam
+        type: crab_claw
+        uuid: 00000000-0000-0000-0000-000000000000
+        version: 0.0.0
+    joints:
+    -   can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        lock: 'false'
+        lock_position: '0.0'
+        name: crab_claw_joint
+        passive: 'false'
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+    links: []
+    max_width: '0.1'
+    named_positions: {}
+    opening_angles: 0.0 0.04363323129985824 0.09599310885968812 0.2007128639793479
+        0.30543261909900765 0.6544984694978736 1.335176877775662
+    points_of_interest: []
+    poly_degree: '3'
+    srdf:
+        macro_name: ''
+        macro_path: ''
+        path: ''
+        xacro_args:
+            base_rpy: 0 0 0
+            base_xyz: 0 0 0
+            plugin: none
+            reflect: '1'
+            world_rpy: 0 0 0
+            world_xyz: 0 0 0
+        xacro_path: ''
+    tcp_tool: tcp_tool
+    tcp_world: tcp_world
+    tcp_world_floating: tcp_world_floating
+    urdf:
+        macro_name: ''
+        macro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/crab_claw_v1/crab_claw_v1_macro.xacro
+        mesh_dirs: /home/bam/bam_ws/src/bam_common/bam_descriptions
+        path: ''
+        xacro_args:
+            base_rpy: 0 0 0
+            base_xyz: 0 0 0
+            disable_floating_tcp: 'false'
+            hand_type: CrabClaw
+            plugin: none
+            reflect: '1'
+            world_rpy: 0 0 0
+            world_xyz: 0 0 0
+        xacro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/crab_claw_v1/crab_claw_v1.urdf.xacro
+    widths: 0.0 0.005 0.01 0.02 0.03 0.06 0.12
+    world_link: world
+    config_file: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/crab_claw_v1/config/crab_claw_skuBam_v0.0.0_config.yaml
+info:
+    config_key: ''
+    name: ''
+    prefix: ''
+    sku: ''
+    type: ''
+    uuid: 00000000-0000-0000-0000-000000000000
+    version: 0.0.0
+joints: []
+links: []
+named_positions: {}
+points_of_interest: []
+srdf:
+    macro_name: ''
+    macro_path: ''
+    path: ''
+    xacro_args:
+        base_rpy: 0 0 0
+        base_xyz: 0 0 0
+        plugin: none
+        reflect: '1'
+        world_rpy: 0 0 0
+        world_xyz: 0 0 0
+    xacro_path: ''
+urdf:
+    macro_name: ''
+    macro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/arm_hand/arm_hand_macro.xacro
+    mesh_dirs: /home/bam/bam_ws/src/bam_common
+    path: ''
+    xacro_args:
+        arm_config_file: /home/bam/public_ws/install/ur_description/share/ur_description/urdf/config/ur_skuUR5e_v0.0.0_config.yaml
+        arm_to_base_link: base_link_ur
+        arm_to_hand_link: tool0
+        arm_xacro_path: /home/bam/public_ws/install/ur_description/share/ur_description/urdf/ur.urdf.xacro
+        base_rpy: 0 0 0
+        base_xyz: 0 0 0
+        hand_config_file: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/crab_claw_v1/config/crab_claw_skuBam_v0.0.0_config.yaml
+        hand_to_arm_link: eef_link_1
+        hand_xacro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/crab_claw_v1/crab_claw_v1.urdf.xacro
+        mount_rpy: 0 0 0
+        mount_xyz: 0 0 0
+        plugin: none
+        reflect: '1'
+        world_rpy: 0 0 0
+        world_xyz: 0 0 0
+    xacro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/arm_hand/arm_hand.urdf.xacro
+world_link: world
+config_file: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/arm_hand/config/ur_skuUR5e_v0.0.0_crab_claw_skuBam_v0.0.0_config.yaml

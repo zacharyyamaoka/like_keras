@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/ros2_control/moteus_macro.xacro"/>
+
+    <xacro:macro name="one_dof_ros2_control" params="plugin transport_path controllers_file_path ros_namespace">  
+
+        <ros2_control name="arm_interface" type="system">
+
+            <hardware>
+
+                <xacro:if value="${plugin == 'real'}">
+                    <plugin>bam_hardware_interface/MoteusHardwareInterface</plugin>
+                </xacro:if>
+
+                <xacro:if value="${plugin == 'gazebo'}">
+                    <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+                </xacro:if>
+
+                <!-- fallback to mock if not real or gazebo -->
+                <xacro:unless value="${(plugin == 'real') or (plugin == 'gazebo')}">
+                    <plugin>mock_components/GenericSystem</plugin>
+                    <param name="mock_sensor_commands">"true"</param>
+                </xacro:unless>
+                
+                <param name="transport_path">${transport_path}</param>
+
+
+            </hardware>
+
+            <xacro:moteus joint_name="joint_1" can_id="1" init_pos="0"/>
+
+        </ros2_control>
+
+        <xacro:if value="${plugin == 'gazebo'}">
+            <gazebo>
+                <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+                    <parameters>$(arg controllers_file_path)</parameters>
+                    <ros>
+                        <namespace>$(arg ros_namespace)</namespace>
+                    </ros>
+                </plugin>
+            </gazebo>
+        </xacro:if>
+
+    </xacro:macro>
+
+</robot>

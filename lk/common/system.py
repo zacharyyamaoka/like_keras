@@ -19,22 +19,6 @@ from dataclasses import dataclass, field
 import time
 
 
-@dataclass
-class SystemConfig:
-    """
-        Base configuration for systems.
-        
-        Users can subclass this to add system-specific configuration.
-    """
-    name: str = "system"
-    rate_hz: Optional[float] = None  # Target execution rate
-    max_iterations: Optional[int] = None  # Stop after N iterations (None = infinite)
-    
-    # Debug options
-    verbose: bool = False
-    validate_graph: bool = True
-
-
 class System:
     """
         Top-level system orchestrator.
@@ -48,13 +32,28 @@ class System:
         3. Builder pattern
     """
     
+    @dataclass
+    class Config:
+        """
+            Base configuration for systems.
+            
+            Users can subclass this to add system-specific configuration.
+        """
+        name: str = "system"
+        rate_hz: Optional[float] = None  # Target execution rate
+        max_iterations: Optional[int] = None  # Stop after N iterations (None = infinite)
+        
+        # Debug options
+        verbose: bool = False
+        validate_graph: bool = True
+    
     def __init__(self, 
                  nodes: Optional[List[Node]] = None,
                  components: Optional[List[Component]] = None,
                  inputs: Optional[List[Port]] = None,
                  outputs: Optional[List[Port]] = None,
                  subsystems: Optional[List['System']] = None,
-                 config: Optional[SystemConfig] = None):
+                 config: Optional['System.Config'] = None):
         """
             Initialize system.
             
@@ -66,7 +65,7 @@ class System:
                 subsystems: Nested subsystems
                 config: System configuration
         """
-        self.config = config or SystemConfig()
+        self.config = config or System.Config()
         
         # Collections (will be discovered + manually added)
         self._nodes: List[Node] = nodes or []
@@ -174,6 +173,27 @@ class System:
                 print(f"Graph validation: {'✓' if is_valid else '✗'}")
                 for issue in issues:
                     print(f"  {issue}")
+    
+    def add_web_server(self, web_server: Optional[Any] = None, 
+                      auto_connect: bool = True) -> Any:
+        """
+            Add web server component for monitoring.
+            
+            Args:
+                web_server: WebServerComponent instance (creates one if None)
+                auto_connect: Auto-connect to all state/diagnostics ports
+            
+            Returns:
+                The web server component
+        """
+        from lk.common.web_server import WebServerComponent, WebServerConfig
+        
+        if web_server is None:
+            config = WebServerConfig(auto_connect_all=auto_connect)
+            web_server = WebServerComponent(config=config)
+        
+        self.add_component(web_server)
+        return web_server
     
     def configure(self):
         """
@@ -448,3 +468,6 @@ class System:
             f"components={len(self._components)}, iteration={self._iteration})"
         )
 
+
+# Backwards compatibility alias
+SystemConfig = System.Config

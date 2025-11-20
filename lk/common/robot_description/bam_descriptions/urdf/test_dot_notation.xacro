@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="dot_notation_test">
+
+  <!--
+    Simple xacro test demonstrating dot notation in arg and property names.
+    Dots allow hierarchical organization of parameters.
+  -->
+
+  <!-- Traditional underscore notation -->
+  <xacro:arg name="robot_name" default="test_robot"/>
+  <xacro:arg name="joint_damping" default="0.5"/>
+  <xacro:arg name="joint_friction" default="0.1"/>
+
+  <!-- Dot notation for hierarchical organization -->
+  <xacro:arg name="robot.prefix" default="arm"/>
+  <xacro:arg name="robot.namespace" default="manipulator"/>
+  <xacro:arg name="joint.shoulder.damping" default="1.0"/>
+  <xacro:arg name="joint.shoulder.friction" default="0.2"/>
+  <xacro:arg name="joint.elbow.damping" default="0.8"/>
+  <xacro:arg name="joint.elbow.friction" default="0.15"/>
+  <xacro:arg name="link.dimensions.length" default="0.5"/>
+  <xacro:arg name="link.dimensions.radius" default="0.05"/>
+
+  <!-- Properties using dot notation -->
+  <xacro:property name="material.steel.density" value="7850"/>
+  <xacro:property name="material.aluminum.density" value="2700"/>
+  <xacro:property name="safety.limits.max_velocity" value="2.0"/>
+  <xacro:property name="safety.limits.max_effort" value="100.0"/>
+
+  <!-- Macro demonstrating dot notation usage -->
+  <xacro:macro name="test_joint" params="name parent child damping friction">
+    <joint name="${name}" type="revolute">
+      <parent link="${parent}"/>
+      <child link="${child}"/>
+      <axis xyz="0 0 1"/>
+      <limit lower="-3.14" upper="3.14" 
+             effort="${safety.limits.max_effort}" 
+             velocity="${safety.limits.max_velocity}"/>
+      <dynamics damping="${damping}" friction="${friction}"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- Macro for creating links with dot notation properties -->
+  <xacro:macro name="test_link" params="name length radius material_density">
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <cylinder length="${length}" radius="${radius}"/>
+        </geometry>
+        <material name="blue">
+          <color rgba="0 0 1 1"/>
+        </material>
+      </visual>
+      <inertial>
+        <mass value="${3.14159 * radius * radius * length * material_density}"/>
+        <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+      </inertial>
+    </link>
+  </xacro:macro>
+
+  <!-- Base link -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.1 0.1 0.1"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <!-- Using the macros with dot notation arguments -->
+  <xacro:test_link 
+    name="$(arg robot.prefix)_shoulder_link" 
+    length="$(arg link.dimensions.length)"
+    radius="$(arg link.dimensions.radius)"
+    material_density="${material.aluminum.density}"/>
+
+  <xacro:test_link 
+    name="$(arg robot.prefix)_elbow_link" 
+    length="$(arg link.dimensions.length)"
+    radius="$(arg link.dimensions.radius)"
+    material_density="${material.steel.density}"/>
+
+  <xacro:test_joint 
+    name="$(arg robot.prefix)_shoulder_joint"
+    parent="base_link"
+    child="$(arg robot.prefix)_shoulder_link"
+    damping="$(arg joint.shoulder.damping)"
+    friction="$(arg joint.shoulder.friction)"/>
+
+  <xacro:test_joint 
+    name="$(arg robot.prefix)_elbow_joint"
+    parent="$(arg robot.prefix)_shoulder_link"
+    child="$(arg robot.prefix)_elbow_link"
+    damping="$(arg joint.elbow.damping)"
+    friction="$(arg joint.elbow.friction)"/>
+
+  <!-- Example showing nested property access -->
+  <xacro:property name="config.joint.shoulder.max_velocity" value="${safety.limits.max_velocity * 0.8}"/>
+  <xacro:property name="config.joint.elbow.max_velocity" value="${safety.limits.max_velocity * 0.6}"/>
+
+  <!-- Print statement to verify values (visible when processing xacro) -->
+  <xacro:property name="verbose" value="true"/>
+  <xacro:if value="${verbose}">
+    <!-- These would show during xacro processing -->
+    <!-- Shoulder damping: $(arg joint.shoulder.damping) -->
+    <!-- Elbow damping: $(arg joint.elbow.damping) -->
+    <!-- Steel density: ${material.steel.density} -->
+  </xacro:if>
+
+</robot>
+

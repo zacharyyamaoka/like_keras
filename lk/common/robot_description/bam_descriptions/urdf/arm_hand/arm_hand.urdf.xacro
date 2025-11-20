@@ -1,0 +1,76 @@
+<?xml version="1.0"?>
+<!-- Standalone URDF xacro that instantiates arm_with_hand -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="arm_with_hand">
+
+    <xacro:arg name="bam_descriptions" default="$(find bam_descriptions)"/>
+    <xacro:arg name="ur_description" default="$(find ur_description)"/>
+
+    <xacro:include filename="$(arg bam_descriptions)/urdf/common.xacro" />
+
+
+    <!-- DescriptionArgs to locate arm/hand macro files and choose which macro names to call -->
+    <xacro:arg name="arm_macro_path" default="$(arg ur_description)/urdf/ur_macro.xacro"/>
+    <xacro:arg name="arm_config_file" default="$(arg ur_description)/urdf/config/ex_make_arm.yaml"/>
+    <xacro:arg name="hand_macro_path" default="$(arg bam_descriptions)/urdf/crab_claw_v1/crab_claw_v1_macro.xacro"/>
+    <xacro:arg name="hand_config_file" default="$(arg bam_descriptions)/urdf/crab_claw_v1/config/crab_claw_skuBam_v0.0.0_config.yaml"/>
+
+    <xacro:arg name="world_xyz" default="0 0 0"/>
+    <xacro:arg name="world_rpy" default="0 0 0"/>
+    <xacro:arg name="base_xyz" default="0 0 0"/>
+    <xacro:arg name="base_rpy" default="0 0 0"/>
+
+    <xacro:arg name="mount_xyz" default="0 0 0"/>
+    <xacro:arg name="mount_rpy" default="0 0 0"/>
+    <xacro:arg name="arm_to_base_link" default="base_link_ur"/>
+    <xacro:arg name="arm_to_hand_link" default="tool0"/>
+    <xacro:arg name="hand_to_arm_link" default="eef_link_1"/>
+
+    <xacro:property name="arm_macro_path" value="$(arg arm_macro_path)"/>
+    <xacro:property name="arm_config_file" value="$(arg arm_config_file)"/>
+    <xacro:property name="hand_macro_path" value="$(arg hand_macro_path)"/>
+    <xacro:property name="hand_config_file" value="$(arg hand_config_file)"/>
+
+    <xacro:property name="mount_xyz" value="$(arg mount_xyz)"/>
+    <xacro:property name="mount_rpy" value="$(arg mount_rpy)"/>
+    <xacro:property name="arm_to_hand_link" value="$(arg arm_to_hand_link)"/>
+    <xacro:property name="hand_to_arm_link" value="$(arg hand_to_arm_link)"/>
+    
+    <xacro:property name="world_xyz" value="$(arg world_xyz)"/>
+    <xacro:property name="world_rpy" value="$(arg world_rpy)"/>
+    <xacro:property name="base_xyz" value="$(arg base_xyz)"/>
+    <xacro:property name="base_rpy" value="$(arg base_rpy)"/>
+    <xacro:property name="arm_to_base_link" value="$(arg arm_to_base_link)"/>
+
+    <!-- Attach to Gazebo World -->
+    <link name="world"/>
+
+    <joint name="world_to_base_link" type="fixed">
+        <origin xyz="${world_xyz}" rpy="${world_rpy}"/>
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint>
+
+    <link name="base_link">
+        <xacro:dummy_inertial/>
+    </link>
+
+    <joint name="base_link_joint" type="fixed">
+        <origin xyz="${base_xyz}" rpy="${base_rpy}"/>
+        <parent link="base_link"/>
+        <child link="${arm_to_base_link}"/>
+    </joint>
+    
+
+    <xacro:include filename="$(arg bam_descriptions)/urdf/arm_hand/arm_hand_macro.xacro"/>
+    <xacro:arm_with_hand
+      arm_macro_path="${arm_macro_path}"
+      hand_macro_path="${hand_macro_path}"
+      arm_config_file="${arm_config_file}"
+      hand_config_file="${hand_config_file}"
+      arm_to_hand_link="${arm_to_hand_link}"
+      hand_to_arm_link="${hand_to_arm_link}"
+      mount_xyz="${mount_xyz}"
+      mount_rpy="${mount_rpy}"/>
+
+
+</robot>

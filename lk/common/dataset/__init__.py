@@ -16,7 +16,9 @@ from .diff import diffdiff, assert_datasets_equal, DiffResult, KeyDiff
 from .viz import plot_histogram, plot_heatmap, plot_timeseries, plot_comparison
 
 # Backend imports (for advanced users)
-from .backends import DatasetBackend, MemoryBackend, PickleBackend
+from .backend import DatasetBackend
+from .memory_backend import MemoryBackend
+from .pickle_backend import PickleBackend
 
 __all__ = [
     # Core classes

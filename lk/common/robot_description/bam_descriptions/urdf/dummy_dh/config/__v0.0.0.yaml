@@ -1,0 +1,65 @@
+REGISTRY: {}
+a2: '-0.24'
+a3: '-0.299658'
+args: {}
+base_link: base_link
+base_mount: ''
+base_rpy: 0 0 0
+base_xyz: 0 0 0
+config_dir: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/dummy_dh/config
+config_file_name: __v0.0.0
+config_file: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/dummy_dh/config/__v0.0.0.yaml
+d1: '0.1565'
+d4: '0.0271'
+d5: '0.077'
+d6: '0.017'
+dh:
+    a2: '-0.24'
+    a3: '-0.299658'
+    d1: '0.1565'
+    d4: '0.0271'
+    d5: '0.077'
+    d6: '0.017'
+force_srdf_gen: 'false'
+hand_mount: ''
+hash_config_file: 'false'
+ik_base_link: ''
+ik_sol_preference: []
+ik_tip: ''
+ik_tip_flip: ''
+info:
+    config_key: ''
+    name: ''
+    sku: ''
+    type: ''
+    urdf_hash: ''
+    uuid: ''
+    version: 0.0.0
+joints: {}
+links: {}
+lock_joints: 'false'
+plugin: none
+points_of_interest: []
+positions:
+    default_positions: initial
+    joint_names: []
+    positions:
+        initial: []
+prefix: ''
+reach_map_path: ''
+reflect: '1'
+root_link: world
+srdf:
+    loaded_from_cache: 'true'
+    macro_path: ''
+    newly_generated: 'false'
+    path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/dummy_dh/config/srdf_cache/__v0.0.0.srdf
+    xacro_path: ''
+trajectory_topic: ''
+urdf:
+    macro_path: ''
+    mesh_dirs: /home/bam/bam_ws/src/bam_core
+    path: ''
+    xacro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/dummy_dh/dummy_dh.urdf.xacro
+world_rpy: 0 0 0
+world_xyz: 0 0 0

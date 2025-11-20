@@ -1,0 +1,312 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="robot">
+
+
+
+  <!-- Five-Bar Mechanism Parameters (in meters) -->
+  <xacro:arg name="L_l1" default="0.240"/>      <!-- Length of link 1 -->
+  <xacro:arg name="L_l2" default="0.240"/>      <!-- Length of link 2 -->
+  <xacro:arg name="L_c1" default="0.120"/>      <!-- Length of coupler 1 -->
+  <xacro:arg name="L_c2" default="0.265"/>      <!-- Length of coupler 2 -->
+  <xacro:arg name="L_shoulder" default="0.087"/> <!-- Shoulder offset length -->
+  <xacro:arg name="L_elbow" default="0.120"/>   <!-- Elbow offset length -->
+  <xacro:arg name="theta_elbow_offset" default="0.785398"/> <!-- Elbow offset angle in radians (45 degrees) -->
+
+
+  <xacro:property name="L_l1" value="$(arg L_l1)"/>
+  <xacro:property name="L_l2" value="$(arg L_l2)"/>
+  <xacro:property name="L_c1" value="$(arg L_c1)"/>
+  <xacro:property name="L_c2" value="$(arg L_c2)"/>
+  <xacro:property name="L_shoulder" value="$(arg L_shoulder)"/>
+  <xacro:property name="L_elbow" value="$(arg L_elbow)"/>
+  <xacro:property name="theta_elbow_offset" value="$(arg theta_elbow_offset)"/>
+
+
+  <!-- Hardcoded values -->
+
+  <xacro:property name="link_width" value="0.01"/>
+  <xacro:property name="link_thickness" value="${20/1000}"/>
+  <xacro:property name="link_density" value="2700"/>  <!--The density of aluminum is approximately 2,700 kg/m³-->
+
+<!-- 
+  Joint Limit Strategies:
+
+  1. Keep limits completely open (±π).
+  2. Set limits to physically possible values, but do not block singularities.
+  3. Constrain limits within singularities and add buffer zones to avoid sampling at singularities.
+
+  Note: 
+    - For primary arm sampling, it makes sense to block singularities on the primary arm,
+      but allow the full range on the secondary arm. The kinematics should account for singularities.
+-->
+
+
+  <xacro:property name="deg2rad" value="${pi/180}"/>
+  <!-- Buffer needed on second links to avoid singularity of folding backwards-->
+  <xacro:property name="buffer" value="${5 * deg2rad}"/>
+
+
+  <!-- BUG at 180 + 45, there is a elbow forward/backwards singualrity you hit... that shows up as an inconsitency in the reach map.. -->
+  <xacro:property name="J2_upper" value="${(180 + 35) * deg2rad}"/> 
+  <xacro:property name="J2_lower" value="${0 * deg2rad}"/>
+
+  <!-- Elbow should just be able to curl inwards -->
+  <!-- Important to add buffer or you will hit singularities!! -->
+  <xacro:property name="J3_upper" value="${0 * deg2rad - buffer}"/>
+  <xacro:property name="J3_lower" value="${-pi + theta_elbow_offset + buffer}"/>  <!-- Reasonable to -->
+  <xacro:property name="J3_lower" value="${-pi + buffer}"/>  <!-- For viz of entire workspace -->
+
+  <!-- <xacro:property name="C1_upper" value="${360 * deg2rad - buffer}"/>
+  <xacro:property name="C1_lower" value="${0 * deg2rad + buffer}"/> -->
+
+  <xacro:property name="C1_upper" value="${340 * deg2rad}"/>
+  <xacro:property name="C1_lower" value="${20 * deg2rad}"/>
+
+  <xacro:property name="C2_upper" value="${180 * deg2rad - buffer}"/>
+  <xacro:property name="C2_lower" value="${-180 * deg2rad + buffer}"/>
+
+  <!-- Link Colors -->
+  <xacro:property name="shoulder_color" value="0.5 0.5 0.5 0.5"/>          <!-- Blue for shoulder -->
+  <xacro:property name="c1_color" value="1 0 0 1"/>           <!-- Red for couplers -->
+  <xacro:property name="c2_color" value="0 1 0 1"/>         <!-- Green for upper arm -->
+  <xacro:property name="l1_color" value="1 1 0 1"/>          <!-- Yellow for fore arm -->
+  <xacro:property name="l2_color" value="0 0 1 1"/>          <!-- Blue for fore arm -->
+
+
+  <xacro:macro name="slot_link" params="name link_width link_length link_thickness link_mass color">
+    <!-- Length goes along y, width goes along x, thickness goes along z -->
+
+    <xacro:property name="link_inertia_xx_zz" value="${(1/12) * link_mass * link_length * link_length}"/>
+
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 ${link_thickness/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${link_width/2}" length="${link_thickness}"/>
+        </geometry>
+        <material name="${name}_material"><color rgba="${color}"/></material>
+      </visual>
+
+      <visual>
+        <origin xyz="0 ${link_length/2} ${link_thickness/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${link_width} ${link_length} ${link_thickness}"/>
+        </geometry>
+        <material name="${name}_material"><color rgba="${color}"/></material>
+      </visual>
+
+      <visual>
+        <origin xyz="0 ${link_length} ${link_thickness/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${link_width/2}" length="${link_thickness}"/>
+        </geometry>
+        <material name="${name}_material"><color rgba="${color}"/></material>
+      </visual>
+
+      <inertial>
+        <origin xyz="0 ${link_length/2} ${link_thickness/2}"/>
+        <mass value="${link_mass}"/>
+        <inertia ixx="${link_inertia_xx_zz}" ixy="0" ixz="0" 
+                 iyy=" 1e-6" iyz="0" 
+                 izz="${link_inertia_xx_zz}"/>
+      </inertial>
+
+    </link>
+  </xacro:macro>
+
+
+<!-- Joints should be named to match the real arm, so that the five bar kinematics joint_to_name_index mapping works -->
+    <!-- self.J2_joint_index = name_to_joint_index['joint_2'] # real -->
+    <!-- self.J3_joint_index = name_to_joint_index['joint_3'] # virtual -->
+    <!-- self.joint_c1_index = name_to_joint_index['joint_c1'] # real -->
+    <!-- self.joint_c2_index = name_to_joint_index['joint_c2'] # virtual -->
+
+  <xacro:macro name="five_bar" params="
+    prefix=''
+    L_l1
+    L_l2
+    L_c1
+    L_c2
+    L_shoulder
+    L_elbow
+    theta_elbow_offset
+    k_damping
+    k_friction
+    actuator_length=0.05
+    ">
+
+    <link name="${prefix}shoulder">
+      <visual>
+        <origin xyz="0 0 ${-actuator_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${link_width/2}" length="${actuator_length}"/>
+        </geometry>
+        <material name="shoulder_material"><color rgba="${shoulder_color}"/></material>
+      </visual>
+
+      <visual>
+        <origin xyz="${L_shoulder} 0 ${-actuator_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${link_width/2}" length="${actuator_length}"/>
+        </geometry>
+        <material name="shoulder_material"><color rgba="${shoulder_color}"/></material>
+      </visual>
+
+      <xacro:dummy_inertial/>
+
+    </link>
+
+
+
+    <!-- REGION: COUPLER ARM -->
+
+      <joint name="${prefix}joint_c1" type="revolute">
+        <parent link="${prefix}shoulder"/>
+        <child link="${prefix}C1"/>
+        <!-- <origin xyz="0 0 0" rpy="0 0 ${-pi/2 + 4.14868753}"/>  -->
+        <origin xyz="0 0 0" rpy="0 0 ${-pi/2}"/>  <!-- X axis zero, as per Craig's convention -->
+        <axis xyz="0 0 1"/>
+        <limit lower="${C1_lower}" upper="${C1_upper}" velocity="100" effort="100"/>
+        <dynamics damping="${k_damping}" friction="${k_friction}"/>
+      </joint>
+
+      <xacro:slot_link 
+        name="${prefix}C1" 
+        link_width="${link_width}" 
+        link_length="${L_c1}" 
+        link_thickness="${link_thickness}" 
+        link_mass="${link_density * L_c1 * link_thickness * link_width}"
+        color="${c1_color}" 
+      />
+
+      <joint name="${prefix}joint_c2" type="revolute">
+        <parent link="${prefix}C1"/>
+        <child link="${prefix}C2"/>
+        <origin xyz="0 ${L_c1} 0" rpy="0 0 0"/> 
+        <!-- <origin xyz="0 ${L_c1} 0" rpy="0 0 ${-2.83063156}"/>  -->
+        <axis xyz="0 0 1"/>
+        <limit lower="${C2_lower}" upper="${C2_upper}" velocity="100" effort="100"/>
+        <dynamics damping="${k_damping}" friction="${k_friction}"/>
+      </joint>
+
+      <xacro:slot_link 
+        name="${prefix}C2" 
+        link_width="${link_width}" 
+        link_length="${L_c2}" 
+        link_thickness="${link_thickness}" 
+        link_mass="${link_density * L_c2 * link_thickness * link_width}"
+        color="${c2_color}" 
+      />
+
+      <joint name="${prefix}C2_to_C2_coupler" type="fixed">
+        <parent link="${prefix}C2"/>
+        <child link="${prefix}C2_coupler"/>
+        <origin xyz="0 ${L_c2} 0" rpy="0 0 0"/> 
+        <!-- <axis xyz="0 0 1"/>
+        <limit lower="${-2*pi}" upper="${2*pi}" velocity="100" effort="100"/>
+        <dynamics damping="0.001" friction="0.01"/> -->
+      </joint>
+
+      <link name="${prefix}C2_coupler">
+            <visual>
+          <origin xyz="0 0 ${link_thickness/2}" rpy="0 0 0"/>
+          <geometry>
+            <cylinder radius="${link_width/2}" length="${link_thickness}"/>
+          </geometry>
+          <material name="C2_coupler_material"><color rgba="0 0 0 1"/></material>
+        </visual>
+        <xacro:dummy_inertial/>
+      </link>
+
+    <!-- REGIONEND: COUPLER ARM -->
+
+    <!-- REGION: PRIMARY ARM -->
+    
+      <joint name="${prefix}joint_2" type="revolute">
+        <parent link="${prefix}shoulder"/>
+        <child link="${prefix}L1"/>
+        <!-- <origin xyz="${L_shoulder} 0 0" rpy="0 0 ${-pi/2 + 1.57079633}"/>  -->
+        <origin xyz="${L_shoulder} 0 0" rpy="0 0 ${-pi/2}"/>  <!-- X axis zero, as per Craig's convention -->
+        <axis xyz="0 0 1"/>
+        <limit lower="${J2_lower}" upper="${J2_upper}" velocity="100" effort="100"/>
+        <dynamics damping="${k_damping}" friction="${k_friction}"/>
+      </joint>
+
+      <xacro:slot_link 
+        name="${prefix}L1" 
+        link_width="${link_width}" 
+        link_length="${L_l1}" 
+        link_thickness="${link_thickness}" 
+        link_mass="${link_density * L_l1 * link_thickness * link_width}"
+        color="${l1_color}" 
+      />
+
+
+      <joint name="${prefix}joint_3" type="revolute">
+        <parent link="${prefix}L1"/>
+        <child link="${prefix}L2"/>
+        <origin xyz="0 ${L_l1} 0" rpy="0 0 0"/> 
+        <axis xyz="0 0 1"/>
+        <limit lower="${J3_lower}" upper="${J3_upper}" velocity="100" effort="100"/>
+        <dynamics damping="${k_damping}" friction="${k_friction}"/>
+      </joint>
+
+      <xacro:slot_link 
+        name="${prefix}L2" 
+        link_width="${link_width}" 
+        link_length="${L_l2}" 
+        link_thickness="${link_thickness}" 
+        link_mass="${link_density * L_l2 * link_thickness * link_width}"
+        color="${l2_color}" 
+      />
+
+      <joint name="${prefix}L2_to_elbow" type="fixed">
+        <parent link="${prefix}L2"/>
+        <child link="${prefix}elbow"/>
+        <origin xyz="0 0 0" rpy="0 0 ${pi - theta_elbow_offset}"/> 
+      </joint>
+
+      <xacro:slot_link 
+        name="${prefix}elbow" 
+        link_width="${link_width}" 
+        link_length="${L_elbow}" 
+        link_thickness="${link_thickness}" 
+        link_mass="${link_density * L_elbow * link_thickness * link_width}"
+        color="${l2_color}" 
+      />
+
+      <joint name="${prefix}L2_coupler_joint" type="revolute"> <!-- Virtual Coupler Link Joint -->
+        <parent link="${prefix}elbow"/>
+        <child link="${prefix}L2_coupler"/>
+        <origin xyz="0 ${L_elbow} 0" rpy="0 0 0"/> 
+        <axis xyz="0 0 1"/>
+        <limit lower="${-2*pi}" upper="${2*pi}" velocity="100" effort="100"/>
+        <dynamics damping="${k_damping}" friction="${k_friction}"/>
+      </joint>
+
+      <link name="${prefix}L2_coupler"> <!-- Virtual Coupler Link -->
+        <visual>
+          <origin xyz="0 0 ${link_thickness/2}" rpy="0 0 0"/>
+          <geometry>
+            <cylinder radius="${link_width/2}" length="${link_thickness}"/>
+          </geometry>
+          <material name="L2_coupler_material"><color rgba="0 0 0 1"/></material>
+        </visual>
+        <xacro:dummy_inertial/>
+
+      </link>
+
+      <joint name="${prefix}L2_to_L2_tip" type="fixed">
+        <parent link="${prefix}L2"/>
+        <child link="${prefix}L2_tip"/>
+        <origin xyz="0 ${L_l2} 0" rpy="0 0 0"/> 
+      </joint>
+
+      <link name="${prefix}L2_tip">
+      <xacro:dummy_inertial/>
+      </link>
+    <!-- REGIONEND: PRIMARY ARM -->
+
+  </xacro:macro>
+
+</robot>

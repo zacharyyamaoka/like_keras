@@ -1,0 +1,86 @@
+REGISTRY: {}
+base_link: base_link
+description_config_file: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/one_dof/config/one_dof_sku1000_v0.0.0_config.yaml
+dh:
+    a2: 0.0
+    a3: 0.0
+    d1: 0.0
+    d4: 0.0
+    d5: 0.0
+    d6: 0.0
+five_bar:
+    L_c1: 0.0
+    L_c2: 0.0
+    L_elbow: 0.0
+    L_l1: 0.0
+    L_l2: 0.0
+    L_shoulder: 0.0
+ik_sol_preference: []
+ik_tip: rotor
+joint_names:
+- joint_1
+joints:
+-   can_id: 0
+    hardstop_position: 0.0
+    has_acceleration_limits: true
+    has_effort_limits: true
+    has_jerk_limits: true
+    has_position_limits: false
+    has_velocity_limits: true
+    home_position: 0.0
+    initial_position: 0.0
+    max_acceleration: 1.0
+    max_effort: 1.0
+    max_jerk: 1.0
+    max_position: 0.0
+    max_velocity: 1.0
+    min_acceleration: -1.0
+    min_effort: -1.0
+    min_jerk: -1.0
+    min_position: 0.0
+    min_velocity: -1.0
+    name: joint_1
+    passive: false
+links: []
+lock_joints: []
+mesh_dirs: /home/bam/bam_ws/src/bam_core
+metadata:
+    created_at: 28_sep_2025_07_19pm
+    created_by: ConfigBase
+    version: '1.0'
+model_lock_position: []
+move_group_arm: one_dof_pendulum
+name: ''
+passive_joint_names: []
+prefix: ''
+reach_map_path: ''
+sku: '1000'
+srdf_path: ''
+srdf_xacro_args: {}
+srdf_xacro_path: ''
+trajectory_topic: trajectory_controller/follow_trajectory
+type: one_dof
+urdf_path: ''
+urdf_xacro_args:
+    arm_length: 1.0
+    arm_mass: 0.432
+    arm_width: 0.02
+    controllers_file_path: /home/bam/bam_ws/src/bam_core/bam_core_bringup/config/controllers/one_dof_controllers.yaml
+    gearbox_diameter: 0.04
+    gearbox_length: 0.08
+    gearbox_mass: 0.15
+    mounting_angle: 0.0
+    payload_diameter: 1.0e-06
+    payload_distance: 0.0
+    payload_mass: 0.0
+    payload_thickness: 1.0e-06
+    plugin: mock
+    ros2_control: true
+    ros_namespace: bam_GPU
+    rotor_diameter: 0.05
+    rotor_length: 0.1
+    rotor_mass: 0.2
+    transport_path: /dev/serial/by-id/usb-mjbots_fdcanusb_28B3A25D-if00
+urdf_xacro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/one_dof/one_dof.urdf.xacro
+uuid: 00000000-0000-0000-0000-000000000000
+version: 0.0.0

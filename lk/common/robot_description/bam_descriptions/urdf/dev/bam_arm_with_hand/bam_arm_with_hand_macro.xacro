@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+
+<!-- When testing you can run this URDF. Previously I had to comment/uncomment on the macro.xacro, but now I have a standalone file-->
+<!-- default values for properties should be "pure" for when its included in another xacro (ie. moveit) -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="arm_400_v1">
+
+
+
+  <xacro:macro name="bam_arm_with_hand" params="prefix reflect plugin transport_path hand_type arm_type controllers_file_path ros_namespace six_dof_mode">
+
+    <!-- Create Arm -->
+    <xacro:if value="${arm_type == 'arm_400_v1'}">
+
+        <xacro:include filename="$(find bam_descriptions)/urdf/arm_400_v1/arm_400_v1_macro.xacro" />
+        <xacro:include filename="$(find bam_descriptions)/urdf/arm_400_v1/arm_400_v1.ros2_control.xacro"/>
+
+        <xacro:arm_400_v1 prefix="${prefix}" reflect="${reflect}" six_dof_mode="${six_dof_mode}"/>
+
+        <xacro:if value="${plugin != 'none'}">
+            <xacro:arm_400_v1_ros2_control 
+            prefix="${prefix}"
+            transport_path="${transport_path}"
+            plugin="${plugin}"
+            hand_type="${hand_type}"
+            controllers_file_path="${controllers_file_path}"
+            ros_namespace="${ros_namespace}"/>
+        </xacro:if>
+
+    </xacro:if>
+
+    <xacro:if value="${arm_type == 'dummy_bam_fb'}">
+
+        <xacro:include filename="$(find bam_descriptions)/urdf/dummy_bam_fb/dummy_bam_fb_macro.xacro" />
+
+        <xacro:dummy_bam_fb prefix="${prefix}" reflect="${reflect}" config="${config}" six_dof_mode="${six_dof_mode}"/>
+
+    </xacro:if>
+
+
+
+    <!-- Create Hand -->
+    <xacro:if value="${hand_type != 'none'}">
+
+        <joint name="${prefix}hand_joint" type="fixed">
+        <origin xyz="0 0 0" rpy="0.0 0.0 0.0"/>
+        <parent link="${prefix}eef_frame"/>
+        <child link="${prefix}eef_link_1"/>
+        </joint>
+
+        <xacro:include filename="$(find bam_descriptions)/urdf/crab_claw_v1/crab_claw_v1_macro.xacro"/>
+        <xacro:crab_claw_v1 prefix="${prefix}" reflect="1"/>
+    </xacro:if>
+
+  </xacro:macro>
+
+<!-- <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+
+<xacro:bam_arm_with_hand 
+    prefix="bam_" 
+    reflect="1" 
+    plugin="mock" 
+    transport_path="" 
+    arm_type="arm_400_v1"
+    hand_type="crab_claw" 
+    controllers_file_path="" 
+    ros_namespace="bam_GPU"
+    six_dof_mode="false"/> -->
+
+
+</robot>

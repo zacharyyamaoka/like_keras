@@ -1,0 +1,10 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: bam_descriptions
+    relative_path: urdf/arm_hand/config/moveit_config/robot.urdf
+  srdf:
+    relative_path: config/arm_with_hand.srdf
+  package_settings:
+    author_name: Zach Yam
+    author_email: zach@bamrobotics.com
+    generated_timestamp: 1762221786

@@ -1,0 +1,68 @@
+{
+  "name": "lk-viewer-extension",
+  "displayName": "LK Viewer File Opener",
+  "description": "Instantly open files from LK Viewer",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "lk-viewer.openPanel",
+        "title": "LK Viewer: Open File Panel"
+      },
+      {
+        "command": "lk-viewer.openFile",
+        "title": "LK Viewer: Open File (for testing)"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "lk-viewer.graphEditor",
+        "displayName": "LK Graph Editor",
+        "selector": [
+          {
+            "filenamePattern": "*_config.py"
+          },
+          {
+            "filenamePattern": "*/examples/*.py"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "lk-viewer",
+          "title": "LK Viewer",
+          "icon": "$(file-code)"
+        }
+      ]
+    },
+    "views": {
+      "lk-viewer": [
+        {
+          "type": "webview",
+          "id": "lk-viewer.panel",
+          "name": "File Navigator"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "^18.x",
+    "typescript": "^5.0.0"
+  }
+}
+

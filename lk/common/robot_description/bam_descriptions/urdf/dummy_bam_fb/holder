@@ -1,0 +1,99 @@
+
+
+            
+
+
+
+
+
+
+
+        <!-- FORE ARM ANCHORS AND STICKER -->
+        <xacro:if value="${linkage_type != 'none' and sticker_type != 'none'}">
+
+            <joint name="${prefix}L2_anchors_joint" type="fixed">
+                <origin xyz="0 ${wrist_mount_length} ${L2_width/2}" rpy="${-pi/2} ${pi} 0"/>
+                <parent link="${prefix}L2_link_4"/>
+                <child link="${prefix}L2_anchors"/>
+            </joint>
+
+            <link name="${prefix}L2_anchors"/>
+
+            <!-- TODO: When you reflect then top and bottom should switch positions! -->
+
+
+            <joint name="${prefix}L2_top_anchor_joint" type="fixed">
+                <origin xyz="${L2_width/2} ${-L2_width/2} 0 " rpy="${-pi/2} 0 ${pi/2}"/>
+                <parent link="${prefix}L2_anchors"/>
+                <child link="${prefix}L2_top_anchor"/>
+            </joint>
+
+            <link name="${prefix}L2_top_anchor"/>
+
+            <joint name="${prefix}L2_bot_anchor_joint" type="fixed">
+                <origin xyz="${-L2_width/2} ${L2_width/2} 0 " rpy="${-pi/2} 0 ${-pi/2}"/>
+                <parent link="${prefix}L2_anchors"/>
+                <child link="${prefix}L2_bot_anchor"/>
+            </joint>
+
+            <link name="${prefix}L2_bot_anchor"/>
+
+            <joint name="${prefix}L2_inside_anchor_joint" type="fixed">
+                <origin xyz="${-L2_width/2} ${-L2_width/2} 0" rpy="${-pi/2} 0 0"/>
+                <parent link="${prefix}L2_anchors"/>
+                <child link="${prefix}L2_inside_anchor"/>
+            </joint>
+
+            <link name="${prefix}L2_inside_anchor"/>
+
+            <joint name="${prefix}L2_outside_anchor_joint" type="fixed">
+                <origin xyz="${L2_width/2} ${L2_width/2} 0" rpy="${pi/2} ${pi} 0"/>
+                <parent link="${prefix}L2_anchors"/>
+                <child link="${prefix}L2_outside_anchor"/>
+            </joint>
+
+            <link name="${prefix}L2_outside_anchor"/>
+
+
+            <joint name="${prefix}L2_top_sticker_joint" type="fixed">
+               <!-- Add a little z offset to avoid visual overlap -->
+                <origin xyz="0 0 -0.0001" rpy="0 0 0"/>
+                <parent link="${prefix}L2_top_anchor"/>
+                <child link="${prefix}top_sticker"/>
+            </joint>
+
+            <xacro:aruco_texture name="${prefix}top_sticker" width="0.038100" height="0.168500" thickness="0.0001"
+                    filename="package://bam_descriptions/urdf/aruco_markers/grid_board_dict3_marker27p1mm_num1x5_outer38p1x168p5mm/texture_cube.dae"/>
+
+            <joint name="${prefix}L2_bot_sticker_joint" type="fixed">
+               <!-- Add a little z offset to avoid visual overlap -->
+                <origin xyz="0 0 -0.0001" rpy="0 0 0"/>
+                <parent link="${prefix}L2_bot_anchor"/>
+                <child link="${prefix}bot_sticker"/>
+            </joint>
+
+            <xacro:aruco_texture name="${prefix}bot_sticker" width="0.038100" height="0.168500" thickness="0.0001"
+                    filename="package://bam_descriptions/urdf/aruco_markers/grid_board_dict3_marker27p1mm_num1x5_outer38p1x168p5mm/texture_cube.dae"/>
+
+
+            <joint name="${prefix}L2_inside_sticker_joint" type="fixed">
+               <!-- Add a little z offset to avoid visual overlap -->
+                <origin xyz="0 0 -0.0001" rpy="0 0 0"/>
+                <parent link="${prefix}L2_inside_anchor"/>
+                <child link="${prefix}inside_sticker"/>
+            </joint>
+
+            <xacro:aruco_texture name="${prefix}inside_sticker" width="0.038100" height="0.168500" thickness="0.0001"
+                    filename="package://bam_descriptions/urdf/aruco_markers/grid_board_dict3_marker27p1mm_num1x5_outer38p1x168p5mm/texture_cube.dae"/>
+
+            <joint name="${prefix}L2_outside_sticker_joint" type="fixed">
+               <!-- Add a little z offset to avoid visual overlap -->
+                <origin xyz="0 0 -0.0001" rpy="0 0 0"/>
+                <parent link="${prefix}L2_outside_anchor"/>
+                <child link="${prefix}outside_sticker"/>
+            </joint>
+
+            <xacro:aruco_texture name="${prefix}outside_sticker" width="0.038100" height="0.168500" thickness="0.0001"
+                    filename="package://bam_descriptions/urdf/aruco_markers/grid_board_dict3_marker27p1mm_num1x5_outer38p1x168p5mm/texture_cube.dae"/>
+
+        </xacro:if>

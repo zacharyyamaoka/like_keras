@@ -1,0 +1,45 @@
+General
+	Part Number	L2 Link
+	Part Name	L2 Link
+	Description
+	Material Name	(Various)
+
+Manage
+	Item Number
+	Lifecycle
+	Revision
+	State	Working
+	Change Order
+
+Physical
+	Mass	476.4781 g
+	Volume	1.442E+05 mm^3
+	Density	0.0033 g / mm^3
+	Area	1.288E+05 mm^2
+	World X,Y,Z	0.00 mm, 0.00 mm, 25.05 mm
+	Center of Mass	233.0092 mm, -0.0316 mm, 23.5211 mm
+	Bounding Box
+		Length	345.8297 mm
+		Width	53.00 mm
+		Height	58.0042 mm
+	Moment of Inertia at Center of Mass   (g mm^2)
+		Ixx	1.996E+05
+		Ixy	1061.0193
+		Ixz	53001.5512
+		Iyx	1061.0193
+		Iyy	4.761E+06
+		Iyz	-1197.8862
+		Izx	53001.5512
+		Izy	-1197.8862
+		Izz	4.748E+06
+	Moment of Inertia at Origin   (g mm^2)
+		Ixx	4.633E+05
+		Ixy	4564.469
+		Ixz	-2.558E+06
+		Iyx	4564.469
+		Iyy	3.089E+07
+		Iyz	-844.2311
+		Izx	-2.558E+06
+		Izy	-844.2311
+		Izz	3.062E+07
+

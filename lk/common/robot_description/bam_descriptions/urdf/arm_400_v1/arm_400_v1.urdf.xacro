@@ -1,0 +1,98 @@
+<?xml version="1.0"?>
+
+<!-- When testing you can run this URDF. Previously I had to comment/uncomment on the macro.xacro, but now I have a standalone file-->
+<!-- default values for properties should be "pure" for when its included in another xacro (ie. moveit) -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="arm_400_v1">
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+    <xacro:include filename="$(find bam_descriptions)/urdf/arm_400_v1/arm_400_v1_macro.xacro" />
+    <xacro:include filename="$(find bam_descriptions)/urdf/arm_400_v1/arm_400_v1.ros2_control.xacro"/>
+
+    <xacro:arg name="plugin" default="none"/>  <!-- none, mock, gazebo, real -->
+    <xacro:property name="plugin" value="$(arg plugin)" />
+
+    <xacro:arg name="controllers_file_path" default=""/>
+    <xacro:property name="controllers_file_path" value="$(arg controllers_file_path)"/>
+
+    <xacro:arg name="ros_namespace" default="bam_GPU"/>
+    <xacro:property name="ros_namespace" value="$(arg ros_namespace)"/>
+
+    <xacro:arg name="transport_path" default=""/>
+    <xacro:property name="transport_path" value="$(arg transport_path)" />
+
+    <xacro:arg name="prefix" default=""/>
+    <xacro:property name="prefix" value="$(arg prefix)" />
+
+    <xacro:arg name="reflect" default="1"/>
+    <xacro:property name="reflect" value="$(arg reflect)" />
+
+    <xacro:arg name="config" default="default"/>
+    <xacro:property name="config" value="$(arg config)" />
+
+    <xacro:arg name="world_xyz" default="0 0 0"/>
+    <xacro:property name="world_xyz" value="$(arg world_xyz)"/>
+
+    <xacro:arg name="world_rpy" default="0 0 0"/>
+    <xacro:property name="world_rpy" value="$(arg world_rpy)"/>
+
+    <!-- <xacro:arg name="base_xyz" default="0 ${110/1000} 0"/> -->
+    <xacro:arg name="base_xyz" default="0 0 0"/>
+    <xacro:property name="base_xyz" value="$(arg base_xyz)"/>
+
+    <!-- <xacro:arg name="base_rpy" default="0 ${-pi/2} 0"/> -->
+    <xacro:arg name="base_rpy" default="0 0 0"/>
+    <xacro:property name="base_rpy" value="$(arg base_rpy)"/>
+
+    <xacro:arg name="six_dof_mode" default="false"/>
+    <xacro:property name="six_dof_mode" value="$(arg six_dof_mode)"/>
+
+    <xacro:arg name="hand_type" default="none"/>
+    <xacro:property name="hand_type" value="$(arg hand_type)"/>
+
+
+    <!-- Attach to Gazebo World -->
+    <link name="world"/>
+
+    <joint name="world_to_base" type="fixed">
+        <origin xyz="${world_xyz}" rpy="${world_rpy}"/>
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint>
+
+    <link name="base_link">
+        <xacro:dummy_inertial/>
+    </link>
+
+    <joint name="base_link_joint" type="fixed">
+        <origin xyz="${base_xyz}" rpy="${base_rpy}"/>
+        <parent link="base_link"/>
+        <child link="${prefix}base_link_1"/>
+    </joint>
+
+    <!-- <xacro:arm_400_v1 prefix="${prefix}" reflect="${reflect}" linkage="${linkage}"/> -->
+    <xacro:arm_400_v1 prefix="${prefix}" reflect="${reflect}" config="${config}" six_dof_mode="${six_dof_mode}"/>
+
+    <xacro:if value="${plugin != 'none'}">
+        <xacro:arm_400_v1_ros2_control 
+        prefix="${prefix}"
+        transport_path="${transport_path}"
+        plugin="${plugin}"
+        hand_type="${hand_type}"
+        controllers_file_path="${controllers_file_path}"
+        ros_namespace="${ros_namespace}"/>
+    </xacro:if>
+
+    <xacro:if value="${hand_type != 'none'}">
+
+        <joint name="hand_joint" type="fixed">
+        <origin xyz="0 0 0" rpy="0.0 0.0 0.0"/>
+        <parent link="${prefix}eef_frame"/>
+        <child link="${prefix}eef_link_1"/>
+        </joint>
+
+        <xacro:include filename="$(find bam_descriptions)/urdf/crab_claw_v1/crab_claw_v1_macro.xacro"/>
+        <xacro:crab_claw_v1 prefix="${prefix}" reflect="1"/>
+    </xacro:if>
+
+
+</robot>

@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Generic macro to compose an arm macro and a hand macro.
+
+    Assumptions:
+    - The arm macro accepts at least: prefix
+    - The hand macro accepts at least: parent, prefix
+    - The hand macro will attach its base to the provided parent link
+
+    Notes:
+    - Use xacro:call for dynamic macro names.
+    - Include files are passed in as absolute paths so they can live in different packages.
+  -->
+
+  <!-- 
+    Universal config loader - makes composite simpler
+  -->
+  <xacro:macro name="make_config" params="config_file">
+    <xacro:make_arm config_file="${config_file}"/>
+  </xacro:macro>
+
+  <!-- 
+    Main macro - uses 'make_arm' name for consistency
+    An arm+hand is just an arm assembly, so it should follow the same convention
+  -->
+  <xacro:macro name="make_arm" params="config_file">
+
+    <xacro:property name="cfg" value="${xacro.load_yaml(config_file)}"/>
+    
+    <xacro:arm_with_hand
+      arm_macro_path="${cfg['arm']['urdf']['macro_path']}"
+      hand_macro_path="${cfg['hand']['urdf']['macro_path']}"
+      arm_config_file="${cfg['arm']['config_file']}"
+      hand_config_file="${cfg['hand']['config_file']}"
+      arm_to_hand_link="${cfg['arm']['hand_mount']}"
+      hand_to_arm_link="${cfg['hand']['arm_mount']}"
+      mount_xyz="${cfg['mount_xyz']}"
+      mount_rpy="${cfg['mount_rpy']}"/>
+
+  </xacro:macro>
+  
+  <!-- Legacy name for backward compatibility -->
+  <xacro:macro name="make_arm_hand" params="config_file">
+    <xacro:make_arm config_file="${config_file}"/>
+  </xacro:macro>
+
+  <xacro:macro name="arm_with_hand" params="
+      arm_macro_path
+      hand_macro_path
+      arm_config_file
+      hand_config_file
+      arm_to_hand_link
+      hand_to_arm_link
+      mount_xyz:='0 0 0'
+      mount_rpy:='0 0 0'
+    ">
+
+    <xacro:include filename="${arm_macro_path}"/>
+    <xacro:make_arm config_file="${arm_config_file}"/>
+
+    <joint name="${cfg['arm']['prefix']}arm_to_hand_mount" type="fixed">
+        <origin xyz="${mount_xyz}" rpy="${mount_rpy}"/>
+        <parent link="${arm_to_hand_link}"/>
+        <child  link="${hand_to_arm_link}"/>
+      </joint> 
+
+    <xacro:include filename="${hand_macro_path}"/>
+    <xacro:make_hand config_file="${hand_config_file}"/>
+
+
+
+  </xacro:macro>
+
+</robot>
+
+<!-- Duplicate legacy macro removed to avoid redefinition conflicts -->

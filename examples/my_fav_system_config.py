@@ -1,5 +1,4 @@
 import lk
-from lk import SystemConfig, NodeConfigs
 from dataclasses import dataclass
 """
 You can specificy every single config here required to rebuild the entire system!
@@ -11,5 +10,5 @@ class NodeConfigs(lk.NodeConfigs):
     pass
 
 @dataclass
-class MyFavoriteSystemConfig(SystemConfig):
+class MyFavoriteSystemConfig(lk.System.Config):
     nodes: NodeConfigs = NodeConfigs()

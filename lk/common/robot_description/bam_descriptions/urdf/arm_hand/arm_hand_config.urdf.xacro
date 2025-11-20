@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="arm_with_hand">
+
+    <xacro:arg name="bam_descriptions" default="$(env BAM_DESCRIPTIONS_PATH)"/>
+
+    <xacro:include filename="$(arg bam_descriptions)/urdf/common.xacro" />
+
+
+    <xacro:arg name="config_file" default="$(arg bam_descriptions)/urdf/arm_hand/config/ur_skuUR5e_v0.0.0_crab_claw_skuBam_v0.0.0_config.yaml"/>
+    <xacro:property name="config_file" value="$(arg config_file)"/>
+
+    <xacro:property name="cfg" value="${xacro.load_yaml(config_file)}"/>
+    
+    <xacro:property name="world_xyz" value="${cfg['arm']['world_xyz']}"/>
+    <xacro:property name="world_rpy" value="${cfg['arm']['world_rpy']}"/>
+    <xacro:property name="base_xyz" value="${cfg['arm']['base_xyz']}"/>
+    <xacro:property name="base_rpy" value="${cfg['arm']['base_rpy']}"/>
+    <xacro:property name="arm_to_base_link" value="${cfg['arm']['base_mount']}"/>
+    
+    <!-- Config files are always for standalone use - create world/base_link structure
+         For composition, use arm_hand_macro.xacro directly -->
+    
+    <!-- Attach to Gazebo World -->
+    <link name="world"/>
+
+    <joint name="world_to_base_link" type="fixed">
+        <origin xyz="${world_xyz}" rpy="${world_rpy}"/>
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint>
+
+    <link name="base_link"/>
+
+    <joint name="base_link_joint" type="fixed">
+        <origin xyz="${base_xyz}" rpy="${base_rpy}"/>
+        <parent link="base_link"/>
+        <child link="${arm_to_base_link}"/>
+    </joint>
+
+    <xacro:include filename="$(arg bam_descriptions)/urdf/arm_hand/arm_hand_macro.xacro"/>
+    <xacro:make_arm config_file="${config_file}"/>
+
+</robot>

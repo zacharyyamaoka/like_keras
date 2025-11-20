@@ -17,8 +17,8 @@ from lk.msgs.msg import Msg, Observation, Action, Reward, Done, Info
 # Public API
 __all__ = [
     # System
-    'System',
     'SystemConfig',
+    'System',
     
     # Components
     'Component',

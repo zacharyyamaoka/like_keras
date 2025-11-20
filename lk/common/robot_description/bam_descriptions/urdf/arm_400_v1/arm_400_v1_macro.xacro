@@ -1,0 +1,495 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="hybrid_v1_macro">
+
+<!-- <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" /> -->
+<!-- if include this here, there may be errors if included agian -->
+
+<!-- When defining the joints, do as few rotations as possible, so its easy to orient back to base_link -->
+<!-- Its better to not do any visual rotations, then the CAD values can be read directly, otherwise you may need to switch axises -->
+
+<!-- 
+
+
+URDF is designed to be self contained and mimic a UR robot
+- If you don't shift from the base_link_1, then moveit should work for right/left arms
+- Put all axis of rotation along +z (makes it easy to visually see)
+- Convention for mesh export is to have z+ through the body, and y+ along forward direction/link
+- Due to differences in UR and BAM construction, you may need to flip z (like for axis 1)
+- By making it as close as possible to a UR robot, it makes life easier 
+
+IK Goes from
+
+base_link_1 -> ee_link
+
+ee_link is a special frame used for IK tip in ur_kinematics
+
+You can mount the eef to the eef_frame which has z going outwards, as expected... TF transform can be used to go from tcp_world/tool to ee_link
+
+ -->
+
+ <!-- Notes on bool vs string https://github.com/ros/xacro/issues/145 -->
+ <!-- Using "true"/"false" seemed buggy as sometimes its bool/str instead use config and pass a string -->
+
+    <xacro:macro name="arm_400_v1" params="prefix='' reflect=1 config='default' six_dof_mode=false">
+
+    
+    <!-- <xacro:property name="default" value="$(arg default)" /> -->
+
+    <!-- I could do this, but it also nice way to make sure URDFs and kinematics are correct -->
+    <!-- <xacro:property name="large_servo_OD" value="0.076"/>
+    <xacro:property name="large_servo_thickness" value="0.026"/>
+    <param name="L_l1">${150/1000}</param>
+    <param name="L_l2">${200/1000}</param>
+    <param name="L_c1">${150/1000}</param>
+    <param name="L_c2">${150/1000}</param>
+    <param name="L_shoulder">${87/1000}</param>
+    <param name="L_elbow">${75/1000}</param> -->
+    <xacro:property name="theta_elbow_offset" value="${70/180 * pi}"/>
+    <xacro:property name="deg2rad" value="${pi/180}"/>
+    <xacro:property name="rev2rad" value="${2*pi}"/>
+
+    <!-- Joint Limits -->
+    <!-- Use real hardstop values so KDL can optimise correctly -->
+    <!-- Check bam_calibration config folder for values -->
+    <xacro:property name="J1_upper" value="${90 * deg2rad}"/>
+    <xacro:property name="J1_lower" value="${-90 * deg2rad}"/>
+
+    <xacro:property name="J2_upper" value="${0.25 * rev2rad}"/> 
+    <!-- <xacro:property name="J2_upper" value="${0.1708 * rev2rad}"/> -->
+    <xacro:property name="J2_lower" value="${-0.4 * rev2rad}"/>
+
+    <!-- Small value so doesn't jam if starts at 0 -->
+    <xacro:property name="J3_upper" value="${0 * deg2rad}"/> 
+    <xacro:property name="J3_lower" value="${-180 * deg2rad}"/>
+
+    <!--shift limits so it makes more sense... with workspace-->
+    <xacro:property name="J4_upper" value="${(175-90) * deg2rad}"/>
+    <xacro:property name="J4_lower" value="${(-175-90) * deg2rad}"/>
+
+    <xacro:property name="J5_upper" value="${175 * deg2rad}"/>
+    <xacro:property name="J5_lower" value="${-175 * deg2rad}"/>
+
+    <xacro:property name="J6_upper" value="${175 * deg2rad}"/>
+    <xacro:property name="J6_lower" value="${-175 * deg2rad}"/>
+
+    <xacro:property name="pos_reflect_1_neg_reflect_0" value="${(reflect+1)*0.5}"/>
+    <xacro:property name="pos_reflect_0_neg_reflect_1" value="${(reflect-1)*-0.5}"/>
+
+
+    <!-- SERIAL CHAIN - START -->
+
+        <link name="${prefix}base_link_1">
+
+            <visual>
+                <geometry>
+                    <mesh filename="package://bam_descriptions/urdf/arm_400_v1/meshes/base.stl"/>
+                </geometry>
+                <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
+                <material name="StoglRobotics/LightGrey"/>
+            </visual>
+
+            <collision>
+                <origin xyz="0.000000 ${reflect * 0.064000} -0.067500" rpy="0 0 0"/>
+                <geometry>
+                    <box size="0.097000 0.225000 0.165000"/>
+                </geometry>
+            </collision>
+
+            <inertial>
+                <origin xyz="0.042714 0.091472 0.000374"/>
+                <mass value="3.072182"/>
+                <inertia 
+                    ixx="9.555000e-03" ixy="-2.573000e-03" ixz="-6.362259e-05"
+                    iyy="6.963000e-03" iyz="-1.120315e-05"
+                    izz="1.392000e-02"/>
+            </inertial>
+
+        </link>
+
+        <joint name="${prefix}joint_1" type="revolute">
+            <origin xyz="0 0 ${19/1000}" rpy="0 0 ${pi}"/>                    
+            <parent link="${prefix}base_link_1"/>
+            <child link="${prefix}shoulder_link_2"/>
+            <axis xyz="0 0 1"/>
+            <limit lower="${J1_lower}" upper="${J1_upper}" effort="50.0" velocity="100.0"/>
+            <dynamics damping="0.05" friction="0.1"/>
+        </joint>
+
+        <!-- Relative to base_link_1, doesn't move with arm -->
+        <link name="${prefix}planning_frame"/>
+
+        <joint name="${prefix}joint_planning_frame" type="fixed">
+            <origin xyz="0 0 ${156.50/1000}" rpy="0 ${pi/2} ${-pi} "/>
+            <parent link="${prefix}base_link_1"/>
+            <child link="${prefix}planning_frame"/>
+        </joint>
+
+        <link name="${prefix}shoulder_link_2">
+            <visual>
+                <geometry>
+                    <mesh filename="package://bam_descriptions/urdf/arm_400_v1/meshes/shoulder.stl"/>
+                </geometry>
+                <origin rpy="0 0 ${pi*0}"/>
+                <material name="StoglRobotics/LightGrey"/>
+            </visual>
+
+            <collision>
+                <origin xyz="0.000000 -0.010423 0.090000" rpy="0 0 0"/>
+                <geometry>
+                    <box size="0.104000 0.158846 0.180000"/>
+                </geometry>
+            </collision>
+
+            <inertial>
+                <origin xyz="0.001942 -0.001158 0.090668"/>
+                <mass value="5.469791"/>
+                <inertia 
+                    ixx="2.272000e-02" ixy="7.822000e-04" ixz="-1.589000e-04"
+                    iyy="1.876000e-02" iyz="2.229000e-04"
+                    izz="1.471000e-02"/>
+            </inertial>
+
+        </link>
+
+        <!-- Z offset goes upwards from J1, you can see it similar to the planning_frame, y offset goes perpendicular to axis of rotation to front surface of shoulder -->
+        <joint name="${prefix}joint_2" type="revolute">
+            <origin xyz="0 ${69/1000} ${137.5/1000}" rpy="${-pi/2} ${reflect*pi/2} 0"/>
+            <parent link="${prefix}shoulder_link_2"/>
+            <child link="${prefix}L1_link_3"/>
+            <!-- <axis xyz="0 0 1"/> -->
+            <!-- Match direction of rotation of UR -->
+            <axis xyz="0 0 -1"/> 
+            <limit lower="${J2_lower}" upper="${J2_upper}" effort="50.0" velocity="100.0"/>
+            <dynamics damping="0.05" friction="0.1"/>
+        </joint>
+
+        <link name="${prefix}L1_link_3">
+            <visual>
+                <geometry>
+                    <mesh filename="package://bam_descriptions/urdf/arm_400_v1/meshes/L1.stl"/>
+                </geometry>
+                <origin rpy="0 0 0"/>
+
+                <material name="StoglRobotics/LightGrey"/>
+            </visual>
+
+            <collision>
+                <origin xyz="0.000000 0.120000 0.057000" rpy="0 0 0"/>
+                <geometry>
+                    <box size="0.052000 0.292000 0.056000"/>
+                </geometry>
+            </collision>
+
+            <collision>
+                <origin xyz="0.000000 0.000000 0.014500" rpy="0 0 0"/>
+                <geometry>
+                    <box size="0.052000 0.052000 0.029000"/>
+                </geometry>
+            </collision>
+
+            <inertial>
+                <origin xyz="0.000000 0.107825 0.049767"/>
+                <mass value="0.261468"/>
+                <inertia 
+                    ixx="2.119000e-03" ixy="7.117000e-14" ixz="2.088000e-15"
+                    iyy="2.967000e-04" iyz="-1.980000e-04"
+                    izz="1.931000e-03"/>
+            </inertial>
+
+        </link>
+
+        <joint name="${prefix}joint_3" type="revolute">
+            <!-- Althought the limits are now lined up, the rotation is still around J2 Z which is point in the same direction, so + reflect*11*deg2rad -->
+            <origin xyz="0 ${240/1000} ${(29+85)*0.5/1000}" rpy="${pos_reflect_1_neg_reflect_0 * pi} 0 ${(pos_reflect_1_neg_reflect_0 * pi) + reflect*11*deg2rad}"/> 
+            <!-- UPDATE YAW with elbow offset -->
+            <parent link="${prefix}L1_link_3"/>
+            <child link="${prefix}L2_link_4"/>
+            <axis xyz="0 0 1"/>
+            <limit lower="${J3_lower}" upper="${J3_upper}" effort="50.0" velocity="100.0"/>
+            <dynamics damping="0.05" friction="0.1"/>
+        </joint>
+
+        <link name="${prefix}L2_link_4">
+            <visual>
+                <geometry>
+                    <mesh filename="package://bam_descriptions/urdf/arm_400_v1/meshes/L2.stl"/>
+                </geometry>
+                <origin rpy="0 0 0"/>
+
+                <material name="StoglRobotics/LightGrey"/>
+            </visual>
+
+            <collision>
+                <origin xyz="-0.045781 0.077883 0.000000" rpy="0 0 0"/>
+                <geometry>
+                    <box size="0.040000 0.224437 0.046000"/>
+                </geometry>
+            </collision>
+
+            <!-- Manually edited using values from fusion 360 -->
+            <collision>
+                <origin xyz="-0.071723 -0.059759 0.000000" rpy="0 0 ${(pi/180) * -39.46}"/>
+                <geometry>
+                    <box size="0.04 0.094 0.046000"/>
+                </geometry>
+            </collision>
+
+            <inertial>
+                <origin xyz="-0.046499 0.033892 0.000000"/>
+                <mass value="0.272203"/>
+                <inertia 
+                    ixx="2.392000e-03" ixy="-1.389000e-04" ixz="2.951000e-18"
+                    iyy="2.708000e-04" iyz="8.125000e-18"
+                    izz="2.422000e-03"/>
+            </inertial>
+        </link>
+
+        <joint name="${prefix}wrist_fixed_joint" type="fixed">
+        <!-- Add reflection here mabye... -->
+        <!-- -6mm as 2 less plates-->
+            <origin xyz="${-45.7942/1000} ${(190.0905-6)/1000} 0" rpy="${-pi/2} ${pi*pos_reflect_1_neg_reflect_0} 0"/>
+            <parent link="${prefix}L2_link_4"/>
+            <child link="${prefix}wrist_1_link"/>
+        </joint>
+
+        <link name="${prefix}wrist_1_link">
+            <visual>
+                <geometry>
+                    <mesh filename="package://bam_descriptions/urdf/arm_400_v1/meshes/wrist.stl"/>
+                </geometry>
+                <origin rpy="0 0 0"/>
+
+                <material name="StoglRobotics/LightGrey"/>
+            </visual>
+            <collision>
+                <origin xyz="0.000040 -0.001210 0.046642" rpy="0 0 0"/>
+                <geometry>
+                    <box size="0.065042 0.050000 0.078000"/>
+                </geometry>
+            </collision>
+
+            <inertial>
+                <origin xyz="0.000040 -0.001210 0.046642"/>
+                <mass value="0.222952"/>
+                <inertia 
+                    ixx="9.525372e-05" ixy="3.917645e-07" ixz="9.418994e-07"
+                    iyy="1.185000e-04" iyz="1.182385e-06"
+                    izz="6.496432e-05"/>
+            </inertial>
+        </link>
+
+        <joint name="${prefix}joint_4" type="revolute">
+        <!-- Add reflection here mabye... -->
+            <origin xyz="0 ${13.5/1000} ${51.5/1000}" rpy="${-pi/2} ${-pi/2 + 11*deg2rad} 0"/>
+            <parent link="${prefix}wrist_1_link"/>
+            <child link="${prefix}wrist_2_link_5"/>
+            <axis xyz="0 0 1"/>
+            <limit lower="${J4_lower}" upper="${J4_upper}" effort="50.0" velocity="100.0"/>
+            <dynamics damping="0.05" friction="0.1"/>
+        </joint>
+
+        <link name="${prefix}wrist_2_link_5">
+            <visual>
+                <geometry>
+                    <mesh filename="package://bam_descriptions/urdf/arm_400_v1/meshes/wrist.stl"/>
+                </geometry>
+                <origin rpy="0 0 0"/>
+
+                <material name="StoglRobotics/LightGrey"/>
+            </visual>
+
+            <collision>
+                <origin xyz="0.000040 -0.001210 0.046642" rpy="0 0 0"/>
+                <geometry>
+                    <box size="0.065042 0.050000 0.078000"/>
+                </geometry>
+            </collision>
+
+            <inertial>
+                <origin xyz="0.000040 -0.001210 0.046642"/>
+                <mass value="0.222952"/>
+                <inertia 
+                    ixx="9.525372e-05" ixy="3.917645e-07" ixz="9.418994e-07"
+                    iyy="1.185000e-04" iyz="1.182385e-06"
+                    izz="6.496432e-05"/>
+            </inertial>
+        </link>
+
+
+        <joint name="${prefix}joint_5" type="revolute">
+        <!-- Add reflection here mabye... -->
+            <origin xyz="0 ${13.5/1000} ${51.5/1000}" rpy="${-pi/2} ${reflect * pi} 0"/>
+            <!-- changing pitch from - to + changes direction of wrist... -->
+            <parent link="${prefix}wrist_2_link_5"/>
+            <child link="${prefix}wrist_3_link_6"/>
+            <axis xyz="0 0 1"/>
+            <limit lower="${J5_lower}" upper="${J5_upper}" effort="50.0" velocity="100.0"/>
+            <dynamics damping="0.05" friction="0.1"/>
+        </joint>
+
+        <link name="${prefix}wrist_3_link_6">
+            <visual>
+                <geometry>
+                    <mesh filename="package://bam_descriptions/urdf/arm_400_v1/meshes/wrist.stl"/>
+                </geometry>
+                <origin rpy="0 0 0"/> 
+                <!-- flip this to change direction -->
+                <!-- Nope bad idea! then it all starts to change.. -->
+
+                <material name="StoglRobotics/LightGrey"/>
+            </visual>
+
+            <collision>
+                <origin xyz="0.000040 -0.001210 0.046642" rpy="0 0 0"/>
+                <geometry>
+                    <box size="0.065042 0.050000 0.078000"/>
+                </geometry>
+            </collision>
+
+            <inertial>
+                <origin xyz="0.000040 -0.001210 0.046642"/>
+                <mass value="0.222952"/>
+                <inertia 
+                    ixx="9.525372e-05" ixy="3.917645e-07" ixz="9.418994e-07"
+                    iyy="1.185000e-04" iyz="1.182385e-06"
+                    izz="6.496432e-05"/>
+            </inertial>
+
+        </link>
+
+        <joint name="${prefix}joint_6" type="revolute">
+        <!-- Add reflection here mabye... -->
+            <origin xyz="0 ${13.5/1000} ${51.5/1000}" rpy="${-pi/2} 0 0"/>
+            <parent link="${prefix}wrist_3_link_6"/>
+            <child link="${prefix}eef_frame"/>
+            <axis xyz="0 0 1"/>
+            <limit lower="${J6_lower}" upper="${J6_upper}" effort="50.0" velocity="100.0"/>
+            <dynamics damping="0.05" friction="0.1"/>
+        </joint>
+
+        <link name="${prefix}eef_frame">
+            <xacro:dummy_inertial/>
+        </link>
+
+        <!-- https://github.com/ros-industrial/universal_robot/pull/506/files -->
+        <joint name="${prefix}ee_fixed_joint" type="fixed">
+            <parent link="${prefix}eef_frame" />
+            <child link="${prefix}ee_link" />
+            <origin xyz="0 0 0" rpy="0.0 ${-pi/2.0} ${pi/2.0}" />
+        </joint>
+
+        <link name="${prefix}ee_link">
+            <xacro:dummy_inertial/>
+        </link>
+
+
+    <!-- SERIAL CHAIN - END -->
+
+    <!-- PARALLEL LINKS - START -->
+
+    <xacro:unless value="${six_dof_mode}">
+        <joint name="${prefix}joint_c1" type="revolute">
+                    <!-- L1 Joint -->
+                    <!-- <origin xyz="0 ${69/1000} ${137.5/1000}" rpy="${-pi/2} ${reflect*pi/2} 0"/> -->
+
+                    <origin xyz="0 ${69/1000} ${50.5/1000}" rpy="${-pi/2} ${reflect*pi/2} 0"/>
+                    <parent link="${prefix}shoulder_link_2"/>
+                    <child link="${prefix}C1_link"/>
+                    <axis xyz="0 0 -1"/>
+                    <limit lower="-${pi}" upper="${pi}" effort="50.0" velocity="100.0"/>
+                    <dynamics damping="0.05" friction="0.1"/>
+                </joint>
+
+        <link name="${prefix}C1_link">
+            <visual>
+                <geometry>
+                    <mesh filename="package://bam_descriptions/urdf/arm_400_v1/meshes/C1.stl"/>
+                </geometry>
+                <origin rpy="0 0 0"/>
+
+                <material name="StoglRobotics/LightGrey"/>
+            </visual>
+            <collision>
+                <origin xyz="0.002885 0.057527 0.013000" rpy="0 0 0"/>
+                <geometry>
+                    <box size="0.052000 0.166000 0.028000"/>
+                </geometry>
+            </collision>
+
+            <inertial>
+                <origin xyz="0.002885 0.057527 0.013000"/>
+                <mass value="0.112422"/>
+                <inertia 
+                    ixx="2.678000e-04" ixy="-7.943692e-06" ixz="2.790000e-18"
+                    iyy="3.386082e-05" iyz="1.901000e-17"
+                    izz="2.717000e-04"/>
+            </inertial>
+        </link>
+
+        <joint name="${prefix}joint_c2" type="revolute">
+            <origin xyz="0 ${120/1000} ${(26+3)/1000}" rpy="0 0 0"/>
+            <parent link="${prefix}C1_link"/>
+            <child link="${prefix}C2_link"/>
+            <axis xyz="0 0 -1"/>
+            <limit lower="${-pi}" upper="${pi}" effort="50.0" velocity="100.0"/>
+            <dynamics damping="0.05" friction="0.1"/>
+        </joint>
+
+        <link name="${prefix}C2_link">
+            <visual>
+                <geometry>
+                    <mesh filename="package://bam_descriptions/urdf/arm_400_v1/meshes/C2.stl"/>
+                </geometry>
+                <origin rpy="0 0 0"/>
+
+                <material name="StoglRobotics/LightGrey"/>
+            </visual>
+            
+            <collision>
+                <origin xyz="0.000000 0.130373 0.027917" rpy="0 0 0"/>
+                <geometry>
+                    <box size="0.025000 0.290000 0.056000"/>
+                </geometry>
+            </collision>
+
+            <inertial>
+                <origin xyz="0.000000 0.130373 0.027917"/>
+                <mass value="0.114448"/>
+                <inertia 
+                    ixx="8.608000e-04" ixy="7.377000e-16" ixz="2.464000e-17"
+                    iyy="8.430406e-05" iyz="-1.239561e-06"
+                    izz="7.881000e-04"/>
+            </inertial>
+        </link>
+
+        <joint name="${prefix}C2_coupler_joint" type="fixed">
+            <origin xyz="0 ${265/1000} ${(56/2)/1000}" rpy="0 0 0"/>
+            <parent link="${prefix}C2_link"/>
+            <child link="${prefix}C2_coupler"/>
+        </joint>
+
+        <link name="${prefix}C2_coupler">
+            <xacro:dummy_inertial/>
+        </link>
+
+        <joint name="${prefix}L2_coupler_joint" type="fixed">
+            <origin xyz="${-67.1031/1000} ${-99.4845/1000} 0" rpy="0 0 0"/>
+            <parent link="${prefix}L2_link_4"/>
+            <child link="${prefix}L2_coupler"/>
+        </joint>
+
+        <link name="${prefix}L2_coupler">
+            <xacro:dummy_inertial/>
+        </link>
+
+    </xacro:unless>
+    <!-- PARALLEL LINKS - END -->
+
+    </xacro:macro>
+
+    <!-- Standardized alias: make_arm (config_file currently ignored) -->
+    <xacro:macro name="make_arm" params="config_file:=''">
+        <xacro:arm_400_v1 prefix="" reflect="1" config="default" six_dof_mode="false"/>
+    </xacro:macro>
+    
+</robot>

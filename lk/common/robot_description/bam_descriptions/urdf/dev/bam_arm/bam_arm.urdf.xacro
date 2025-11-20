@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+
+<!-- When testing you can run this URDF. Previously I had to comment/uncomment on the macro.xacro, but now I have a standalone file-->
+<!-- default values for properties should be "pure" for when its included in another xacro (ie. moveit) -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="bam_arm">
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+    <xacro:include filename="$(find bam_descriptions)/urdf/texture_cube/texture_cube_macro.xacro" />
+
+
+
+    
+    
+    <xacro:arg name="plugin" default="none"/>  <!-- none, mock, gazebo, real -->
+    <xacro:arg name="prefix" default=""/>
+    <xacro:arg name="reflect" default="1"/>
+    <xacro:arg name="world_xyz" default="0 0 0"/>
+    <xacro:arg name="world_rpy" default="0 0 0"/>
+    <xacro:arg name="base_xyz" default="0 0 0"/>
+    <xacro:arg name="base_rpy" default="0 0 0"/>
+    
+    <xacro:arg name="config_file_path" default="$(find bam_descriptions)/urdf/bam_arm/config/bam_arm_sku_v0.0.0_config.yaml"/>
+    
+    <xacro:property name="prefix" value="$(arg prefix)" />
+    <xacro:property name="plugin" value="$(arg plugin)" />
+    <xacro:property name="reflect" value="$(arg reflect)" />
+    <xacro:property name="world_xyz" value="$(arg world_xyz)"/>
+    <xacro:property name="world_rpy" value="$(arg world_rpy)"/>
+    <xacro:property name="base_xyz" value="$(arg base_xyz)"/>
+    <xacro:property name="base_rpy" value="$(arg base_rpy)"/>
+
+    <xacro:property name="config_file_path" value="$(arg config_file_path)"/>
+
+    <link name="world"/>
+
+    <joint name="world_to_base" type="fixed">
+        <origin xyz="${world_xyz}" rpy="${world_rpy}"/>
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint>
+
+    <link name="base_link"/>
+
+    <joint name="base_link_joint" type="fixed">
+        <origin xyz="${base_xyz}" rpy="${base_rpy}"/>
+        <parent link="base_link"/>
+        <child link="${prefix}base_link_1"/>
+    </joint>
+
+    <!-- Include the new bam_arm_macro -->
+    <xacro:include filename="$(find bam_descriptions)/urdf/bam_arm/bam_arm_macro.xacro" />
+    <xacro:bam_arm 
+        prefix="${prefix}"
+        config_file_path="${config_file_path}"/>
+
+
+    <!-- <xacro:if value="${plugin != 'none'}">
+
+        <xacro:include filename="$(find bam_descriptions)/urdf/dummy_bam_fb/dummy_bam_fb.ros2_control.xacro"/>
+        <xacro:include filename="$(find bam_descriptions)/urdf/bam_arm/bam_arm.ros2_control.xacro"/>
+        <xacro:bam_arm_ros2_control 
+        prefix="${prefix}"
+        transport_path="${transport_path}"
+        plugin="${plugin}"
+        disable_wrist="${disable_wrist}"
+        disable_C1="${disable_C1}"
+        disable_C2="${disable_C2}"
+        controllers_file_path="${controllers_file_path}"
+        config_file="${config_file}"
+        ros_namespace="${ros_namespace}"/>
+    </xacro:if> -->
+
+
+</robot>

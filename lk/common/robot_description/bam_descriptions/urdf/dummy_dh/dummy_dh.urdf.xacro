@@ -1,0 +1,264 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="dummy_dh">
+
+
+
+  <!-- Import control_xacro -->
+
+
+  <!-- Generic Joint and Link Names which correspond to DH frames --> 
+  <!-- Arguments -->
+  <xacro:arg name="prefix" default=""/>
+  <!-- Reflection is done by just changing the joint range. -->
+  <!-- This is a nice idea beacuse we keep the same frame conventions for the analytical solution -->
+  <xacro:arg name="reflect" default="1"/>
+  <xacro:arg name="plugin" default="none"/>
+  <xacro:arg name="config_file" default=""/>
+
+  <xacro:arg name="d1" default="0.2"/>
+  <xacro:arg name="a2" default="-0.5"/>
+  <xacro:arg name="a3" default="-0.5"/>
+  <xacro:arg name="d4" default="0.2"/>
+  <xacro:arg name="d5" default="0.15"/>
+  <xacro:arg name="d6" default="0.15"/>
+
+  <!-- Properties -->
+  <xacro:property name="prefix" value="$(arg prefix)"/>
+  <xacro:property name="plugin" value="$(arg plugin)"/>
+
+  <!-- Conditional config file loading -->
+  <xacro:property name="config_file_arg" value="$(arg config_file)"/>
+  
+  <!-- If config file is provided, load it -->
+  <xacro:if value="${config_file_arg != ''}">
+    <xacro:property name="cfg" value="${xacro.load_yaml(config_file_arg)}"/>
+    <xacro:property name="reflect" value="${cfg['args']['reflect']}"/>
+    <xacro:property name="d1" value="${cfg['args']['dh']['d1']}"/>
+    <xacro:property name="a2" value="${cfg['args']['dh']['a2']}"/>
+    <xacro:property name="a3" value="${cfg['args']['dh']['a3']}"/>
+    <xacro:property name="d4" value="${cfg['args']['dh']['d4']}"/>
+    <xacro:property name="d5" value="${cfg['args']['dh']['d5']}"/>
+    <xacro:property name="d6" value="${cfg['args']['dh']['d6']}"/>
+  </xacro:if>
+
+  <!-- Otherwise use arg values (when no config file) -->
+  <xacro:if value="${config_file_arg == ''}">
+    <xacro:property name="reflect" value="$(arg reflect)"/>
+    <xacro:property name="d1" value="$(arg d1)"/>
+    <xacro:property name="a2" value="$(arg a2)"/>
+    <xacro:property name="a3" value="$(arg a3)"/>
+    <xacro:property name="d4" value="$(arg d4)"/>
+    <xacro:property name="d5" value="$(arg d5)"/>
+    <xacro:property name="d6" value="$(arg d6)"/>
+  </xacro:if>
+
+  <xacro:property name="one_if_positive_reflect" value="${(reflect+1)*0.5}"/>
+  <xacro:property name="one_if_negative_reflect" value="${(reflect-1)*-0.5}"/>
+
+  <!-- a1 and a2, are always negative and can hardcode * -1, d4 could be negative... careful -->
+  <!-- vscode xacro viewer couldn't parse this -->
+  <!-- <xacro:property name="d4_abs" value="${(d4 if d4 >= 0 else -1.0 * d4)}"/> -->
+  <xacro:property name="d4_abs" value="${d4}"/>
+
+
+  <xacro:property name="vel_limit" value="6.28"/>
+  <xacro:property name="effort_limit" value="100"/>
+  <xacro:property name="lower_limit" value="-3.14159"/>
+  <xacro:property name="upper_limit" value="3.14159"/>
+
+    <xacro:if value="${plugin != 'none'}">
+      <!-- Add <ros2_control> tag from the moveit package -->
+      <xacro:include filename="$(find dummy_moveit_config)/config/dummy_dh.ros2_control.xacro" />
+      <xacro:arg name="initial_positions_file" default="$(find dummy_moveit_config)/config/initial_positions.yaml" />
+      <xacro:dummy_dh_ros2_control name="FakeSystem" initial_positions_file="$(arg initial_positions_file)"/>
+    </xacro:if>
+
+  <link name="base_link"/>
+
+  <joint name="${prefix}joint_1" type="revolute">
+    <parent link="base_link"/>
+    <child link="${prefix}link_0"/>
+    <origin xyz="0 0 0" rpy="0 0 ${pi}"/> 
+    <axis xyz="0 0 1"/>
+    <limit lower="${lower_limit}" upper="${upper_limit}" velocity="${vel_limit}" effort="${effort_limit}"/>
+  </joint>
+
+  <link name="${prefix}link_0">
+    <visual>
+      <origin xyz="0 0 ${d1/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.03" length="${d1}"/>
+      </geometry>
+      <material name="blue"><color rgba="0 0 1 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${d1/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.03" length="${d1}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="${prefix}joint_2" type="revolute">
+    <parent link="${prefix}link_0"/>
+    <child link="${prefix}link_1"/>
+    <origin xyz="0 0 ${d1}" rpy="${pi/2} ${one_if_negative_reflect*pi} 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${lower_limit}" upper="${upper_limit}" velocity="${vel_limit}" effort="${effort_limit}"/>
+  </joint>
+
+  <link name="${prefix}link_1">
+    <visual>
+      <origin xyz="${a2/2} 0 0" rpy="0 ${pi/2} 0"/>
+      <geometry>
+        <cylinder radius="0.03" length="${-a2}"/>
+      </geometry>
+      <material name="green"><color rgba="0 1 0 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="${a2/2} 0 0" rpy="0 ${pi/2} 0"/>
+      <geometry>
+        <cylinder radius="0.03" length="${-a2}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="${prefix}joint_3" type="revolute">
+    <parent link="${prefix}link_1"/>
+    <child link="${prefix}link_2"/>
+    <origin xyz="${a2} 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${lower_limit}" upper="${upper_limit}" velocity="${vel_limit}" effort="${effort_limit}"/>
+  </joint>
+
+  <link name="${prefix}link_2">
+    <visual>
+      <origin xyz="${a3/2} 0 0" rpy="0 ${pi/2} 0"/>
+      <geometry>
+        <cylinder radius="0.03" length="${-a3}"/>
+      </geometry>
+      <material name="red"><color rgba="1 0 0 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="${a3/2} 0 0" rpy="0 ${pi/2} 0"/>
+      <geometry>
+        <cylinder radius="0.03" length="${-a3}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="${prefix}joint_4" type="revolute">
+    <parent link="${prefix}link_2"/>
+    <child link="${prefix}link_3"/>
+    <origin xyz="${a3} 0 0" rpy="0 0 ${one_if_negative_reflect*pi}"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${lower_limit}" upper="${upper_limit}" velocity="${vel_limit}" effort="${effort_limit}"/>
+  </joint>
+
+  <link name="${prefix}link_3">
+    <visual>
+      <origin xyz="0 0 ${d4/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.025" length="${d4_abs}"/>
+      </geometry>
+      <material name="yellow"><color rgba="1 1 0 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${d4/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.025" length="${d4_abs}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="${prefix}joint_5" type="revolute">
+    <parent link="${prefix}link_3"/>
+    <child link="${prefix}link_4"/>
+    <origin xyz="0 0 ${d4}" rpy="${pi/2} 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${lower_limit}" upper="${upper_limit}" velocity="${vel_limit}" effort="${effort_limit}"/>
+  </joint>
+
+  <link name="${prefix}link_4">
+    <visual>
+      <origin xyz="0 0 ${d5/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.025" length="${d5}"/>
+      </geometry>
+      <material name="purple"><color rgba="0.5 0 0.5 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${d5/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.025" length="${d5}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="${prefix}joint_6" type="revolute">
+    <parent link="${prefix}link_4"/>
+    <child link="${prefix}link_5"/>
+    <origin xyz="0 0 ${d5}" rpy="${-pi/2}  0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${lower_limit}" upper="${upper_limit}" velocity="${vel_limit}" effort="${effort_limit}"/>
+  </joint>
+
+  <link name="${prefix}link_5">
+    <visual>
+      <origin xyz="0 0 ${d6/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.025" length="${d6}"/>
+      </geometry>
+      <material name="grey"><color rgba="0.5 0.5 0.5 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${d6/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.025" length="${d6}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="${prefix}joint_7" type="fixed">
+    <parent link="${prefix}link_5"/>
+    <child link="${prefix}tool0"/>
+    <origin xyz="0 0 ${d6}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="${prefix}tool0"/>
+
+  <joint name="${prefix}tool0_to_tool0_flip" type="fixed">
+    <parent link="${prefix}tool0"/>
+    <child link="${prefix}tool0_flip"/>
+    <origin xyz="0 0 0" rpy="${pi} 0 0"/>
+  </joint>
+
+  <link name="${prefix}tool0_flip"/>
+
+    <!-- https://github.com/ros-industrial/universal_robot/pull/506/files -->
+  <joint name="${prefix}ee_fixed_joint" type="fixed">
+    <parent link="${prefix}tool0" />
+    <child link="${prefix}ee_link" />
+    <origin xyz="0 0 0" rpy="0.0 ${-pi/2.0} ${pi/2.0}" />
+  </joint>
+
+  <link name="${prefix}ee_link"/>
+
+
+  <!-- <joint name="${prefix}tcp_world_fixed_joint" type="fixed">
+    <parent link="${prefix}ee_link" />
+    <child link="${prefix}tcp_world" />
+    <origin xyz="0 0 0" rpy="0.0 ${-pi/2.0} ${pi/2.0}" />
+  </joint>
+
+  <link name="${prefix}tcp_tool"/>
+
+  <joint name="${prefix}tcp_world_fixed_joint" type="fixed">
+    <parent link="${prefix}ee_link" />
+    <child link="${prefix}tcp_world" />
+    <origin xyz="0 0 0" rpy="0.0 ${-pi/2.0} ${pi/2.0}" />
+  </joint>
+
+  <link name="${prefix}tcp_world"/> -->
+
+</robot>

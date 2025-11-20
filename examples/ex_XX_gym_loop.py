@@ -9,7 +9,7 @@
 """
 
 # BAM
-from lk import System, SystemConfig, Node, Agent, Env
+from lk import System, Node, Agent, Env
 from lk import Observation, Action, Reward, Done, Info
 
 # PYTHON
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     # You can run without a node... then it just defaults to a single pynode in the current process...
     node = PyNode(name="node")
-    system_config = SystemConfig(name="system")
+    system_config = System.Config(name="system")
 
     agent = Agent.from_config(system_config)
     env = Env.from_config(system_config)

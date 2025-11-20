@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Auto-generated Composite Macro
+    Generated for: 2 descriptions, 1 mounting joints
+  -->
+
+  <xacro:macro name="make_composite" params="config_file">
+    
+    <!-- Load the composite config -->
+    <xacro:property name="cfg" value="${xacro.load_yaml(config_file)}"/>
+    
+    <!-- Extract descriptions and mounting joints -->
+    <xacro:property name="descriptions" value="${cfg['descriptions']}"/>
+    <xacro:property name="mounting_joints" value="${cfg['mounting_joints']}"/>
+    
+    <!-- Include and call each description -->
+    <!-- Description 0: UR (type=ur) -> make_arm -->
+    <xacro:if value="${len(descriptions) > 0}">
+      <xacro:property name="desc0" value="${descriptions[0]}"/>
+      <xacro:include filename="${desc0['urdf']['macro_path']}"/>
+      <xacro:make_arm config_file="${desc0['config_file']}"/>
+    </xacro:if>
+    
+    <!-- Description 1: CrabClaw (type=CrabClaw) -> make_hand -->
+    <xacro:if value="${len(descriptions) > 1}">
+      <xacro:property name="desc1" value="${descriptions[1]}"/>
+      <xacro:include filename="${desc1['urdf']['macro_path']}"/>
+      <xacro:make_hand config_file="${desc1['config_file']}"/>
+    </xacro:if>
+    
+    <!-- Add mounting joints -->
+    <xacro:if value="${len(mounting_joints) > 0}">
+      <xacro:property name="mj0" value="${mounting_joints[0]}"/>
+      <xacro:property name="mj0_transform" value="${mj0['transform']}"/>
+      <joint name="${mj0['name']}" type="fixed">
+        <origin xyz="${mj0_transform['xyz']}" rpy="${mj0_transform['rpy']}"/>
+        <parent link="${mj0_transform['frame_id']}"/>
+        <child link="${mj0_transform['child_frame_id']}"/>
+      </joint>
+    </xacro:if>
+    
+  </xacro:macro>
+
+</robot>

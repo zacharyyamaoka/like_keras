@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="test_macro_priority">
+  
+  <!-- Test 1: Include A, call macro, include B, call macro again -->
+  <xacro:include filename="/home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/test_macros/macro_version_a.xacro"/>
+  
+  <!-- First call - should use version A -->
+  <xacro:test_macro config_file="dummy1.yaml"/>
+  
+  <xacro:include filename="/home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/test_macros/macro_version_b.xacro"/>
+  
+  <!-- Second call - should use version B (overwrites A) -->
+  <xacro:test_macro config_file="dummy2.yaml"/>
+  
+  <!-- 
+  EXPECTED BEHAVIOR:
+  - The second include overwrites the first macro definition
+  - Both calls will produce links with the SAME name "test_link" (will cause collision!)
+  - The first call happens BEFORE the second include, so it should use version A (RED, 1x1x1)
+  - The second call happens AFTER the second include, so it should use version B (BLUE, 2x2x2)
+  
+  PROBLEM: Both links are named "test_link" which is invalid URDF!
+  -->
+  
+</robot>
+

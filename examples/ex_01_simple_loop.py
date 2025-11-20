@@ -11,7 +11,7 @@
 """
 
 # BAM
-from lk import System, SystemConfig, Node, Agent, Env
+from lk import System, Node, Agent, Env
 from lk import Observation, Action, Reward, Done, Info
 
 # PYTHON
@@ -161,7 +161,7 @@ class RandomAgent(Agent):
 # System Definition (Using Recommended Class-based Approach)
 # =============================================================================
 @dataclass
-class SimpleLoopConfig(SystemConfig):
+class SimpleLoopConfig(System.Config):
     """Configuration for simple agent-env loop."""
     name: str = "simple_loop"
     rate_hz: float = 50.0  # 50 Hz

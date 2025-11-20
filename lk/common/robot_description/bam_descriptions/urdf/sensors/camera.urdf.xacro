@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+
+<!-- When testing you can run this URDF. Previously I had to comment/uncomment on the macro.xacro, but now I have a standalone file-->
+<!-- default values for properties should be "pure" for when its included in another xacro (ie. moveit) -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="cameras">
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+
+    <xacro:arg name="plugin" default="gazebo"/>  <!-- none, mock, gazebo, real -->
+    <xacro:property name="plugin" value="$(arg plugin)" />
+
+    <xacro:property name="using_sim" value="${plugin == 'gazebo'}"/>
+
+
+    <xacro:arg name="prefix" default=""/>
+    <xacro:property name="prefix" value="$(arg prefix)" />
+
+    <xacro:arg name="reflect" default="1"/>
+    <xacro:property name="reflect" value="$(arg reflect)" />
+
+    <gazebo>
+        <plugin name="gz::sim::systems::Label" filename="gz-sim-label-system">
+        <label>10</label>
+        </plugin>
+    </gazebo>
+
+    <link name="world"/>   
+
+    <joint name="world_to_base" type="fixed">
+        <origin xyz="0 0 1" rpy="0.0 0 0.0"/>
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint> 
+
+    <link name="base_link">
+        <xacro:dummy_inertial/>
+    </link>
+ 
+    <xacro:property name="name" value="camera"/>
+    <xacro:include filename="$(find bam_descriptions)/urdf/sensors/d405/_d405.urdf.xacro" />
+    <xacro:sensor_d405 parent="base_link" name="${name}" use_nominal_extrinsics="${using_sim}">
+        <origin xyz="0 0 0" rpy="0 ${pi/2} ${pi/2}" />
+    </xacro:sensor_d405> 
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/sensors/camera.gazebo.xacro" />
+    <!-- <xacro:color_camera ref_link="camera_link"/> -->
+    <!-- <xacro:depth_camera ref_link="camera_link"/> -->
+    <!-- BUG when I use the  ${name}_color_optical_frame, it seems to display in the completely wrong direction!-->
+    <!-- ${name}_link aka camera_link was working ok, but I think your suppose to use the color_frame/optical_frame pair -->
+    <!-- https://articulatedrobotics.xyz/tutorials/mobile-robot/hardware/camera/#camera-sensor-simulation -->
+    <xacro:rgbd_camera ref_link="${name}_color_frame"/>
+    <xacro:segmentation_camera ref_link="${name}_color_frame"/>
+
+
+    
+</robot>

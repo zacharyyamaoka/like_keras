@@ -1,0 +1,45 @@
+General
+	Part Number	L1-v2
+	Part Name	L1-v2 v6
+	Description
+	Material Name	(Various)
+
+Manage
+	Item Number
+	Lifecycle
+	Revision
+	State	Working
+	Change Order
+
+Physical
+	Mass	316.1519 g
+	Volume	95853.7499 mm^3
+	Density	0.0033 g / mm^3
+	Area	1.178E+05 mm^2
+	World X,Y,Z	0.00 mm, 0.00 mm, 9.00 mm
+	Center of Mass	-0.3921 mm, 83.7535 mm, 32.1697 mm
+	Bounding Box
+		Length	50.80 mm
+		Width	295.5157 mm
+		Height	63.80 mm
+	Moment of Inertia at Center of Mass   (g mm^2)
+		Ixx	2.473E+06
+		Ixy	-10280.538
+		Ixz	-3805.8446
+		Iyx	-10280.538
+		Iyy	2.732E+05
+		Iyz	-62507.3353
+		Izx	-3805.8446
+		Izy	-62507.3353
+		Izz	2.416E+06
+	Moment of Inertia at Origin   (g mm^2)
+		Ixx	5.018E+06
+		Ixy	102.6487
+		Ixz	182.3363
+		Iyx	102.6487
+		Iyy	6.005E+05
+		Iyz	-9.143E+05
+		Izx	182.3363
+		Izy	-9.143E+05
+		Izz	4.633E+06
+

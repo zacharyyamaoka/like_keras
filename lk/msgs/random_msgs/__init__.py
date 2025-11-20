@@ -1,5 +1,5 @@
 # Base types
-from .random_type import RandomType
+from .data_dist import DataDist as RandomType
 from .random_float import RandomFloat
 from .random_int import RandomInt
 
@@ -13,4 +13,3 @@ from .random_int import RandomInt
 #     RandomTransform,
 # )
 # from .visual_objects import RandomRGBA, RandomMaterial
-

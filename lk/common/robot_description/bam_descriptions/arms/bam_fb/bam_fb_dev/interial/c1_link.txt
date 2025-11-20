@@ -1,0 +1,45 @@
+General
+	Part Number	C1
+	Part Name	C1 v16
+	Description
+	Material Name	Aluminum 6061
+
+Manage
+	Item Number
+	Lifecycle
+	Revision
+	State
+	Change Order
+
+Physical
+	Mass	46.3208 g
+	Volume	17155.8651 mm^3
+	Density	0.0027 g / mm^3
+	Area	10320.2013 mm^2
+	World X,Y,Z	0.00 mm, 0.00 mm, 0.00 mm
+	Center of Mass	0.00 mm, 42.1426 mm, 2.9265 mm
+	Bounding Box
+		Length	45.00 mm
+		Width	152.50 mm
+		Height	6.00 mm
+	Moment of Inertia at Center of Mass   (g mm^2)
+		Ixx	87549.5413
+		Ixy	0.00
+		Ixz	0.00
+		Iyx	0.00
+		Iyy	7091.3646
+		Iyz	-135.8111
+		Izx	0.00
+		Izy	-135.8111
+		Izz	94369.699
+	Moment of Inertia at Origin   (g mm^2)
+		Ixx	1.702E+05
+		Ixy	0.00
+		Ixz	0.00
+		Iyx	0.00
+		Iyy	7488.0758
+		Iyz	-5848.5795
+		Izx	0.00
+		Izy	-5848.5795
+		Izz	1.766E+05
+

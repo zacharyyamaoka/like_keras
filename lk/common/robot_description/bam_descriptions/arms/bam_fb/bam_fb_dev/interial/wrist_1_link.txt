@@ -1,0 +1,45 @@
+General
+	Part Number	Wrist Link 1
+	Part Name	Wrist Link 1
+	Description
+	Material Name	(Various)
+
+Manage
+	Item Number
+	Lifecycle
+	Revision
+	State	Working
+	Change Order
+
+Physical
+	Mass	1059.1526 g
+	Volume	1.781E+05 mm^3
+	Density	0.0059 g / mm^3
+	Area	62701.5524 mm^2
+	World X,Y,Z	0.00 mm, 0.00 mm, 0.00 mm
+	Center of Mass	-0.0249 mm, -5.2146 mm, 58.8508 mm
+	Bounding Box
+		Length	53.40 mm
+		Width	62.5086 mm
+		Height	87.1217 mm
+	Moment of Inertia at Center of Mass   (g mm^2)
+		Ixx	4.132E+05
+		Ixy	-928.1213
+		Ixz	38.9251
+		Iyx	-928.1213
+		Iyy	4.227E+05
+		Iyz	5587.3579
+		Izx	38.9251
+		Izy	5587.3579
+		Izz	3.680E+05
+	Moment of Inertia at Origin   (g mm^2)
+		Ixx	4.110E+06
+		Ixy	-1065.7062
+		Ixz	1591.6666
+		Iyx	-1065.7062
+		Iyy	4.091E+06
+		Iyz	3.306E+05
+		Izx	1591.6666
+		Izy	3.306E+05
+		Izz	3.968E+05
+

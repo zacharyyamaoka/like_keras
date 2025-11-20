@@ -1,0 +1,210 @@
+<?xml version="1.0"?>
+<robot name="one_dof" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<xacro:macro name="one_dof" params="
+    rotor_diameter
+    rotor_length
+    rotor_mass
+    gearbox_diameter
+    gearbox_length
+    gearbox_mass
+    arm_width
+    arm_length
+    arm_mass
+    payload_diameter
+    payload_thickness
+    payload_mass
+    payload_distance
+      ">
+
+  <!-- Parameter definitions for easy adjustment -->
+  <!-- 3D moment of interia's from https://en.wikipedia.org/wiki/List_of_moments_of_inertia#:~:text=List%20of%203D%20inertia%20tensors -->
+  <xacro:property name="rotor_diameter" value="$(arg rotor_diameter)"/>
+  <xacro:property name="rotor_radius" value="${rotor_diameter/2}"/>
+  <xacro:property name="rotor_length" value="$(arg rotor_length)"/>
+  <xacro:property name="rotor_mass" value="$(arg rotor_mass)"/>
+  <xacro:property name="rotor_inertia_zz" value="${10*10 * (0.58/(100*100))}"/> <!-- J_load = N**2 * J_rotor and kg*cm^2 -> kg*m^2 -->
+  <xacro:property name="rotor_inertia_xx_yy" value="${rotor_inertia_zz * (0.5 + (rotor_length*rotor_radius/(6*rotor_radius*rotor_radius)))}"/> <!-- given the zz, calculate the xx and yy -->
+
+  <xacro:property name="gearbox_diameter" value="$(arg gearbox_diameter)"/>
+  <xacro:property name="gearbox_radius" value="${gearbox_diameter/2}"/>
+  <xacro:property name="gearbox_length" value="$(arg gearbox_length)"/>
+  <xacro:property name="gearbox_mass" value="$(arg gearbox_mass)"/>
+  <xacro:property name="gearbox_inertia_zz" value="${0.13/(100*100)}"/> <!-- kg*cm^2 -> kg*m^2 -->
+  <xacro:property name="gearbox_inertia_xx_yy" value="${gearbox_inertia_zz * (0.5 + (gearbox_length*gearbox_radius/(6*gearbox_radius*gearbox_radius)))}"/> <!-- given the zz, calculate the xx and yy -->
+
+  <xacro:property name="arm_width" value="$(arg arm_width)"/>
+  <xacro:property name="arm_length" value="$(arg arm_length)"/>
+  <xacro:property name="arm_mass" value="$(arg arm_mass)"/>
+  <xacro:property name="arm_inertia_xx_zz" value="${(1/12) * arm_mass * arm_length*arm_length}"/>
+
+  <xacro:property name="payload_diameter" value="$(arg payload_diameter)"/>
+  <xacro:property name="payload_radius" value="${payload_diameter/2}"/>
+  <xacro:property name="payload_thickness" value="$(arg payload_thickness)"/>
+  <xacro:property name="payload_mass" value="$(arg payload_mass)"/>
+  <xacro:property name="payload_distance" value="$(arg payload_distance)"/>
+
+  <!-- You don't acctually need the parrallel axis thoerm, urdf iwll handle that! -->
+  <xacro:property name="payload_inertia_zz" value="${(0.5 * payload_mass * payload_radius*payload_radius)}"/> <!-- interia + parrallel axis theorem -->
+  <xacro:property name="payload_inertia_xx_yy" value="${((1/12) * payload_mass * (3*payload_radius*payload_radius + payload_thickness*payload_thickness))}"/> <!-- interia + parrallel axis theorem -->
+
+
+  <!-- Material definitions -->
+  <material name="motor_housing">
+    <color rgba="0.5 0.5 0.5 0.3"/>
+  </material>
+  
+  <material name="rotor">
+    <color rgba="0.1 0.4 0.8 1.0"/> <!-- blueish -->
+  </material>
+  
+  <material name="gearbox">
+    <color rgba="0.8 0.7 0.1 1.0"/> <!-- yellow/gold -->
+  </material>
+  
+  <material name="arm">
+    <color rgba="0.2 0.8 0.2 1.0"/> <!-- green -->
+  </material>
+  
+  <material name="payload">
+    <color rgba="0.8 0.2 0.7 1.0"/> <!-- magenta/pink -->
+  </material>
+
+
+  <link name="motor_housing">
+    <visual>
+      <geometry>
+        <box size="${rotor_diameter*1.2} ${rotor_diameter*1.2} ${rotor_length}"/>
+      </geometry>
+      <material name="motor_housing"/>
+    </visual>
+  </link>
+
+  <!-- rotor core cylinder -->
+  <link name="rotor">
+    <visual>
+      <geometry>
+        <cylinder radius="${rotor_diameter/2}" length="${rotor_length}"/>
+      </geometry>
+      <material name="rotor"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="${rotor_diameter/2}" length="${rotor_length}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0"/>
+      <mass value="${rotor_mass}"/>
+      <inertia ixx="${rotor_inertia_xx_yy}" ixy="0" ixz="0" 
+                iyy="${rotor_inertia_xx_yy}" iyz="0" 
+                izz="${rotor_inertia_zz}"/>
+    </inertial>
+
+  </link>
+
+  <!-- Joint connecting rotor core to base -->
+  <joint name="joint_1" type="revolute">
+    <parent link="motor_housing"/>
+    <child link="rotor"/>
+    <origin xyz="0 0 0" rpy="0 0 ${-pi/2}"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${-2*pi}" upper="${2*pi}" effort="10" velocity="5"/>
+    <dynamics damping="0.01" friction="0.1"/>
+
+  </joint>
+
+  <!-- Gearbox cylinder -->
+  <link name="gearbox">
+    <visual>
+      <geometry>
+        <cylinder radius="${gearbox_diameter/2}" length="${gearbox_length}"/>
+      </geometry>
+      <material name="gearbox"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="${gearbox_diameter/2}" length="${gearbox_length}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0"/>
+      <mass value="${gearbox_mass}"/>
+      <inertia ixx="${gearbox_inertia_xx_yy}" ixy="0" ixz="0" 
+                iyy="${gearbox_inertia_xx_yy}" iyz="0"
+                izz="${gearbox_inertia_zz}"/>
+    </inertial>
+  </link>
+
+  <!-- Joint connecting gearbox to rotor core -->
+  <joint name="gearbox_joint" type="fixed">
+    <parent link="rotor"/>
+    <child link="gearbox"/>
+    <origin xyz="0 0 ${gearbox_length/2 + rotor_length/2}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Pendulum arm (thin rectangular link) -->
+  <link name="arm">
+    <visual>
+      <origin xyz="${arm_length/2} 0 0" rpy="0 ${pi/2} 0"/>
+      <geometry>
+        <box size="${arm_width} ${arm_width} ${arm_length}"/>
+      </geometry>
+      <material name="arm"/>
+    </visual>
+    <collision>
+      <origin xyz="${arm_length/2} 0 0" rpy="0 ${pi/2} 0"/>
+      <geometry>
+        <box size="${arm_width} ${arm_width} ${arm_length}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="${arm_length/2} 0 0"/>
+      <mass value="${arm_mass}"/>
+      <inertia ixx="1e-6" ixy="0" ixz="0" 
+                iyy="${arm_inertia_xx_zz}" iyz="0" 
+                izz="${arm_inertia_xx_zz}"/>
+    </inertial>
+  </link>
+
+  <!-- Joint connecting pendulum arm to gearbox (revolute joint) -->
+  <joint name="gearbox_to_arm" type="fixed">
+    <parent link="gearbox"/>
+    <child link="arm"/>
+    <origin xyz="0 0 ${gearbox_length/2 + arm_width/2}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14159" upper="3.14159" effort="10" velocity="5"/>
+    <!-- Zero position is when pendulum is pointing down -->
+  </joint>
+
+  <!-- Weight disk at the end of pendulum -->
+  <link name="payload">
+    <visual>
+      <geometry>
+        <cylinder radius="${payload_diameter/2}" length="${payload_thickness}"/>
+      </geometry>
+      <material name="payload"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="${payload_diameter/2}" length="${payload_thickness}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0"/>
+      <mass value="${payload_mass}"/>
+      <inertia ixx="${payload_inertia_xx_yy}" ixy="0" ixz="0"
+                    iyy="${payload_inertia_xx_yy}" iyz="0"
+                    izz="${payload_inertia_zz}"/>
+    </inertial>
+  </link>
+
+  <!-- Joint connecting payload to pendulum arm -->
+  <joint name="arm_to_payload" type="fixed">
+    <parent link="arm"/>
+    <child link="payload"/>
+    <origin xyz="${payload_distance} 0 ${payload_thickness/2 + arm_width/2}" rpy="0 0 0"/>
+  </joint>
+
+</xacro:macro>
+</robot>

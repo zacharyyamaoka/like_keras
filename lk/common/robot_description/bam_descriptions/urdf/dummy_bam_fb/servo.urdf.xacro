@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="servo">
+
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+    <xacro:include filename="$(find bam_descriptions)/urdf/dummy_bam_fb/servo_macros.xacro"/>
+
+    <link name="base_link"/>
+
+    <joint name="shoulder_servo_link_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link="shoulder_servo_test"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- <xacro:shoulder_servo_link 
+        name="shoulder_servo_test"
+        gearbox_length='0.0815'
+        gearbox_diameter='0.064'
+        gearbox_mass='0.01'
+        gearbox_front_offset='0.019'
+        motor_length='0.06'
+        motor_width='0.06'
+        motor_mass='0.01'
+    /> -->
+
+    <xacro:shoulder_servo_link 
+        name="shoulder_servo_test"
+        gearbox_length='0.0815'
+        gearbox_diameter='0.064'
+        gearbox_mass='1.266'
+        gearbox_front_offset='0.019'
+        motor_length='0.06'
+        motor_width='0.06'
+        motor_mass='0.738'
+    />
+
+
+    <joint name="wrist_1_link_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link="wrist_link_test"/>
+        <origin xyz="0 0.1 0" rpy="0 0 0"/>
+    </joint>
+
+    <xacro:wrist_link 
+        name="wrist_link_test"
+        pipe_density="2700"
+        pipe_diameter="0.04"
+        pipe_wall_thickness="0.0015"
+        wrist_length="0.05"
+        wrist_servo_length="0.03"
+        wrist_servo_diameter="0.05"
+        wrist_servo_mass="0.01"
+        wrist_front_offset="0.005"
+        wrist_to_wrist_spacing="0.003"
+        driver_length="0.01"/>
+
+
+</robot>

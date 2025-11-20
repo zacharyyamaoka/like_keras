@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+  <xacro:macro name="test_macro" params="config_file">
+    <link name="test_link">
+      <visual>
+        <geometry>
+          <box size="1.0 1.0 1.0"/>
+        </geometry>
+        <material name="version_a">
+          <color rgba="1.0 0.0 0.0 1.0"/>  <!-- RED for version A -->
+        </material>
+      </visual>
+    </link>
+    
+    <!-- Add a comment to identify which version was used -->
+    <!-- THIS IS VERSION A -->
+  </xacro:macro>
+  
+</robot>
+

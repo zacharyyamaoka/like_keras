@@ -1,0 +1,64 @@
+C1:
+  length: '0.0'
+  mass: '-1'
+  thickness: '0.006'
+  to_C2_spacing: '0.003'
+  width: '0.045'
+C2:
+  length: '0.0'
+  mass: '-1'
+  thickness: '0.006'
+  width: '0.03'
+L1:
+  length: '0.0'
+  mass: '-1'
+  to_L2_spacing: '0.009'
+  width: '0.0508'
+L2:
+  length: '0.0'
+  mass: '-1'
+  width: '0.0381'
+elbow_length: '0.0'
+five_bar:
+  L_c1: '0.0'
+  L_c2: '0.0'
+  L_elbow: '0.0'
+  L_l1: '0.0'
+  L_l2: '0.0'
+  L_shoulder: '0.0'
+  theta_elbow_offset: '0.0'
+five_bar_offset: '0.012'
+link_density: '7800'
+link_wall_thickness: '0.001587'
+shoulder:
+  gearbox_diameter: '0.064'
+  gearbox_front_offset: '0.019'
+  gearbox_length: '0.0815'
+  gearbox_mass: '-1'
+  motor_length: '0.06'
+  motor_mass: '-1'
+  motor_width: '0.06'
+theta_elbow_offset: '0.0'
+urdf_xacro_args:
+  arm_type: default
+  base_rpy: 0 0 0
+  config_file: ''
+  hand_type: none
+  k_damping: '0.001'
+  k_friction: '0.01'
+  linkage_type: five_bar
+  parametric: 'false'
+  plugin: none
+  reflect: '1'
+  six_dof_mode: 'false'
+  sticker_type: default
+  world_rpy: 0 0 0
+  world_xyz: 0 0 0
+  wrist_type: default
+wrist:
+  driver_length: '0.01'
+  length: '0.05'
+  servo_diameter: '0.05'
+  servo_length: '0.03'
+  servo_mass: '0.01'
+  to_wrist_spacing: '0.003'

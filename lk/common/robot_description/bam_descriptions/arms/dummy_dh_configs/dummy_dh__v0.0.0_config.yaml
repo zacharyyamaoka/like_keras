@@ -1,0 +1,1501 @@
+args:
+    base_rpy: 0 0 0
+    base_xyz: 0 0 0
+    dh:
+        a2: '-0.5'
+        a3: '-0.5'
+        d1: '0.2'
+        d4: '0.2'
+        d5: '0.15'
+        d6: '0.15'
+    plugin: none
+    reflect: '1'
+    world_rpy: 0 0 0
+    world_xyz: 0 0 0
+children: []
+config_file: /home/bam/bam_ws/src/bam_machine/bam/descriptions/bam_descriptions/arms/dummy_dh_configs/dummy_dh__v0.0.0_config.yaml
+config_file_path: /home/bam/bam_ws/src/bam_machine/bam/descriptions/bam_descriptions/arms/dummy_dh_configs/dummy_dh__v0.0.0_config.yaml
+generate_py_xml: 'false'
+hash_file_name: 'false'
+info:
+    config_key: ''
+    name: dummy_dh
+    prefix: ''
+    save_dir: /home/bam/bam_ws/src/bam_machine/bam/descriptions/bam_descriptions/arms/dummy_dh_configs
+    sku: ''
+    type: ''
+    urdf_hash: ''
+    uuid: ''
+    version: 0.0.0
+joint_positions:
+    default_positions: initial
+    joint_names: []
+    positions: {}
+joints:
+    entities:
+        joint_1:
+            axis:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+            calibration:
+                falling_hardstop_position: '0.0'
+                falling_home_position: '0.0'
+                rising_hardstop_position: '0.0'
+                rising_home_position: '0.0'
+            initial_position: '0.0'
+            io:
+                can_id: '0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            mimic:
+                enabled: 'false'
+                joint: ''
+                multiplier: '1.0'
+                offset: '0.0'
+            name: joint_1
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            prefixes: []
+            tags: []
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: joint_1
+        joint_2:
+            axis:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+            calibration:
+                falling_hardstop_position: '0.0'
+                falling_home_position: '0.0'
+                rising_hardstop_position: '0.0'
+                rising_home_position: '0.0'
+            initial_position: '0.0'
+            io:
+                can_id: '0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            mimic:
+                enabled: 'false'
+                joint: ''
+                multiplier: '1.0'
+                offset: '0.0'
+            name: joint_2
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            prefixes: []
+            tags: []
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: joint_2
+        joint_3:
+            axis:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+            calibration:
+                falling_hardstop_position: '0.0'
+                falling_home_position: '0.0'
+                rising_hardstop_position: '0.0'
+                rising_home_position: '0.0'
+            initial_position: '0.0'
+            io:
+                can_id: '0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            mimic:
+                enabled: 'false'
+                joint: ''
+                multiplier: '1.0'
+                offset: '0.0'
+            name: joint_3
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            prefixes: []
+            tags: []
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: joint_3
+        joint_4:
+            axis:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+            calibration:
+                falling_hardstop_position: '0.0'
+                falling_home_position: '0.0'
+                rising_hardstop_position: '0.0'
+                rising_home_position: '0.0'
+            initial_position: '0.0'
+            io:
+                can_id: '0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            mimic:
+                enabled: 'false'
+                joint: ''
+                multiplier: '1.0'
+                offset: '0.0'
+            name: joint_4
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            prefixes: []
+            tags: []
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: joint_4
+        joint_5:
+            axis:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+            calibration:
+                falling_hardstop_position: '0.0'
+                falling_home_position: '0.0'
+                rising_hardstop_position: '0.0'
+                rising_home_position: '0.0'
+            initial_position: '0.0'
+            io:
+                can_id: '0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            mimic:
+                enabled: 'false'
+                joint: ''
+                multiplier: '1.0'
+                offset: '0.0'
+            name: joint_5
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            prefixes: []
+            tags: []
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: joint_5
+        joint_6:
+            axis:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+            calibration:
+                falling_hardstop_position: '0.0'
+                falling_home_position: '0.0'
+                rising_hardstop_position: '0.0'
+                rising_home_position: '0.0'
+            initial_position: '0.0'
+            io:
+                can_id: '0'
+            limits:
+                has_acceleration_limits: 'true'
+                has_effort_limits: 'false'
+                has_jerk_limits: 'true'
+                has_position_limits: 'true'
+                has_velocity_limits: 'true'
+                max_acceleration: '10.0'
+                max_effort: '0.0'
+                max_jerk: '100.0'
+                max_position: '3.141593'
+                max_velocity: '10.0'
+                min_acceleration: '-10.0'
+                min_effort: '-0.0'
+                min_jerk: '-100.0'
+                min_position: '-3.141593'
+                min_velocity: '-10.0'
+            mimic:
+                enabled: 'false'
+                joint: ''
+                multiplier: '1.0'
+                offset: '0.0'
+            name: joint_6
+            physics:
+                damping: '0.0'
+                friction: '0.0'
+            prefixes: []
+            tags: []
+            transform:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+            type: revolute
+            unprefixed_name: joint_6
+    joint_1:
+        axis:
+            x: '0.0'
+            y: '0.0'
+            z: '0.0'
+        calibration:
+            falling_hardstop_position: '0.0'
+            falling_home_position: '0.0'
+            rising_hardstop_position: '0.0'
+            rising_home_position: '0.0'
+        initial_position: '0.0'
+        io:
+            can_id: '0'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        mimic:
+            enabled: 'false'
+            joint: ''
+            multiplier: '1.0'
+            offset: '0.0'
+        name: joint_1
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        prefixes: []
+        tags: []
+        transform:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        type: revolute
+        unprefixed_name: joint_1
+    joint_2:
+        axis:
+            x: '0.0'
+            y: '0.0'
+            z: '0.0'
+        calibration:
+            falling_hardstop_position: '0.0'
+            falling_home_position: '0.0'
+            rising_hardstop_position: '0.0'
+            rising_home_position: '0.0'
+        initial_position: '0.0'
+        io:
+            can_id: '0'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        mimic:
+            enabled: 'false'
+            joint: ''
+            multiplier: '1.0'
+            offset: '0.0'
+        name: joint_2
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        prefixes: []
+        tags: []
+        transform:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        type: revolute
+        unprefixed_name: joint_2
+    joint_3:
+        axis:
+            x: '0.0'
+            y: '0.0'
+            z: '0.0'
+        calibration:
+            falling_hardstop_position: '0.0'
+            falling_home_position: '0.0'
+            rising_hardstop_position: '0.0'
+            rising_home_position: '0.0'
+        initial_position: '0.0'
+        io:
+            can_id: '0'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        mimic:
+            enabled: 'false'
+            joint: ''
+            multiplier: '1.0'
+            offset: '0.0'
+        name: joint_3
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        prefixes: []
+        tags: []
+        transform:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        type: revolute
+        unprefixed_name: joint_3
+    joint_4:
+        axis:
+            x: '0.0'
+            y: '0.0'
+            z: '0.0'
+        calibration:
+            falling_hardstop_position: '0.0'
+            falling_home_position: '0.0'
+            rising_hardstop_position: '0.0'
+            rising_home_position: '0.0'
+        initial_position: '0.0'
+        io:
+            can_id: '0'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        mimic:
+            enabled: 'false'
+            joint: ''
+            multiplier: '1.0'
+            offset: '0.0'
+        name: joint_4
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        prefixes: []
+        tags: []
+        transform:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        type: revolute
+        unprefixed_name: joint_4
+    joint_5:
+        axis:
+            x: '0.0'
+            y: '0.0'
+            z: '0.0'
+        calibration:
+            falling_hardstop_position: '0.0'
+            falling_home_position: '0.0'
+            rising_hardstop_position: '0.0'
+            rising_home_position: '0.0'
+        initial_position: '0.0'
+        io:
+            can_id: '0'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        mimic:
+            enabled: 'false'
+            joint: ''
+            multiplier: '1.0'
+            offset: '0.0'
+        name: joint_5
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        prefixes: []
+        tags: []
+        transform:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        type: revolute
+        unprefixed_name: joint_5
+    joint_6:
+        axis:
+            x: '0.0'
+            y: '0.0'
+            z: '0.0'
+        calibration:
+            falling_hardstop_position: '0.0'
+            falling_home_position: '0.0'
+            rising_hardstop_position: '0.0'
+            rising_home_position: '0.0'
+        initial_position: '0.0'
+        io:
+            can_id: '0'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'false'
+            has_jerk_limits: 'true'
+            has_position_limits: 'true'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '0.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-0.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        mimic:
+            enabled: 'false'
+            joint: ''
+            multiplier: '1.0'
+            offset: '0.0'
+        name: joint_6
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        prefixes: []
+        tags: []
+        transform:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        type: revolute
+        unprefixed_name: joint_6
+links:
+    base_link:
+        collision:
+            geometry:
+                type: none
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'true'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'true'
+        name: base_link
+        prefixes: []
+        scene_obj_collision: 'false'
+        simple_collision: ''
+        tags: base_mount_link ik_base_link
+        unprefixed_name: base_link
+        visual:
+            geometry:
+                type: none
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    ee_link:
+        collision:
+            geometry:
+                type: none
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'true'
+        name: ee_link
+        prefixes: []
+        scene_obj_collision: 'false'
+        simple_collision: ''
+        tags: []
+        unprefixed_name: ee_link
+        visual:
+            geometry:
+                type: none
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    entities:
+        base_link:
+            collision:
+                geometry:
+                    type: none
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: base_link
+            prefixes: []
+            scene_obj_collision: 'false'
+            simple_collision: ''
+            tags: base_mount_link ik_base_link
+            unprefixed_name: base_link
+            visual:
+                geometry:
+                    type: none
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        ee_link:
+            collision:
+                geometry:
+                    type: none
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: ee_link
+            prefixes: []
+            scene_obj_collision: 'false'
+            simple_collision: ''
+            tags: []
+            unprefixed_name: ee_link
+            visual:
+                geometry:
+                    type: none
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        link_0:
+            collision:
+                geometry:
+                    type: none
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: link_0
+            prefixes: []
+            scene_obj_collision: 'false'
+            simple_collision: ''
+            tags: []
+            unprefixed_name: link_0
+            visual:
+                geometry:
+                    type: none
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        link_1:
+            collision:
+                geometry:
+                    type: none
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: link_1
+            prefixes: []
+            scene_obj_collision: 'false'
+            simple_collision: ''
+            tags: []
+            unprefixed_name: link_1
+            visual:
+                geometry:
+                    type: none
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        link_2:
+            collision:
+                geometry:
+                    type: none
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: link_2
+            prefixes: []
+            scene_obj_collision: 'false'
+            simple_collision: ''
+            tags: []
+            unprefixed_name: link_2
+            visual:
+                geometry:
+                    type: none
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        link_3:
+            collision:
+                geometry:
+                    type: none
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: link_3
+            prefixes: []
+            scene_obj_collision: 'true'
+            simple_collision: ''
+            tags: []
+            unprefixed_name: link_3
+            visual:
+                geometry:
+                    type: none
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        link_4:
+            collision:
+                geometry:
+                    type: none
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: link_4
+            prefixes: []
+            scene_obj_collision: 'true'
+            simple_collision: ''
+            tags: []
+            unprefixed_name: link_4
+            visual:
+                geometry:
+                    type: none
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        link_5:
+            collision:
+                geometry:
+                    type: none
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'false'
+            name: link_5
+            prefixes: []
+            scene_obj_collision: 'true'
+            simple_collision: ''
+            tags: []
+            unprefixed_name: link_5
+            visual:
+                geometry:
+                    type: none
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        tool0:
+            collision:
+                geometry:
+                    type: none
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'true'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: tool0
+            prefixes: []
+            scene_obj_collision: 'false'
+            simple_collision: ''
+            tags: ik_tip arm_to_hand_mount
+            unprefixed_name: tool0
+            visual:
+                geometry:
+                    type: none
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+        tool0_flip:
+            collision:
+                geometry:
+                    type: none
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+            disable: 'false'
+            display: 'false'
+            inertial:
+                inertia:
+                    ixx: '0.0'
+                    ixy: '0.0'
+                    ixz: '0.0'
+                    iyy: '0.0'
+                    iyz: '0.0'
+                    izz: '0.0'
+                mass: '0.0'
+                origin:
+                    x: '0.0'
+                    y: '0.0'
+                    z: '0.0'
+            is_frame: 'true'
+            name: tool0_flip
+            prefixes: []
+            scene_obj_collision: 'false'
+            simple_collision: ''
+            tags: ik_tip_flip
+            unprefixed_name: tool0_flip
+            visual:
+                geometry:
+                    type: none
+                material:
+                    color:
+                        a: '1.0'
+                        b: '0.5'
+                        g: '0.5'
+                        r: '0.5'
+                    metallic: '0.0'
+                    roughness: '1.0'
+                name: ''
+                origin:
+                    rpy: 0.0 -0.0 0.0
+                    xyz: 0.0 0.0 0.0
+    link_0:
+        collision:
+            geometry:
+                type: none
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: link_0
+        prefixes: []
+        scene_obj_collision: 'false'
+        simple_collision: ''
+        tags: []
+        unprefixed_name: link_0
+        visual:
+            geometry:
+                type: none
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    link_1:
+        collision:
+            geometry:
+                type: none
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: link_1
+        prefixes: []
+        scene_obj_collision: 'false'
+        simple_collision: ''
+        tags: []
+        unprefixed_name: link_1
+        visual:
+            geometry:
+                type: none
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    link_2:
+        collision:
+            geometry:
+                type: none
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: link_2
+        prefixes: []
+        scene_obj_collision: 'false'
+        simple_collision: ''
+        tags: []
+        unprefixed_name: link_2
+        visual:
+            geometry:
+                type: none
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    link_3:
+        collision:
+            geometry:
+                type: none
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: link_3
+        prefixes: []
+        scene_obj_collision: 'true'
+        simple_collision: ''
+        tags: []
+        unprefixed_name: link_3
+        visual:
+            geometry:
+                type: none
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    link_4:
+        collision:
+            geometry:
+                type: none
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: link_4
+        prefixes: []
+        scene_obj_collision: 'true'
+        simple_collision: ''
+        tags: []
+        unprefixed_name: link_4
+        visual:
+            geometry:
+                type: none
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    link_5:
+        collision:
+            geometry:
+                type: none
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: link_5
+        prefixes: []
+        scene_obj_collision: 'true'
+        simple_collision: ''
+        tags: []
+        unprefixed_name: link_5
+        visual:
+            geometry:
+                type: none
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    tool0:
+        collision:
+            geometry:
+                type: none
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'true'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'true'
+        name: tool0
+        prefixes: []
+        scene_obj_collision: 'false'
+        simple_collision: ''
+        tags: ik_tip arm_to_hand_mount
+        unprefixed_name: tool0
+        visual:
+            geometry:
+                type: none
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+    tool0_flip:
+        collision:
+            geometry:
+                type: none
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'true'
+        name: tool0_flip
+        prefixes: []
+        scene_obj_collision: 'false'
+        simple_collision: ''
+        tags: ik_tip_flip
+        unprefixed_name: tool0_flip
+        visual:
+            geometry:
+                type: none
+            material:
+                color:
+                    a: '1.0'
+                    b: '0.5'
+                    g: '0.5'
+                    r: '0.5'
+                metallic: '0.0'
+                roughness: '1.0'
+            name: ''
+            origin:
+                rpy: 0.0 -0.0 0.0
+                xyz: 0.0 0.0 0.0
+points_of_interest: []
+srdf:
+    force_regenerate: 'false'
+    loaded_from_cache: 'false'
+    macro_path: ''
+    newly_generated: 'false'
+    num_samples: '1000'
+    path: ''
+    xacro_path: ''
+urdf:
+    abs_package_dirs:
+        descriptions: /home/bam/bam_ws/src/bam_machine/bam/descriptions
+    macro_path: ''
+    path: ''
+    xacro_imports: []
+    xacro_path: /home/bam/bam_ws/src/bam_machine/bam/descriptions/bam_descriptions/urdf/dummy_dh/dummy_dh.urdf.xacro
+    xml_footer: '</robot>
+
+        '
+    xml_header: '<?xml version="1.0"?>
+
+        <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="composite">
+
+        '

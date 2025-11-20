@@ -1,0 +1,45 @@
+General
+	Part Number	C2
+	Part Name	C2
+	Description
+	Material Name	(Various)
+
+Manage
+	Item Number
+	Lifecycle
+	Revision
+	State
+	Change Order
+
+Physical
+	Mass	137.5769 g
+	Volume	41512.0456 mm^3
+	Density	0.0033 g / mm^3
+	Area	19858.6067 mm^2
+	World X,Y,Z	201.8289 mm, -18.712 mm, 0.00 mm
+	Center of Mass	-0.2579 mm, 129.9997 mm, 3.3346 mm
+	Bounding Box
+		Length	211.3658 mm
+		Width	301.1796 mm
+		Height	7.50 mm
+	Moment of Inertia at Center of Mass   (g mm^2)
+		Ixx	1.291E+06
+		Ixy	2548.6002
+		Ixz	4.837E-08
+		Iyx	2548.6002
+		Iyy	6984.028
+		Iyz	1.801E-08
+		Izx	4.837E-08
+		Izy	1.801E-08
+		Izz	1.297E+06
+	Moment of Inertia at Origin   (g mm^2)
+		Ixx	3.618E+06
+		Ixy	7161.7466
+		Ixz	118.3307
+		Iyx	7161.7466
+		Iyy	8522.9686
+		Iyz	-59639.0646
+		Izx	118.3307
+		Izy	-59639.0646
+		Izz	3.623E+06
+

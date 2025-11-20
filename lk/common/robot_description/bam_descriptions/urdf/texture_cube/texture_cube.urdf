@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="texture_cube">
+
+  
+  <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+  
+
+  <link name="texture_cube">
+    <visual>
+      <geometry>
+        <mesh filename="package://bam_descriptions/urdf/texture_cube/texture_cube.dae"
+              scale="0.3 1.0 1.0"/>
+      </geometry>
+      <origin xyz="0.5 0.5 0.15" rpy="0 0 0"/>
+    </visual>
+
+    <inertial>
+      <origin xyz="0.5 0.5 0.15" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0"
+               iyy="0.01" iyz="0.0"
+               izz="0.01"/>
+    </inertial>
+
+  </link>
+
+</robot>

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="common_macro_test">
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+
+    <!-- Test 1: cylinder_tube macro -->
+        <xacro:cylinder_tube_link 
+            name="test_cylinder_tube"
+            outer_radius="0.05" 
+            inner_radius="0.04" 
+            length="0.2" 
+            density="2700" 
+            origin_offset="${0.2/2}"
+            material="Red"/>
+        
+    <!-- Test 2: rectangular_tube macro -->
+        <xacro:rectangular_tube_link 
+            name="test_rectangular_tube"
+            width="0.06" 
+            length="0.2" 
+            height="0.08" 
+            wall_thickness="0.005" 
+            density="2700" 
+            origin_offset="${0.2/2}"
+            material="Orange"/>
+
+    <!-- Test 3: rectangular_plate macro -->
+    <xacro:rectangular_plate_link 
+        name="test_rectangular_plate"
+        width="0.1" 
+        length="0.2" 
+        plate_thickness="0.003" 
+        density="2700" 
+        origin_offset="${0.2/2}"
+        material="Yellow"/>
+
+    <!-- Test 4: dummy_link macro -->
+    <link name="test_dummy_link">
+        <xacro:dummy_link/>
+    </link>
+
+    <!-- Test 5: cylinder with explicit mass -->
+        <xacro:cylinder_tube_link 
+            name="test_cylinder_explicit_mass"
+            outer_radius="0.03" 
+            inner_radius="0.025" 
+            length="0.1" 
+            density="2700" 
+            origin_offset="0.05"
+            mass="0.5"
+            material="Green"/>
+
+    <!-- Test 6: rectangular_plate with explicit mass -->
+        <xacro:rectangular_plate_link 
+            name="test_plate_explicit_mass"
+            width="0.08" 
+            length="0.08" 
+            plate_thickness="0.002" 
+            density="2700" 
+            origin_offset="0.04"
+            mass="0.1"
+            material="Blue"/>
+
+    <!-- Add joints to connect links to avoid warnings -->
+    <link name="base_link"/>
+    
+    <joint name="base_link_to_cylinder" type="fixed">
+        <parent link="base_link"/>
+        <child link="test_cylinder_tube"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <joint name="base_link_to_rect_tube" type="fixed">
+        <parent link="base_link"/>
+        <child link="test_rectangular_tube"/>
+        <origin xyz="0.2 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <joint name="base_link_to_plate" type="fixed">
+        <parent link="base_link"/>
+        <child link="test_rectangular_plate"/>
+        <origin xyz="0.4 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <joint name="base_link_to_dummy" type="fixed">
+        <parent link="base_link"/>
+        <child link="test_dummy_link"/>
+        <origin xyz="0.6 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <joint name="base_link_to_cylinder_explicit" type="fixed">
+        <parent link="base_link"/>
+        <child link="test_cylinder_explicit_mass"/>
+        <origin xyz="0 0.3 0" rpy="0 0 0"/>
+    </joint>
+
+    <joint name="base_link_to_plate_explicit" type="fixed">
+        <parent link="base_link"/>
+        <child link="test_plate_explicit_mass"/>
+        <origin xyz="0.2 0.3 0" rpy="0 0 0"/>
+    </joint>
+
+</robot>

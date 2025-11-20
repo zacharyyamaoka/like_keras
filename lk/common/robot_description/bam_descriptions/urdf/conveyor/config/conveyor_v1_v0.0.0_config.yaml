@@ -1,0 +1,242 @@
+REGISTRY: {}
+args: {}
+base_link: conveyor_surface_center
+base_mount: ''
+base_rpy: 0 0 0
+base_xyz: 0 0 0
+center_link: conveyor_center
+config_dir: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/conveyor/config
+config_file_name: conveyor_v1_v0.0.0_config
+config_file: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/conveyor/config/conveyor_v1_v0.0.0_config.yaml
+force_srdf_gen: 'false'
+height: '0.05'
+info:
+    calib_hash: ''
+    config_key: ''
+    name: conveyor
+    sku: v1
+    type: conveyor
+    uuid: 00000000-0000-0000-0000-000000000000
+    version: 0.0.0
+joints:
+    belt_joint:
+        can_id: '0'
+        hardstop_position: '0.0'
+        home_position: '0.0'
+        initial_position: '0.0'
+        is_fixed: 'true'
+        limits:
+            has_acceleration_limits: 'true'
+            has_effort_limits: 'true'
+            has_jerk_limits: 'true'
+            has_position_limits: 'false'
+            has_velocity_limits: 'true'
+            max_acceleration: '10.0'
+            max_effort: '10.0'
+            max_jerk: '100.0'
+            max_position: '3.141593'
+            max_velocity: '10.0'
+            min_acceleration: '-10.0'
+            min_effort: '-10.0'
+            min_jerk: '-100.0'
+            min_position: '-3.141593'
+            min_velocity: '-10.0'
+        lock: 'false'
+        lock_position: '0.0'
+        mimic: 'false'
+        name: conveyor_belt_joint
+        physics:
+            damping: '0.0'
+            friction: '0.0'
+        transform:
+            child_frame_id: ''
+            frame_id: ''
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        unprefixed_name: belt_joint
+length: '1.5'
+links:
+    center:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: conveyor_center
+        scene_obj_collision: 'false'
+        unprefixed_name: center
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    roller_back:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: conveyor_roller_back
+        scene_obj_collision: 'false'
+        unprefixed_name: roller_back
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    roller_front:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: conveyor_roller_front
+        scene_obj_collision: 'false'
+        unprefixed_name: roller_front
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    surface_center:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: conveyor_surface_center
+        scene_obj_collision: 'false'
+        unprefixed_name: surface_center
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+    surface_front:
+        collision_geometry_size: 0.0 0.0 0.0
+        collision_geometry_type: box
+        collision_mesh_path: ''
+        collision_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+        disable: 'false'
+        display: 'false'
+        inertial:
+            inertia:
+                ixx: '0.0'
+                ixy: '0.0'
+                ixz: '0.0'
+                iyy: '0.0'
+                iyz: '0.0'
+                izz: '0.0'
+            mass: '0.0'
+            origin:
+                x: '0.0'
+                y: '0.0'
+                z: '0.0'
+        is_frame: 'false'
+        name: conveyor_surface_front
+        scene_obj_collision: 'false'
+        unprefixed_name: surface_front
+        visual_mesh_path: ''
+        visual_origin:
+            rpy: 0.0 -0.0 0.0
+            xyz: 0.0 0.0 0.0
+lock_joints: 'false'
+max_acceleration: '0.5'
+max_speed: '1.0'
+plugin: none
+points_of_interest: []
+positions:
+    default_positions: initial
+    joint_names: []
+    positions:
+        initial: []
+prefix: conveyor_
+railing_height_above: '0.05'
+railing_height_below: '0.0'
+railing_width: '0.02'
+reflect: '1'
+roller_back_link: conveyor_roller_back
+roller_front_link: conveyor_roller_front
+root_link: world
+srdf:
+    loaded_from_cache: 'true'
+    macro_path: ''
+    newly_generated: 'false'
+    path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/conveyor/config/srdf_cache/conveyor_v1_v0.0.0_config.srdf
+    xacro_path: ''
+surface_center_link: conveyor_surface_center
+surface_front_link: conveyor_surface_front
+urdf:
+    macro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/conveyor/conveyor_macro.xacro
+    mesh_dirs: /home/bam/bam_ws/src/bam_common
+    path: ''
+    xacro_path: /home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/conveyor/conveyor.urdf.xacro
+width: '0.8'
+world_rpy: 0 0 0
+world_xyz: 0 0 0

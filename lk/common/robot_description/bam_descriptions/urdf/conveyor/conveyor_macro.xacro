@@ -1,0 +1,205 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Conveyor belt macro with rollers and railings.
+    
+    Visual design:
+    - Main belt (box)
+    - Two railings on either side
+    - Roller cylinders at front and back edges
+    
+    Frame structure:
+    - surface_center: Center of top surface (PRIMARY REFERENCE)
+    - center: Geometric center of conveyor box
+    - surface_front: Front edge of top surface
+    - roller_front: Front roller position
+    - roller_back: Back roller position
+  -->
+
+  <!-- 
+    Universal config loader - makes composite simpler
+  -->
+  <xacro:macro name="make_config" params="config_file">
+    <xacro:make_conveyor config_file="${config_file}"/>
+  </xacro:macro>
+
+  <xacro:macro name="make_conveyor" params="config_file">
+    
+    <xacro:property name="cfg" value="${xacro.load_yaml(config_file)}"/>
+    
+    <!-- Extract geometry -->
+    <xacro:property name="width" value="${cfg['args']['width']}"/>
+    <xacro:property name="length" value="${cfg['args']['length']}"/>
+    <xacro:property name="height" value="${cfg['args']['height']}"/>
+    <xacro:property name="railing_width" value="${cfg['args']['railing_width']}"/>
+    <xacro:property name="railing_height_above" value="${cfg['args']['railing_height_above']}"/>
+    <xacro:property name="railing_height_below" value="${cfg['args']['railing_height_below']}"/>
+    <xacro:property name="prefix" value="${cfg['info']['prefix']}"/>
+    
+    <!-- Derived properties -->
+    <xacro:property name="roller_radius" value="${height / 2.0}"/>
+    <xacro:property name="railing_total_height" value="${height + railing_height_above + railing_height_below}"/>
+    <xacro:property name="railing_z_offset" value="${((-height - railing_height_below) + railing_height_above) / 2.0}"/>
+    
+    <!-- Belt box is shortened to expose rollers at front/back -->
+    <xacro:property name="belt_length" value="${length - height}"/>
+    
+    <!-- Surface center link (PRIMARY REFERENCE FRAME) -->
+    <link name="${prefix}surface_center"/>
+
+    <!-- Center link (geometric center of box) -->
+    <joint name="${prefix}surface_center_to_center" type="fixed">
+      <origin xyz="0 0 ${-height/2}" rpy="0 0 0"/>
+      <parent link="${prefix}surface_center"/>
+      <child link="${prefix}center"/>
+    </joint>
+    
+    <link name="${prefix}center">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${width} ${belt_length} ${height}"/>
+        </geometry>
+        <material name="ConveyorGrey">
+          <color rgba="0.2 0.2 0.2 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${width} ${belt_length} ${height}"/>
+        </geometry>
+      </collision>
+      <xacro:solid_cuboid_inertial mass="10.0" width="${width}" height="${belt_length}" depth="${height}" origin_xyz="0 0 0"/>
+    </link>
+    
+    <!-- Surface front link -->
+    <joint name="${prefix}surface_center_to_surface_front" type="fixed">
+      <origin xyz="0 ${length/2} 0" rpy="0 0 0"/>
+      <parent link="${prefix}surface_center"/>
+      <child link="${prefix}surface_front"/>
+    </joint>
+    
+    <link name="${prefix}surface_front">
+      <xacro:dummy_inertial/>
+    </link>
+    
+    <!-- Front roller (positioned so outer edge aligns with conveyor length) -->
+    <joint name="${prefix}surface_center_to_roller_front" type="fixed">
+      <origin xyz="0 ${length/2 - roller_radius} ${-roller_radius}" rpy="0 0 0"/>
+      <parent link="${prefix}surface_center"/>
+      <child link="${prefix}roller_front"/>
+    </joint>
+    
+    <link name="${prefix}roller_front">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 ${pi/2} 0"/>
+        <geometry>
+          <cylinder radius="${roller_radius}" length="${width}"/>
+        </geometry>
+        <material name="ConveyorGrey">
+          <color rgba="0.2 0.2 0.2 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 ${pi/2} 0"/>
+        <geometry>
+          <cylinder radius="${roller_radius}" length="${width}"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertial mass="1.0" outer_radius="${roller_radius}" length="${width}" origin_xyz="0 0 0"/>
+    </link>
+    
+    <!-- Back roller (positioned so outer edge aligns with conveyor length) -->
+    <joint name="${prefix}surface_center_to_roller_back" type="fixed">
+      <origin xyz="0 ${-length/2 + roller_radius} ${-roller_radius}" rpy="0 0 0"/>
+      <parent link="${prefix}surface_center"/>
+      <child link="${prefix}roller_back"/>
+    </joint>
+    
+    <link name="${prefix}roller_back">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 ${pi/2} 0"/>
+        <geometry>
+          <cylinder radius="${roller_radius}" length="${width}"/>
+        </geometry>
+        <material name="ConveyorGrey">
+          <color rgba="0.2 0.2 0.2 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 ${pi/2} 0"/>
+        <geometry>
+          <cylinder radius="${roller_radius}" length="${width}"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertial mass="1.0" outer_radius="${roller_radius}" length="${width}" origin_xyz="0 0 0"/>
+    </link>
+    
+    <!-- Left railing -->
+    <joint name="${prefix}left_railing_joint" type="fixed">
+      <origin xyz="${(width/2 + railing_width/2)} 0 ${railing_z_offset}" rpy="0 0 0"/>
+      <parent link="${prefix}surface_center"/>
+      <child link="${prefix}left_railing"/>
+    </joint>
+    
+    <link name="${prefix}left_railing">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${railing_width} ${length} ${railing_total_height}"/>
+        </geometry>
+        <material name="RailingGrey">
+          <color rgba="0.4 0.4 0.4 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${railing_width} ${length} ${railing_total_height}"/>
+        </geometry>
+      </collision>
+      <xacro:solid_cuboid_inertial mass="0.5" width="${railing_width}" height="${length}" depth="${railing_total_height}" origin_xyz="0 0 0"/>
+    </link>
+    
+    <!-- Right railing -->
+    <joint name="${prefix}right_railing_joint" type="fixed">
+      <origin xyz="${-(width/2 + railing_width/2)} 0 ${railing_z_offset}" rpy="0 0 0"/>
+      <parent link="${prefix}surface_center"/>
+      <child link="${prefix}right_railing"/>
+    </joint>
+    
+    <link name="${prefix}right_railing">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${railing_width} ${length} ${railing_total_height}"/>
+        </geometry>
+        <material name="RailingGrey">
+          <color rgba="0.4 0.4 0.4 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${railing_width} ${length} ${railing_total_height}"/>
+        </geometry>
+      </collision>
+      <xacro:solid_cuboid_inertial mass="0.5" width="${railing_width}" height="${length}" depth="${railing_total_height}" origin_xyz="0 0 0"/>
+    </link>
+    
+    <!-- Belt joint (fixed, motor position tracked via CAN ID, not part of kinematics) -->
+    <joint name="${prefix}belt_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="${prefix}roller_front"/>
+      <child link="${prefix}belt_link"/>
+    </joint>
+    
+    <link name="${prefix}belt_link">
+      <xacro:dummy_inertial/>
+    </link>
+
+  </xacro:macro>
+
+</robot>

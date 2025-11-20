@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+
+<!-- When testing you can run this URDF. Previously I had to comment/uncomment on the macro.xacro, but now I have a standalone file-->
+<!-- default values for properties should be "pure" for when its included in another xacro (ie. moveit) -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="dummy_bam_fb">
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+    <xacro:include filename="$(find bam_descriptions)/urdf/texture_cube/texture_cube_macro.xacro" />
+    <xacro:include filename="$(find bam_descriptions)/urdf/dummy_bam_fb/dummy_bam_fb_macro.xacro" />
+    <xacro:include filename="$(find bam_descriptions)/urdf/dummy_bam_fb/dummy_bam_fb.ros2_control.xacro"/>
+
+
+    <!-- Attach to Gazebo World -->
+    <link name="world"/>
+
+    <joint name="world_to_base" type="fixed">
+        <parent link="world"/>
+        <child link="base_link"/>
+    </joint>
+
+    <link name="base_link"/>
+
+    <joint name="base_link_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link="arm_base_link"/>
+    </joint>
+
+
+
+    <!-- <xacro:dummy_bam_fb prefix="${prefix}" reflect="${reflect}" linkage="${linkage}"/> -->
+    <xacro:dummy_bam_fb
+    reflect="1"
+    />
+
+    <!-- <xacro:dummy_bam_fb_ros2_control 
+    prefix="${prefix}"
+    transport_path="${transport_path}"
+    plugin="${plugin}"
+    gripper="false"
+    controllers_file_path="${controllers_file_path}"
+    ros_namespace="${ros_namespace}"/> -->
+
+
+</robot>

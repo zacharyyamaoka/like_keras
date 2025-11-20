@@ -1,0 +1,45 @@
+General
+	Part Number	Base Collision
+	Part Name	Base Collision
+	Description
+	Material Name	Steel
+
+Manage
+	Item Number
+	Lifecycle
+	Revision
+	State	Working
+	Change Order
+
+Physical
+	Mass	10100.2355 g
+	Volume	1.287E+06 mm^3
+	Density	0.0079 g / mm^3
+	Area	73384.6311 mm^2
+	World X,Y,Z	0.00 mm, 0.00 mm, 0.00 mm
+	Center of Mass	0.00 mm, 0.00 mm, -60.4231 mm
+	Bounding Box
+		Length	90.00 mm
+		Width	90.00 mm
+		Height	158.8462 mm
+	Moment of Inertia at Center of Mass   (g mm^2)
+		Ixx	2.806E+07
+		Ixy	0.00
+		Ixz	1.003E-08
+		Iyx	0.00
+		Iyy	2.806E+07
+		Iyz	7.230E-09
+		Izx	1.003E-08
+		Izy	7.230E-09
+		Izz	1.364E+07
+	Moment of Inertia at Origin   (g mm^2)
+		Ixx	6.493E+07
+		Ixy	0.00
+		Ixz	5.712E-09
+		Iyx	0.00
+		Iyy	6.493E+07
+		Iyz	-5.712E-09
+		Izx	5.712E-09
+		Izy	-5.712E-09
+		Izz	1.364E+07
+

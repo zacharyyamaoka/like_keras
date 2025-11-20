@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+<robot name="arm_with_conveyor">
+  <disable_collisions link1="arm_base_link_inertia" link2="arm_shoulder_link" reason="Default"/>
+  <disable_collisions link1="arm_shoulder_link" link2="arm_upper_arm_link" reason="Default"/>
+  <disable_collisions link1="arm_forearm_link" link2="arm_upper_arm_link" reason="Default"/>
+  <disable_collisions link1="arm_forearm_link" link2="arm_wrist_1_link" reason="Default"/>
+  <disable_collisions link1="arm_wrist_1_link" link2="arm_wrist_2_link" reason="Default"/>
+  <disable_collisions link1="arm_forearm_link" link2="arm_wrist_2_link" reason="Never"/>
+  <disable_collisions link1="arm_shoulder_link" link2="conveyor_center" reason="Never"/>
+  <disable_collisions link1="arm_shoulder_link" link2="conveyor_left_railing" reason="Never"/>
+  <disable_collisions link1="arm_shoulder_link" link2="conveyor_right_railing" reason="Never"/>
+  <disable_collisions link1="arm_shoulder_link" link2="conveyor_roller_back" reason="Never"/>
+  <disable_collisions link1="arm_shoulder_link" link2="conveyor_roller_front" reason="Never"/>
+  <disable_collisions link1="arm_upper_arm_link" link2="conveyor_roller_back" reason="Never"/>
+  <disable_collisions link1="arm_upper_arm_link" link2="conveyor_roller_front" reason="Never"/>
+  <disable_collisions link1="arm_wrist_1_link" link2="arm_wrist_3_link" reason="Never"/>
+  <disable_collisions link1="arm_wrist_2_link" link2="arm_wrist_3_link" reason="Never"/>
+</robot>

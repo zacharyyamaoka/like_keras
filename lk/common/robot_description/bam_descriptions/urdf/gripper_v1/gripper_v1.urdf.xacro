@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+
+<!-- When testing you can run this URDF. Previously I had to comment/uncomment on the macro.xacro, but now I have a standalone file-->
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="arm_400_v1">
+
+    <xacro:include filename="$(find bam_descriptions)/urdf/common.xacro" />
+    <xacro:include filename="$(find bam_descriptions)/urdf/crab_claw_v1/gripper_v1_macro.xacro" />
+    <!-- <xacro:include filename="$(find bam_descriptions)/urdf/arm_400_v1/crab_claw_v1.ros2_control.xacro"/> -->
+
+
+    <xacro:arg name="prefix" default=""/>
+    <xacro:property name="prefix" value="$(arg prefix)" />
+
+    <xacro:arg name="reflect" default="1"/>
+    <xacro:property name="reflect" value="$(arg reflect)" />
+
+    <xacro:arg name="plugin" default="none"/>  <!-- none, mock, gazebo, real -->
+    <xacro:property name="plugin" value="$(arg plugin)" />
+
+
+    <xacro:if value="${plugin != 'none'}">
+        <xacro:gripper_v1_ros2_control prefix="${prefix}" plugin="${plugin}"/>
+    </xacro:if>
+
+    <xacro:crab_claw_v1 prefix="${prefix}" reflect="${prefix}"/>
+
+   <link name="base_link">
+        <xacro:dummy_link/>
+    </link>
+    
+    <joint name="base_link_joint" type="fixed">
+        <origin xyz="0 0 0" rpy="0.0 0.0 0.0"/>
+        <parent link="base_link"/>
+        <child link="${prefix}eef_link_1"/>
+    </joint>
+
+</robot>
+

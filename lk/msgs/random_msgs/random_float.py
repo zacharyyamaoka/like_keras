@@ -7,7 +7,7 @@
 """
 
 # BAM
-from .random_type import RandomType
+from .data_dist import DataDist as RandomType
 
 # PYTHON
 from typing import Optional, Callable

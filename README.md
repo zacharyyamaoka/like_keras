@@ -93,3 +93,14 @@ Killer Features
    - Seamless transition between the two!
    - Mabye using ideas like: https://www.tensorflow.org/guide/function
    - When you call that function it should really do what it means... it should execut accordigly.. that is why the = doesn't make sense, it doesn't mean anything, that is why I like the approach of passing the data, like pytorch...
+
+
+
+---
+
+Very supportive that le robot is using many of the same ideas
+
+Python dataclass configs for making objects:
+https://huggingface.co/docs/lerobot/en/cameras?shell_restart=Intel+Realsense+Camera
+https://github.com/huggingface/lerobot/tree/main/src/lerobot
+Super interesting seperation between execution and the policy this is like actor and actuator: https://huggingface.co/docs/lerobot/en/async

@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="test_macro_priority2">
+  
+  <!-- Test 2: Include both macros FIRST, then call twice -->
+  <xacro:include filename="/home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/test_macros/macro_version_a.xacro"/>
+  <xacro:include filename="/home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/test_macros/macro_version_b.xacro"/>
+  
+  <!-- Both calls will use version B (most recent) -->
+  <xacro:test_macro config_file="dummy1.yaml"/>
+  <xacro:test_macro config_file="dummy2.yaml"/>
+  
+  <!-- 
+  EXPECTED BEHAVIOR:
+  - Version B overwrites version A
+  - BOTH calls use version B (BLUE, 2x2x2)
+  - Both links still have duplicate "test_link" name (invalid!)
+  -->
+  
+</robot>
+

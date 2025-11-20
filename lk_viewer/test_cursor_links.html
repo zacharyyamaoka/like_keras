@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Cursor URL Handler</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+        }
+        .test-link {
+            display: block;
+            padding: 10px;
+            margin: 10px 0;
+            background: #f0f0f0;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #0066cc;
+            transition: all 0.2s;
+        }
+        .test-link:hover {
+            background: #e0e0e0;
+        }
+        .test-link:active {
+            background: #4CAF50;
+            color: white;
+            transform: scale(0.98);
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin: 20px 0;
+        }
+        #timing-display {
+            background: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+        #timing-display.clicked {
+            background: #fff9c4;
+            border-color: #FFC107;
+        }
+    </style>
+    <script>
+        let clickTime = 0;
+        let timings = [];
+        
+        function trackClick(event, linkText) {
+            clickTime = performance.now();
+            const display = document.getElementById('timing-display');
+            display.className = 'clicked';
+            
+            const timing = {
+                time: new Date().toLocaleTimeString(),
+                link: linkText,
+                clickTime: clickTime.toFixed(3)
+            };
+            
+            timings.unshift(timing);
+            updateDisplay();
+            
+            // Log to console
+            console.log(`[${timing.time}] Link clicked:`, linkText);
+            console.log('Click processed in browser at:', clickTime.toFixed(3), 'ms');
+            
+            // The browser will handle the protocol, we can't track that part easily
+            // But we can see when our handler completes
+            setTimeout(() => {
+                const elapsed = performance.now() - clickTime;
+                console.log('Time since click:', elapsed.toFixed(3), 'ms');
+                display.className = '';
+            }, 100);
+        }
+        
+        function updateDisplay() {
+            const display = document.getElementById('timing-display');
+            if (timings.length === 0) {
+                display.innerHTML = 'Click a link to see timing information...';
+            } else {
+                let html = '<strong>Recent Clicks (newest first):</strong>\n\n';
+                timings.slice(0, 10).forEach((t, i) => {
+                    html += `${i + 1}. [${t.time}] ${t.link}\n   Click processed at: ${t.clickTime}ms\n\n`;
+                });
+                display.innerHTML = html;
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click handlers to all test links
+            document.querySelectorAll('.test-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    trackClick(e, this.textContent.trim());
+                });
+            });
+            
+            updateDisplay();
+        });
+    </script>
+</head>
+<body>
+    <h1>Test Cursor URL Handler</h1>
+    
+    <div id="timing-display">Click a link to see timing information...</div>
+    
+    <div class="note">
+        <strong>Note:</strong> Your browser may ask for permission to open Cursor. Click "Allow" or "Open Cursor" when prompted.
+        <br><strong>Timing Info:</strong> The green box above shows when your click is processed. The 1s delay you see is likely:
+        <ul>
+            <li>Browser confirmation dialog (if shown)</li>
+            <li>OS protocol handler lookup (~100-500ms)</li>
+            <li>Script execution (~5ms)</li>
+        </ul>
+        Check your browser's Developer Console (F12) for detailed timing logs!
+    </div>
+
+    <h2>Test Links:</h2>
+    
+    <a href="cursor://file//home/bam/bam_ws/src/like_keras/lk_viewer/features.md" class="test-link">
+        📄 Open features.md in Cursor
+    </a>
+
+    <a href="cursor://file//home/bam/bam_ws/src/like_keras/lk/msgs/diagnostics.py" class="test-link">
+        📄 Open diagnostics.py in Cursor
+    </a>
+
+    <a href="cursor://file//home/bam/bam_ws/src/like_keras/lk_viewer/README.md:79" class="test-link">
+        📄 Open README.md at line 79 in Cursor
+    </a>
+    
+    <h2>Direct Test (bypasses browser confirmation):</h2>
+    <button onclick="window.location.href='cursor://file//home/bam/bam_ws/src/like_keras/lk_viewer/features.md'" 
+            class="test-link" style="cursor: pointer; border: none; width: 100%; text-align: left;">
+        🚀 Open features.md (via JavaScript - may be faster)
+    </button>
+    
+    <h2>FastAPI Test (FASTEST - no protocol handler delay!):</h2>
+    <div class="note">
+        <strong>Start the FastAPI server first:</strong>
+        <code>python /home/bam/bam_ws/src/like_keras/lk_viewer/cursor_opener_server.py</code>
+    </div>
+    
+    <button onclick="openViaFastAPI('/home/bam/bam_ws/src/like_keras/lk_viewer/features.md')" 
+            class="test-link" style="cursor: pointer; border: none; width: 100%; text-align: left; background: #e8f5e9;">
+        ⚡ Open features.md via FastAPI (should be ~10ms)
+    </button>
+    
+    <button onclick="openViaFastAPI('/home/bam/bam_ws/src/like_keras/lk/msgs/diagnostics.py')" 
+            class="test-link" style="cursor: pointer; border: none; width: 100%; text-align: left; background: #e8f5e9;">
+        ⚡ Open diagnostics.py via FastAPI
+    </button>
+    
+    <button onclick="openViaFastAPI('/home/bam/bam_ws/src/like_keras/lk_viewer/README.md', 79)" 
+            class="test-link" style="cursor: pointer; border: none; width: 100%; text-align: left; background: #e8f5e9;">
+        ⚡ Open README.md:79 via FastAPI
+    </button>
+    
+    <script>
+        async function openViaFastAPI(path, line = null) {
+            const startTime = performance.now();
+            const display = document.getElementById('timing-display');
+            
+            try {
+                const url = new URL('http://localhost:8765/open');
+                url.searchParams.append('path', path);
+                if (line !== null) {
+                    url.searchParams.append('line', line);
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                const totalTime = performance.now() - startTime;
+                
+                console.log('FastAPI Response:', data);
+                console.log('Total time (browser + server):', totalTime.toFixed(3), 'ms');
+                
+                display.innerHTML = `<strong>✅ FastAPI Success!</strong>\n\n` +
+                    `File: ${data.path}${line ? ':' + line : ''}\n` +
+                    `Server processing: ${data.elapsed_ms}ms\n` +
+                    `Total (browser → server → Cursor): ${totalTime.toFixed(3)}ms\n\n` +
+                    `🎉 Compare this to ~100-500ms with protocol handlers!`;
+                display.style.background = '#e8f5e9';
+                display.style.borderColor = '#4CAF50';
+                
+            } catch (error) {
+                console.error('FastAPI Error:', error);
+                display.innerHTML = `<strong>❌ Error!</strong>\n\n` +
+                    `${error.message}\n\n` +
+                    `Make sure the FastAPI server is running:\n` +
+                    `python cursor_opener_server.py`;
+                display.style.background = '#ffebee';
+                display.style.borderColor = '#f44336';
+            }
+        }
+    </script>
+
+    <h2>How to Use:</h2>
+    <ol>
+        <li>Click any of the links above</li>
+        <li>Your browser will ask if you want to open Cursor</li>
+        <li>Click "Allow" or "Open Cursor"</li>
+        <li>The file should open in Cursor</li>
+    </ol>
+
+    <h2>URL Format:</h2>
+    <p>The Cursor URL handler follows this format:</p>
+    <code>cursor://file/&lt;absolute-path&gt;:&lt;line&gt;</code>
+    
+    <p>Examples:</p>
+    <ul>
+        <li><code>cursor://file//home/user/project/file.py</code> - Opens file.py</li>
+        <li><code>cursor://file//home/user/project/file.py:42</code> - Opens file.py at line 42</li>
+    </ul>
+
+    <div class="note">
+        <strong>Troubleshooting:</strong> If the links don't work:
+        <ul>
+            <li>Make sure Cursor is installed on your system</li>
+            <li>Try restarting Cursor and your browser</li>
+            <li>On Linux, you may need to register the URL handler manually</li>
+        </ul>
+    </div>
+</body>
+</html>
+

@@ -1,0 +1,13 @@
+# UR Crab Claw composite configuration for xacro (used by arm_with_hand_config macro)
+
+# Arm configuration
+arm_xacro_path: "/home/bam/public_ws/src/ur_description/urdf/ur_macro.xacro"
+arm_config_file: "/home/bam/public_ws/src/ur_description/urdf/config/ex_make_arm.yaml"
+
+# Hand configuration
+hand_xacro_path: "/home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/crab_claw_v1/crab_claw_v1_macro.xacro"
+hand_config_file: "/home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/crab_claw_v1/config/crab_claw_skuBam_v0.0.0_config.yaml"
+
+mount_xyz: "0 0 0"
+mount_rpy: "0 0 0"
+
