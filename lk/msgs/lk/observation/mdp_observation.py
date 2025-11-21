@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
 
+
 @dataclass
-class MdpObservation:    
+class MdpObservation:
     terminated: bool = False
     truncated: bool = False
 

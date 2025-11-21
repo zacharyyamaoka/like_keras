@@ -1,5 +1,5 @@
 """
-    Joint description exports.
+Joint description exports.
 """
 
 # BAM
@@ -10,4 +10,3 @@ from .joint_mimic import JointMimic
 from .per_joint_state import PerJointState
 from .per_joint_limits import PerJointLimits
 from .per_joint_physics import PerJointPhysics
-

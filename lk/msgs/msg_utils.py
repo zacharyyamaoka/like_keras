@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Lightweight helpers shared across BAM message modules.
+Lightweight helpers shared across BAM message modules.
 """
 
 # BAM

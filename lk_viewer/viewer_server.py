@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-    Minimal Viewer Server
-    
-    Simple FastAPI server that:
-    1. Serves the robot description as JSON
-    2. Watches for file changes and sends updates via WebSocket
-    3. Serves a simple HTML viewer
+Minimal Viewer Server
+
+Simple FastAPI server that:
+1. Serves the robot description as JSON
+2. Watches for file changes and sends updates via WebSocket
+3. Serves a simple HTML viewer
 """
 
 # BAM
@@ -48,11 +48,11 @@ app.add_middleware(
 
 class RobotFileHandler(FileSystemEventHandler):
     """Watches for changes to the robot description file."""
-    
+
     def __init__(self, robot_file: str, callback):
         self.robot_file = Path(robot_file).resolve()
         self.callback = callback
-        
+
     def on_modified(self, event):
         if event.is_directory:
             return
@@ -66,41 +66,48 @@ class ViewerServer:
         self.robot_file = Path(robot_file).resolve()
         self.robot_instance = None
         self.load_robot()
-        
+
         # Setup file watcher
         self.observer = Observer()
         handler = RobotFileHandler(robot_file, self.on_file_change)
         self.observer.schedule(handler, str(self.robot_file.parent), recursive=False)
         self.observer.start()
-        
+
     def load_robot(self):
         """Dynamically import and instantiate the robot."""
         try:
             # Load the module
-            spec = importlib.util.spec_from_file_location("robot_module", self.robot_file)
+            spec = importlib.util.spec_from_file_location(
+                "robot_module", self.robot_file
+            )
             module = importlib.util.module_from_spec(spec)
             sys.modules["robot_module"] = module
             spec.loader.exec_module(module)
-            
+
             # Find the robot class (assume it's the first RobotDescription subclass)
             for name in dir(module):
                 obj = getattr(module, name)
-                if isinstance(obj, type) and hasattr(obj, 'to_dict') and name != 'RobotDescription':
+                if (
+                    isinstance(obj, type)
+                    and hasattr(obj, "to_dict")
+                    and name != "RobotDescription"
+                ):
                     self.robot_instance = obj()
                     print(f"✅ Loaded robot: {name}")
                     break
-                    
+
         except Exception as e:
             print(f"❌ Error loading robot: {e}")
             import traceback
+
             traceback.print_exc()
-            
+
     def on_file_change(self):
         """Called when the robot file changes."""
         self.load_robot()
         # Notify all connected WebSocket clients
         asyncio.create_task(self.broadcast_update())
-        
+
     async def broadcast_update(self):
         """Send update to all connected clients."""
         if self.robot_instance:
@@ -111,11 +118,11 @@ class ViewerServer:
                     await connection.send_json({"type": "update", "data": data})
                 except:
                     disconnected.append(connection)
-            
+
             # Remove disconnected clients
             for conn in disconnected:
                 active_connections.remove(conn)
-                
+
     def get_robot_data(self) -> dict:
         """Get current robot data."""
         if self.robot_instance:
@@ -132,7 +139,8 @@ async def startup_event():
     global viewer_server
     # Check environment variable first, then default to simple_rr_robot.py
     import os
-    robot_file = os.environ.get('ROBOT_FILE')
+
+    robot_file = os.environ.get("ROBOT_FILE")
     if not robot_file:
         robot_file = Path(__file__).parent / "simple_rr_robot.py"
     viewer_server = ViewerServer(str(robot_file))
@@ -149,13 +157,10 @@ async def websocket_endpoint(websocket: WebSocket):
     """WebSocket for live updates."""
     await websocket.accept()
     active_connections.append(websocket)
-    
+
     # Send initial data
-    await websocket.send_json({
-        "type": "init",
-        "data": viewer_server.get_robot_data()
-    })
-    
+    await websocket.send_json({"type": "init", "data": viewer_server.get_robot_data()})
+
     try:
         while True:
             # Keep connection alive
@@ -185,13 +190,15 @@ async def broadcast_nodes_update():
     disconnected = []
     for connection in node_connections:
         try:
-            await connection.send_json({
-                "type": "nodes_update",
-                "nodes": nodes_state,
-            })
+            await connection.send_json(
+                {
+                    "type": "nodes_update",
+                    "nodes": nodes_state,
+                }
+            )
         except:
             disconnected.append(connection)
-    
+
     # Remove disconnected clients
     for conn in disconnected:
         node_connections.remove(conn)
@@ -203,24 +210,28 @@ async def nodes_websocket_endpoint(websocket: WebSocket):
     global nodes_state
     await websocket.accept()
     node_connections.append(websocket)
-    
+
     # Send initial state
-    await websocket.send_json({
-        "type": "init",
-        "nodes": nodes_state,
-    })
-    
+    await websocket.send_json(
+        {
+            "type": "init",
+            "nodes": nodes_state,
+        }
+    )
+
     try:
         while True:
             data = await websocket.receive_text()
             message = json.loads(data)
-            
+
             if message.get("type") == "get_nodes":
                 # Send current nodes
-                await websocket.send_json({
-                    "type": "nodes_update",
-                    "nodes": nodes_state,
-                })
+                await websocket.send_json(
+                    {
+                        "type": "nodes_update",
+                        "nodes": nodes_state,
+                    }
+                )
             elif message.get("type") == "nodes_update":
                 # Update nodes and broadcast to all clients
                 nodes_state = message.get("nodes", [])
@@ -254,4 +265,3 @@ if __name__ == "__main__":
     print("🚀 Starting LK Viewer Server...")
     print("📍 Open http://localhost:8000 in your browser")
     uvicorn.run(app, host="0.0.0.0", port=8000)
-

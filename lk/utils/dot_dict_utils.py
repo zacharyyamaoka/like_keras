@@ -25,12 +25,6 @@ def dot_dict_to_dict(d: dict, sep: str = "."):
 
 
 if __name__ == "__main__":
-    d = {
-        "a": {
-            "b": {
-                "c": 1
-            }
-        }
-    }
+    d = {"a": {"b": {"c": 1}}}
     print(dict_to_dot_dict(d))
     print(dot_dict_to_dict(dict_to_dot_dict(d)))

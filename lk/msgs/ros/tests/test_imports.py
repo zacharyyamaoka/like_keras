@@ -1,5 +1,3 @@
-
-
 """
 Idea is to test importing from expected locations
 

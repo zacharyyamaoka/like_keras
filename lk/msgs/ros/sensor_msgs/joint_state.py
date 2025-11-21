@@ -1,8 +1,8 @@
-
 # https://docs.ros2.org/foxy/api/sensor_msgs/msg/JointState.html
 from dataclasses import dataclass, field
 
 from ..ros_msg import RosMsg
+
 
 @dataclass
 class JointState(RosMsg):

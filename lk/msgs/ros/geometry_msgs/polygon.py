@@ -5,15 +5,16 @@ from typing import List
 
 from .point import Point
 
+
 @dataclass
 class Polygon:
-    points: List[Point] = field(default_factory=list) # List of [x, y]
+    points: List[Point] = field(default_factory=list)  # List of [x, y]
 
     def to_dict(self):
         return {
             "points": [p.to_dict() for p in self.points],
         }
-    
+
     @classmethod
     def from_dict(cls, d: dict):
         points_data = d.get("points", [])

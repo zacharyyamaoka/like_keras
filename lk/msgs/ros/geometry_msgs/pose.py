@@ -18,6 +18,8 @@ ROS internally uses quaternions
 
 This class will internally store as quaternions but output like euler unless otherwise specified.
 """
+
+
 @dataclass
 class Pose(PoseMsg):
     position: Point = field(default_factory=Point)
@@ -40,16 +42,21 @@ class Pose(PoseMsg):
         self.orientation = value
 
     @classmethod
-    def from_transform(cls, transform: 'Transform') -> 'Pose':
-        return cls(position=transform.translation.to_point(), orientation=transform.rotation)
+    def from_transform(cls, transform: "Transform") -> "Pose":
+        return cls(
+            position=transform.translation.to_point(), orientation=transform.rotation
+        )
 
-    def to_transform(self) -> 'Transform':
+    def to_transform(self) -> "Transform":
         from .transform import Transform
-        return Transform(translation=self.position.to_vector3(), rotation=self.orientation)
+
+        return Transform(
+            translation=self.position.to_vector3(), rotation=self.orientation
+        )
 
 
 if __name__ == "__main__":
-   
+
     pose = Pose.random()
     Pose.from_matrix()
     print(pose)
@@ -68,9 +75,8 @@ if __name__ == "__main__":
     # xyz_upper = [1.0, 1.0, 1.5]
     # rpy_lower = [-0.1, -0.1, -0.1]
     # rpy_upper = [0.1, 0.1, 0.1]
-    
+
     # pose_limited = Pose.random(xyz_lower=xyz_lower, xyz_upper=xyz_upper, rpy_lower=rpy_lower, rpy_upper=rpy_upper)
     # print(f"Limited random pose (xyz: {xyz_lower} to {xyz_upper}, rpy: {rpy_lower} to {rpy_upper}):")
     # print(f"  xyz: {pose_limited.xyz}")
     # print(f"  rpy: {pose_limited.rpy}")
-

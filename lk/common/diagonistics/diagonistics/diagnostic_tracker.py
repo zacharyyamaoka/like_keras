@@ -4,8 +4,9 @@
 See bam_utils/docs/diagnostic_tracker.md for more details.
 """
 # ROS
-from diagnostic_msgs.msg import DiagnosticStatus, KeyValue, DiagnosticArray 
-from std_msgs.msg import Header 
+from diagnostic_msgs.msg import DiagnosticStatus, KeyValue, DiagnosticArray
+from std_msgs.msg import Header
+
 # BAM
 # from bam_agent.metrics import MetricsTracker  # Commented out due to import error
 
@@ -19,6 +20,7 @@ from typing import Dict, Optional, Tuple, List
 # At the end of the day, all diagonistics will come down to an asseration value.
 # I can have bool metric in the DiagonsticTracker class...
 
+
 class DiagonisticValue:
     def __init__(self, warn=None, error=None):
         self.warn = warn
@@ -31,19 +33,21 @@ class DiagonisticValue:
 class DiagonisticThresholds:
     """
     Simple container for diagnostic thresholds. It looks like a ROS msg :)
-    
+
     Example:
         thresholds = DiagonisticThresholds()
         thresholds.mean_max = DiagonisticValue(warn=1.5, error=2.0)
         thresholds.std = DiagonisticValue(warn=1.0, error=2.0)
         thresholds.max = DiagonisticValue(error=3.0)
     """
+
     def __init__(self):
         self.mean_max = DiagonisticValue()
         self.mean_min = DiagonisticValue()
-        self.std = DiagonisticValue() 
+        self.std = DiagonisticValue()
         self.max = DiagonisticValue()
         self.min = DiagonisticValue()
+
 
 class DiagnosticMetric:
     def __init__(
@@ -78,35 +82,53 @@ class DiagnosticMetric:
             "last_value": float(vals[-1]),
         }
 
-    def _check_threshold(self, threshold: DiagonisticValue, value: float, stat_name: str, upper_bound: bool = True) -> Tuple[str, str]:
+    def _check_threshold(
+        self,
+        threshold: DiagonisticValue,
+        value: float,
+        stat_name: str,
+        upper_bound: bool = True,
+    ) -> Tuple[str, str]:
         """Generic threshold checking function.
-        
+
         Args:
             threshold: The threshold to check against
             value: The value to check
             stat_name: Name of the statistic (for error messages)
-            upper_bound: If True, checks if value exceeds threshold (upper bound). 
+            upper_bound: If True, checks if value exceeds threshold (upper bound).
                         If False, checks if value is below threshold (lower bound).
-        
+
         Returns:
             Tuple of (level, message)
         """
         if threshold.warn is None and threshold.error is None:
             return "OK", ""
-            
+
         if upper_bound:
             # For upper bound thresholds, check if value exceeds threshold
             if threshold.error is not None and value > threshold.error:
-                return "ERROR", f"{stat_name} {value} exceeds (>) error threshold {threshold.error}"
+                return (
+                    "ERROR",
+                    f"{stat_name} {value} exceeds (>) error threshold {threshold.error}",
+                )
             elif threshold.warn is not None and value > threshold.warn:
-                return "WARN", f"{stat_name} {value} exceeds (>) warning threshold {threshold.warn}"
+                return (
+                    "WARN",
+                    f"{stat_name} {value} exceeds (>) warning threshold {threshold.warn}",
+                )
         else:
             # For lower bound thresholds, check if value is below threshold
             if threshold.error is not None and value < threshold.error:
-                return "ERROR", f"{stat_name} {value} below (<) error threshold {threshold.error}"
+                return (
+                    "ERROR",
+                    f"{stat_name} {value} below (<) error threshold {threshold.error}",
+                )
             elif threshold.warn is not None and value < threshold.warn:
-                return "WARN", f"{stat_name} {value} below (<) warning threshold {threshold.warn}"
-        
+                return (
+                    "WARN",
+                    f"{stat_name} {value} below (<) warning threshold {threshold.warn}",
+                )
+
         return "OK", ""
 
     def _update_worst_level(self, current: str, new: str) -> str:
@@ -116,53 +138,55 @@ class DiagnosticMetric:
 
     def evaluate(self) -> Tuple[str, str]:
         """Evaluate all thresholds against the current statistics.
-        
+
         Returns the worst status (ERROR > WARN > OK) and a combined message.
         """
         if self.lazy or not self._cached_stats:
             self._cached_stats = self._compute_stats()
-        
+
         stats = self._cached_stats
-        
+
         # Return OK if no data available
         if not stats:
             return "OK", "No data available for evaluation"
-        
+
         worst_level = "OK"
         messages = []
-        
+
         # Define threshold checks: (threshold_attr, upper_bound)
         # All use the same name for threshold_attr, stat_key, and stat_name
         threshold_checks = [
-            ("mean_max", True),   # mean_max threshold, upper bound
+            ("mean_max", True),  # mean_max threshold, upper bound
             ("mean_min", False),  # mean_min threshold, lower bound
-            ("std", True),        # std threshold, upper bound
-            ("max", True),        # max threshold, upper bound
-            ("min", False),       # min threshold, lower bound
+            ("std", True),  # std threshold, upper bound
+            ("max", True),  # max threshold, upper bound
+            ("min", False),  # min threshold, lower bound
         ]
-        
+
         # Check each threshold
         for threshold_attr, upper_bound in threshold_checks:
             threshold = getattr(self.thresholds, threshold_attr)
             stat_key = threshold_attr.replace("_max", "").replace("_min", "")
-            
+
             # Skip if stat is not available
             if stat_key not in stats:
                 continue
-                
+
             stat_val = stats[stat_key]
             stat_name = stat_key.capitalize()
-            level, msg = self._check_threshold(threshold, stat_val, stat_name, upper_bound)
+            level, msg = self._check_threshold(
+                threshold, stat_val, stat_name, upper_bound
+            )
             if level != "OK":
                 messages.append(msg)
             worst_level = self._update_worst_level(worst_level, level)
-        
+
         # Combine messages
         if messages:
             combined_message = "; ".join(messages)
         else:
             combined_message = "All metrics within acceptable ranges"
-            
+
         return worst_level, combined_message
 
     def get_stats(self) -> Dict[str, float]:
@@ -172,10 +196,10 @@ class DiagnosticMetric:
 
     def get_last_value(self, default: float = 0.0) -> float:
         """Get the last value from the metric's values list.
-        
+
         Args:
             default: Value to return if the list is empty
-            
+
         Returns:
             The last value if the list is not empty, otherwise the default value
         """
@@ -183,40 +207,45 @@ class DiagnosticMetric:
             return default
         return float(self.values[-1])
 
+
 class DiagnosticTracker:
     def __init__(self, config: Optional[Dict] = None):
         self.metrics: Dict[str, DiagnosticMetric] = {}
         self.config = config or {}
-        
+
         # Validate config if provided
-        if self.config and 'metrics' not in self.config:
+        if self.config and "metrics" not in self.config:
             raise ValueError("Config dictionary must contain 'metrics' section")
 
     def _create_thresholds_from_config(self, metric_name: str) -> DiagonisticThresholds:
         """Create thresholds from config for a given metric name."""
         # Strip leading slash for proper config matching in multi-environment cases
-        clean_metric_name = metric_name.lstrip('/')
-        
-        if clean_metric_name not in self.config['metrics']:
+        clean_metric_name = metric_name.lstrip("/")
+
+        if clean_metric_name not in self.config["metrics"]:
             raise ValueError(f"Metric '{clean_metric_name}' not found in config")
-        
-        metric_config = self.config['metrics'][clean_metric_name]
+
+        metric_config = self.config["metrics"][clean_metric_name]
         thresholds = DiagonisticThresholds()
-        
+
         # Load each threshold type from config
-        for threshold_type in ['mean_max', 'mean_min', 'std', 'max', 'min']:
+        for threshold_type in ["mean_max", "mean_min", "std", "max", "min"]:
             if threshold_type in metric_config:
                 threshold_config = metric_config[threshold_type]
-                warn = threshold_config.get('warn')
-                error = threshold_config.get('error')
-                
+                warn = threshold_config.get("warn")
+                error = threshold_config.get("error")
+
                 # some threshold is better than no threshold!
                 if warn is None and error is None:
-                    raise ValueError(f"Threshold '{threshold_type}' for metric '{clean_metric_name}' has no warn or error values")
-                
+                    raise ValueError(
+                        f"Threshold '{threshold_type}' for metric '{clean_metric_name}' has no warn or error values"
+                    )
+
                 # Set the threshold using direct assignment
-                setattr(thresholds, threshold_type, DiagonisticValue(warn=warn, error=error))
-        
+                setattr(
+                    thresholds, threshold_type, DiagonisticValue(warn=warn, error=error)
+                )
+
         return thresholds
 
     def register(
@@ -228,7 +257,7 @@ class DiagnosticTracker:
         lazy: bool = False,
     ):
         """Register a new metric.
-        
+
         Args:
             name: Metric name
             thresholds: Optional thresholds to override config. If None, will load from config.
@@ -249,7 +278,7 @@ class DiagnosticTracker:
                 )
                 return
             thresholds = self._create_thresholds_from_config(name)
-        
+
         self.metrics[name] = DiagnosticMetric(
             name=name,
             max_len=max_len,
@@ -299,4 +328,3 @@ class DiagnosticTracker:
             msg.header = header
         msg.status = self.to_diagnostics()
         return msg
-

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 """
-    Example: Using URDF Import/Export
-    
-    This example demonstrates how to:
-    1. Load a URDF file into RobotDescription
-    2. Inspect the robot structure
-    3. Make modifications
-    4. Export back to URDF
+Example: Using URDF Import/Export
+
+This example demonstrates how to:
+1. Load a URDF file into RobotDescription
+2. Inspect the robot structure
+3. Make modifications
+4. Export back to URDF
 """
 
 # BAM
@@ -17,9 +17,10 @@
 # PYTHON
 from pathlib import Path
 
+
 def example_urdf_import():
     """Example of importing a URDF file."""
-    
+
     # Create a simple URDF for demonstration
     simple_urdf = """<?xml version="1.0"?>
 <robot name="example_robot">
@@ -67,11 +68,11 @@ def example_urdf_import():
     <limit lower="-1.57" upper="1.57" effort="50.0" velocity="1.0"/>
   </joint>
 </robot>"""
-    
-    print("="*70)
+
+    print("=" * 70)
     print("EXAMPLE: URDF Import/Export")
-    print("="*70)
-    
+    print("=" * 70)
+
     print("\n1. Import from URDF string")
     print("-" * 70)
     # Uncomment when lk imports work:
@@ -83,7 +84,7 @@ def example_urdf_import():
     print("   robot_desc = RobotDescription.from_urdf_xml(urdf_string)")
     print("   print(f'Links: {len(robot_desc.links.entities)}')")
     print("   print(f'Joints: {len(robot_desc.joints.entities)}')")
-    
+
     print("\n2. Inspect robot structure")
     print("-" * 70)
     print("   [Code example]")
@@ -98,7 +99,7 @@ def example_urdf_import():
     print("       print(f'Joint: {joint.name} ({joint.type})')")
     print("       print(f'  Parent: {joint.parent_link}')")
     print("       print(f'  Child: {joint.child_link}')")
-    
+
     print("\n3. Make modifications")
     print("-" * 70)
     print("   [Code example]")
@@ -108,7 +109,7 @@ def example_urdf_import():
     print("   # Modify joint limit")
     print("   joint = robot_desc.joints.entities['arm_joint']")
     print("   joint.limits.max_velocity = 3.0")
-    
+
     print("\n4. Export to URDF")
     print("-" * 70)
     print("   [Code example]")
@@ -117,7 +118,7 @@ def example_urdf_import():
     print("   # Save to file")
     print("   with open('modified_robot.urdf', 'w') as f:")
     print("       f.write(urdf_xml)")
-    
+
     print("\n5. Load real robots (with robot_descriptions)")
     print("-" * 70)
     print("   [Code example]")
@@ -131,19 +132,15 @@ def example_urdf_import():
     print("   # Get actuated joints")
     print("   actuated = robot_desc.joints.get_actuated_joints()")
     print("   print(f'Actuated joints: {len(actuated)}')")
-    
-    print("\n" + "="*70)
+
+    print("\n" + "=" * 70)
     print("KEY METHODS")
-    print("="*70)
+    print("=" * 70)
     print("RobotDescription.from_urdf_xml(urdf_string, robot_name=None)")
     print("RobotDescription.from_urdf_file(urdf_path, robot_name=None)")
     print("robot_desc.to_urdf_xml()")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
 
 if __name__ == "__main__":
     example_urdf_import()
-
-
-
-

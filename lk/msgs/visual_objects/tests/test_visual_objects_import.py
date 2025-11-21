@@ -1,5 +1,5 @@
 """
-    Validate that visual object message exports remain importable.
+Validate that visual object message exports remain importable.
 """
 
 # BAM
@@ -82,7 +82,11 @@ def test_gui_visual_objects_instantiation():
 
 def test_plotting_visual_objects_instantiation():
     series = viz.Series(y=[0.0, 1.0, 2.0])
-    line_plot = viz.LinePlot(series=[series], vertical_lines=[viz.VerticalLine(x=0.5)], horizontal_lines=[viz.HorizontalLine(y=0.0)])
+    line_plot = viz.LinePlot(
+        series=[series],
+        vertical_lines=[viz.VerticalLine(x=0.5)],
+        horizontal_lines=[viz.HorizontalLine(y=0.0)],
+    )
     line_chart = viz.LineChart(y=[0.0, 1.0, 2.0])
     histogram = viz.Histogram(values=[0.1, 0.2, 0.3])
 
@@ -102,5 +106,3 @@ def test_plotting_visual_objects_instantiation():
     assert line_chart.y != []
     assert histogram.values != []
     assert timeline.n_actuators == 1
-
-

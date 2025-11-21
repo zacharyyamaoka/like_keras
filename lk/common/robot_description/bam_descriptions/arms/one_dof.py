@@ -2,7 +2,11 @@
 
 # BAM
 from bam.descriptions.arms.arm_description import RobotDescription
-from bam.descriptions import BAM_DESCRIPTIONS_PATH, BAM_MESH_PACKAGE_PATH, BAM_CORE_BRINGUP_PATH
+from bam.descriptions import (
+    BAM_DESCRIPTIONS_PATH,
+    BAM_MESH_PACKAGE_PATH,
+    BAM_CORE_BRINGUP_PATH,
+)
 
 from bam.msgs import (
     JointDescription,
@@ -17,41 +21,43 @@ from typing import List
 import os
 
 # Allows you to test adding the interia to the URDF
-MM = 1/1000
-GRAMS = 1/1000
+MM = 1 / 1000
+GRAMS = 1 / 1000
+
 
 @dataclass
 class OneDofUrdfInfo(UrdfInfo):
-    path:str = ""
-    xacro_path:str = BAM_DESCRIPTIONS_PATH + "/urdf/one_dof/one_dof.urdf.xacro"
-    abs_package_dirs: dict[str, str] = field(default_factory=lambda: {
-        "descriptions": BAM_MESH_PACKAGE_PATH,
-    })
+    path: str = ""
+    xacro_path: str = BAM_DESCRIPTIONS_PATH + "/urdf/one_dof/one_dof.urdf.xacro"
+    abs_package_dirs: dict[str, str] = field(
+        default_factory=lambda: {
+            "descriptions": BAM_MESH_PACKAGE_PATH,
+        }
+    )
+
 
 @dataclass
 class OneDofInfo(RobotInfo):
-    type: str="one_dof"
-    sku: str=""
-    version: str="0.0.0"
-    uuid: str="00000000-0000-0000-0000-000000000000"
+    type: str = "one_dof"
+    sku: str = ""
+    version: str = "0.0.0"
+    uuid: str = "00000000-0000-0000-0000-000000000000"
+
 
 J1 = JointDescription(
     name="joint_1",
     can_id=0,
     hardstop_position=0.0,
     home_position=0.0,
-    
     limits=PerJointLimits(
         max_velocity=1.0,
         max_acceleration=1.0,
         max_jerk=1.0,
         max_effort=1.0,
-
         min_velocity=-1.0,
         min_acceleration=-1.0,
         min_jerk=-1.0,
         min_effort=-1.0,
-
         has_velocity_limits=True,
         has_acceleration_limits=True,
         has_jerk_limits=True,
@@ -59,26 +65,31 @@ J1 = JointDescription(
     ),
 )
 
-@dataclass  
+
+@dataclass
 class OneDofDescription(RobotDescription):
     # Xacro args are now directly in RobotDescription as fields
     ros2_control: bool = True
-    transport_path: str = field(default_factory=lambda: os.getenv("TRANSPORT_PATH") or "")
+    transport_path: str = field(
+        default_factory=lambda: os.getenv("TRANSPORT_PATH") or ""
+    )
     plugin: str = "mock"  # options: none, mock, gazebo, real
-    controllers_file_path: str = BAM_CORE_BRINGUP_PATH + "/config/controllers/one_dof_controllers.yaml"
+    controllers_file_path: str = (
+        BAM_CORE_BRINGUP_PATH + "/config/controllers/one_dof_controllers.yaml"
+    )
     ros_namespace: str = "bam_GPU"
 
     rotor_diameter: float = 0.05
     rotor_length: float = 0.1
     rotor_mass: float = 0.2
-    
+
     gearbox_diameter: float = 0.04
     gearbox_length: float = 0.08
     gearbox_mass: float = 0.15
 
-    arm_length: float = 600*MM
-    arm_width: float = 20*MM
-    arm_mass: float = 272*GRAMS
+    arm_length: float = 600 * MM
+    arm_width: float = 20 * MM
+    arm_mass: float = 272 * GRAMS
 
     payload_diameter: float = 0.06
     payload_thickness: float = 0.02
@@ -133,7 +144,6 @@ class OneDofDescription(RobotDescription):
             payload_thickness=1e-6,
         )
 
-
     @classmethod
     def make_sku_1000(cls):
 
@@ -148,10 +158,8 @@ class OneDofDescription(RobotDescription):
             payload_thickness=1e-6,
         )
 
-        
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     rd = OneDofDescription.make_sku_600()
     print(OneDofDescription.get_sku_methods())
@@ -164,7 +172,6 @@ if __name__ == '__main__':
     with rd.get_temp_urdf_path() as urdf_path:
         meshcat = MeshcatClient.from_urdf(urdf_path, rd.urdf.abs_package_dirs)
 
-    
     import time
-    time.sleep(1)
 
+    time.sleep(1)

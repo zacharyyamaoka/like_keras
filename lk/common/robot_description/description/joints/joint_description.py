@@ -1,5 +1,5 @@
 """
-    Joint description dataclass capturing URDF-relevant metadata.
+Joint description dataclass capturing URDF-relevant metadata.
 """
 
 # BAM
@@ -15,13 +15,16 @@ from .joint_io import JointIO
 from .joint_calibration import JointCalibration
 from .joint_mimic import JointMimic
 
+
 # Positions will be kept at the robot level, as more meaningful to look at groups of joints
 @dataclass
 class JointDescription:
     name: str = ""
     unprefixed_name: str = ""
     prefixes: list[str] = field(default_factory=list)
-    type: Literal["revolute", "continuous", "prismatic", "fixed", "floating", "planar"] = "revolute"
+    type: Literal[
+        "revolute", "continuous", "prismatic", "fixed", "floating", "planar"
+    ] = "revolute"
 
     axis: Vector3 = field(default_factory=Vector3)
 
@@ -65,25 +68,24 @@ class JointDescription:
     def is_actuated(self) -> bool:
         return not self.is_fixed and not self.is_mimic
 
-
     def to_xml(self) -> str:
         """Generate URDF XML representation of the joint.
-        
+
         Returns:
             str: URDF XML string for the joint (assumes 2-space indentation)
         """
         # Format xyz and rpy from transform
-        xyz = ' '.join([f'{v:.6f}' for v in self.transform.xyz])
-        rpy = ' '.join([f'{v:.6f}' for v in self.transform.rpy])
+        xyz = " ".join([f"{v:.6f}" for v in self.transform.xyz])
+        rpy = " ".join([f"{v:.6f}" for v in self.transform.rpy])
         parent_link = self.transform.header.frame_id
         child_link = self.transform.child_frame_id
-        
+
         return (
             f'<joint name="{self.name}" type="{self.type}">\n'
             f'  <origin xyz="{xyz}" rpy="{rpy}"/>\n'
             f'  <parent link="{parent_link}"/>\n'
             f'  <child link="{child_link}"/>\n'
-            f'</joint>'
+            f"</joint>"
         )
 
 
@@ -91,4 +93,3 @@ if __name__ == "__main__":
     joint = JointDescription(name="joint_example")
     print(joint.parent_link)
     print(joint.to_xml())
-

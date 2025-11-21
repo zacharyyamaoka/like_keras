@@ -1,5 +1,5 @@
 """
-    Core description building blocks and utilities.
+Core description building blocks and utilities.
 """
 
 # BAM
@@ -43,4 +43,3 @@ from .robot_description import RobotDescription
 from . import urdf_converter
 
 # PYTHON
-

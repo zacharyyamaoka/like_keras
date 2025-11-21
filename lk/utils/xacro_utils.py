@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
 """
-    Xacro Package Path Resolution Utilities
+Xacro Package Path Resolution Utilities
 
-    Utilities for resolving package:// URIs in xacro/URDF files using custom
-    package path mappings instead of ROS package resolution.
+Utilities for resolving package:// URIs in xacro/URDF files using custom
+package path mappings instead of ROS package resolution.
 
-    Based on xacrodoc: https://github.com/adamheins/xacrodoc/blob/main/src/xacrodoc/xacrodoc.py#L96C1-L97C1
+Based on xacrodoc: https://github.com/adamheins/xacrodoc/blob/main/src/xacrodoc/xacrodoc.py#L96C1-L97C1
 
-    def _resolve_packages(dom):
+def _resolve_packages(dom):
 
-    Needed to be adjusted as we don't nessarily use ROS Packages
+Needed to be adjusted as we don't nessarily use ROS Packages
 """
 
 
@@ -25,13 +25,18 @@ from xacrodoc.xacrodoc import XacroDoc
 from .tempfile_utils import temp_xacro_file
 
 
-def xml_from_xacro(xacro_path: str, xacro_args: dict = None, resolve_packages: bool = False, abs_package_dirs: dict[str, str] = None) -> str:
-
+def xml_from_xacro(
+    xacro_path: str,
+    xacro_args: dict = None,
+    resolve_packages: bool = False,
+    abs_package_dirs: dict[str, str] = None,
+) -> str:
     """
-       directly generate xml to avoid xacrodoc editing the filenames
+    directly generate xml to avoid xacrodoc editing the filenames
     """
     doc = xacrodoc_from_file(xacro_path, xacro_args, resolve_packages, abs_package_dirs)
     return doc.dom.toprettyxml(indent="  ")
+
 
 def xml_body_from_macro_xml(
     macro_xml: str,
@@ -39,24 +44,24 @@ def xml_body_from_macro_xml(
     prefix_comment: str = "start macro xml",
     suffix_comment: str = "end macro xml",
     resolve_packages: bool = False,
-    abs_package_dirs: dict[str, str] = None
+    abs_package_dirs: dict[str, str] = None,
 ) -> str:
     """Extract expanded XML from macro XML by creating a temporary xacro and expanding it.
-    
+
     Creates a lightweight temporary xacro file that includes the specified imports,
     then includes the macro XML between marker links. After expansion, extracts
     the content between the markers and returns it.
-    
+
     DescriptionArgs:
         macro_xml: The XML that calls the macro (e.g., xacro:include and xacro:make_config tags)
         imports: List of xacro file paths to include before the macro
         prefix_comment: Comment to add before the extracted content (default: "start macro xml")
         suffix_comment: Comment to add after the extracted content (default: "end macro xml")
         resolve_packages: Whether to resolve package:// URIs to file:// paths
-        
+
     Returns:
         str: The expanded XML content extracted from between the markers
-        
+
     Raises:
         ValueError: If the marker links cannot be found in the expanded XML
     """
@@ -65,12 +70,14 @@ def xml_body_from_macro_xml(
     marker_id = str(uuid.uuid4())[:8]
     start_marker = f'<link name="start_marker_{marker_id}"/>'
     end_marker = f'<link name="end_marker_{marker_id}"/>'
-    
+
     # Build imports section
-    imports_section = "\n".join([f'  <xacro:include filename="{imp}"/>' for imp in imports])
-    
+    imports_section = "\n".join(
+        [f'  <xacro:include filename="{imp}"/>' for imp in imports]
+    )
+
     # Create lightweight temp xacro content
-    temp_xacro_content = f'''<?xml version="1.0"?>
+    temp_xacro_content = f"""<?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="temp_robot">
 
 {imports_section}
@@ -82,32 +89,50 @@ def xml_body_from_macro_xml(
 {end_marker}
 
 </robot>
-'''
-    
+"""
+
     # Expand the xacro and extract the macro content
     with temp_xacro_file(temp_xacro_content) as temp_xacro_path:
-        expanded_xml = xml_from_xacro(temp_xacro_path, None, resolve_packages=resolve_packages, abs_package_dirs=abs_package_dirs)
-        
+        expanded_xml = xml_from_xacro(
+            temp_xacro_path,
+            None,
+            resolve_packages=resolve_packages,
+            abs_package_dirs=abs_package_dirs,
+        )
+
         # Extract content between markers
         start_idx = expanded_xml.find(start_marker)
         end_idx = expanded_xml.find(end_marker)
-        
-        if start_idx == -1 or end_idx == -1:
-            raise ValueError(f"Could not find macro markers in expanded XML. Start: {start_idx}, End: {end_idx}")
-        
-        # Extract content between markers
-        macro_content = expanded_xml[start_idx + len(start_marker):end_idx].strip()
-        
-        # Build result with prefix and suffix comments
-        return f"  <!-- {prefix_comment} -->\n{macro_content}\n  <!-- {suffix_comment} -->"
 
-def xacrodoc_from_file(xacro_path: str, xacro_args: dict = None, resolve_packages: bool = False, abs_package_dirs: dict[str, str] = None) -> XacroDoc:
+        if start_idx == -1 or end_idx == -1:
+            raise ValueError(
+                f"Could not find macro markers in expanded XML. Start: {start_idx}, End: {end_idx}"
+            )
+
+        # Extract content between markers
+        macro_content = expanded_xml[start_idx + len(start_marker) : end_idx].strip()
+
+        # Build result with prefix and suffix comments
+        return (
+            f"  <!-- {prefix_comment} -->\n{macro_content}\n  <!-- {suffix_comment} -->"
+        )
+
+
+def xacrodoc_from_file(
+    xacro_path: str,
+    xacro_args: dict = None,
+    resolve_packages: bool = False,
+    abs_package_dirs: dict[str, str] = None,
+) -> XacroDoc:
     # Register packages with xacrodoc if provided
     if abs_package_dirs and resolve_packages:
         import xacrodoc.packages
+
         xacrodoc.packages.update_package_cache(abs_package_dirs)
-    
-    doc = XacroDoc.from_file(xacro_path, subargs=xacro_args, resolve_packages=resolve_packages)
+
+    doc = XacroDoc.from_file(
+        xacro_path, subargs=xacro_args, resolve_packages=resolve_packages
+    )
 
     """
     resolve_package True vs False
@@ -126,8 +151,8 @@ def xacrodoc_from_file(xacro_path: str, xacro_args: dict = None, resolve_package
 
     #     replace_file_with_package(doc.dom)
 
-
     return doc
+
 
 def _urdf_elements_with_filenames(dom: Document) -> list:
     """Get all elements in the URDF document with a filename attribute.
@@ -154,6 +179,7 @@ def post_process_dom(dom: Document) -> None:
 
         e.setAttribute("filename", filename.replace("file://", "package://"))
 
+
 def replace_file_with_package(dom: Document) -> str:
     # print(dom.toprettyxml(indent="  "))
 
@@ -162,7 +188,6 @@ def replace_file_with_package(dom: Document) -> str:
         # print(filename)
 
         e.setAttribute("filename", filename.replace("file://", "package://"))
-
 
 
 def resolve_package_paths(dom: Document, package_paths: dict[str, str | Path]) -> None:

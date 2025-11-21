@@ -1,4 +1,3 @@
-
 from contextlib import contextmanager
 import os
 import tempfile
@@ -8,6 +7,8 @@ import tempfile
 Suffix is important as some systems check it.
 
 """
+
+
 # Xacro doc doesn't have temp srdf, so implement function here
 @contextmanager
 def temp_srdf_file(srdf: str):
@@ -19,6 +20,7 @@ def temp_srdf_file(srdf: str):
     finally:
         os.remove(path)
 
+
 @contextmanager
 def temp_urdf_file(urdf: str):
     fd, path = tempfile.mkstemp(suffix=".urdf")
@@ -28,6 +30,7 @@ def temp_urdf_file(urdf: str):
         yield path
     finally:
         os.remove(path)
+
 
 @contextmanager
 def temp_xacro_file(xacro: str):

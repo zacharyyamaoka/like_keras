@@ -19,13 +19,14 @@ class Header(RosMsg):
 
     @classmethod
     def from_dict(cls, d: dict):
-        stamp = Time.from_dict(d.get("stamp", {})) #empty dict otherwise
+        stamp = Time.from_dict(d.get("stamp", {}))  # empty dict otherwise
         frame_id = d.get("frame_id", "")
         return cls(stamp=stamp, frame_id=frame_id)
 
-    def lerp(self, target: 'Header', fraction: float) -> 'Header':
+    def lerp(self, target: "Header", fraction: float) -> "Header":
         stamp = self.stamp.lerp(target.stamp, fraction)
         return Header(stamp=stamp, frame_id=self.frame_id)
+
 
 if __name__ == "__main__":
     header = Header()

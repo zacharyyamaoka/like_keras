@@ -1,4 +1,3 @@
-
 from .waypoint_action import WaypointAction
 from ..mdp_action import MdpAction
 

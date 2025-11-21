@@ -8,6 +8,8 @@ A descritve language to describe an complex, autonmous robotics sytem with comme
 
 Describe it once, configure and run it it many different ways!
 
+If software is all about trade offs, then we are focusing on data driven systems first. The reason the robot cannot pick up waste is not beacuse of the type of code that you can write down, but beacuse limitations in the code you cannot (that needs to be learned). We want to address thoose limitaions straight one. Even in the first example you see a system that has to take a learning approach.
+
 - Build around MDP abstraction. If you can describe your problem in terms of sensors, world_model, actor, actuators, you are good!
 - Designs we push to run time/ abstract away
 - Communication protocol, use Ros, dora-rs, your_fav_new_transport_lib

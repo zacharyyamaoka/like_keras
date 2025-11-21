@@ -11,9 +11,6 @@ Here we extend the RobotDescription to add information relevant to arms.
 """
 
 
-
-
-
 @dataclass
 class ArmArgs(DescriptionArgs):
 
@@ -21,6 +18,3 @@ class ArmArgs(DescriptionArgs):
 
     def __post_init__(self):
         super().__post_init__()
-    
-
-

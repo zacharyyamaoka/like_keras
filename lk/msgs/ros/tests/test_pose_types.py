@@ -1,5 +1,3 @@
-
-
 """
 We are expecting standard accesses
 
@@ -18,6 +16,7 @@ import numpy as np
 import pytest
 
 pose_types = [Pose, PoseStamped, TransformStamped, Transform]
+
 
 def test_xyzrpy_accessors():
     pose_type: PoseType

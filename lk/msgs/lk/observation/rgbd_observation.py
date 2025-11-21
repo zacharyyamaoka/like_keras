@@ -1,8 +1,8 @@
 """
-    RGBD Observation Message
-    
-    Contains RGB and Depth image data with camera calibration info.
-    Matches ROS sensor_msgs structure for compatibility.
+RGBD Observation Message
+
+Contains RGB and Depth image data with camera calibration info.
+Matches ROS sensor_msgs structure for compatibility.
 """
 
 # BAM
@@ -21,4 +21,3 @@ class RgbdObservation(MdpObservation):
     depth_camera_info: CameraInfo = field(default_factory=CameraInfo)
     rgb: Image = field(default_factory=Image)
     depth: Image = field(default_factory=Image)
-

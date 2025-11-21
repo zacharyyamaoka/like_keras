@@ -1,5 +1,5 @@
 """
-    SRDF asset metadata for robot semantic descriptions.
+SRDF asset metadata for robot semantic descriptions.
 """
 
 # BAM
@@ -23,19 +23,21 @@ class SrdfInfo:
         return self.path or self.xacro_path
 
     @staticmethod
-    def combine(srdf_infos: list['SrdfInfo']) -> 'SrdfInfo':
+    def combine(srdf_infos: list["SrdfInfo"]) -> "SrdfInfo":
 
         return SrdfInfo()
 
-    def extend(self, srdf_infos: 'SrdfInfo') -> 'SrdfInfo':
+    def extend(self, srdf_infos: "SrdfInfo") -> "SrdfInfo":
         return SrdfInfo.combine([self, *srdf_infos])
 
     def get_xml(self, xacro_args: dict = {}, resolve_packages: bool = False) -> str:
         if self.path:
-            with open(self.path, 'r') as f:
+            with open(self.path, "r") as f:
                 return f.read()
         elif self.xacro_path:
-            from bam.utils import xml_from_xacro  # Lazy import keeps message modules lightweight
+            from bam.utils import (
+                xml_from_xacro,
+            )  # Lazy import keeps message modules lightweight
 
             return xml_from_xacro(self.xacro_path, xacro_args, resolve_packages=False)
         else:
@@ -45,9 +47,6 @@ class SrdfInfo:
         return self.path
 
 
-
 if __name__ == "__main__":
     srdf_info = SrdfInfo(path="robot.srdf")
     print(srdf_info)
-
-

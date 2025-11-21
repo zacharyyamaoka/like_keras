@@ -43,7 +43,7 @@
 #     @classmethod
 #     def from_robot_description(cls, robot_description: 'RobotDescription', verbose=False):
 #         pin_model = PinRobotModel.from_robot_description(robot_description)
-        
+
 #         return cls(pin_model, robot_description.ik_tip, verbose)
 
 #     def __init__(self, pin_model: PinModel, ik_tip_link: str, verbose=False):
@@ -125,7 +125,6 @@
 #         # pin.updateFramePlacements(self.model, self.data) # no need as you read from the joint frames, and then transform with static T
 #         T_base_link_to_ik_tip = self.data.oMi[self.ik_tip_idx]
 #         return True, T_base_link_to_ik_tip
-
 
 
 # if __name__ == "__main__":

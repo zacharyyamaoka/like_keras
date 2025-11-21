@@ -18,6 +18,7 @@ If you have just an ActuatorTrajectory, that reminds me of essentially just the 
 Ok I can just borrow the abstractions from moveit and ros2 control, no need to reinvient the wheel here. I would rather follow the abstraction and use a longer name than compress them
 
 """
+
+
 @dataclass
-class ActuatorTrajectoryPoint(JointTrajectoryPoint):    
-    ...
+class ActuatorTrajectoryPoint(JointTrajectoryPoint): ...

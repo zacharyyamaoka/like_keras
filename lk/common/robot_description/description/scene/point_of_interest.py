@@ -1,5 +1,5 @@
 """
-    Point of interest description for scene interaction targets.
+Point of interest description for scene interaction targets.
 """
 
 # BAM
@@ -22,4 +22,3 @@ class PointOfInterest:
 if __name__ == "__main__":
     poi = PointOfInterest(name="example_poi")
     print(poi)
-

@@ -1,5 +1,5 @@
 """
-    Drop/bin point of interest description with visualization helpers.
+Drop/bin point of interest description with visualization helpers.
 """
 
 # BAM
@@ -15,7 +15,7 @@ from .point_of_interest import PointOfInterest
 @dataclass
 class DropPoint(PointOfInterest):
     """
-        Point of interest representing a drop or bin location.
+    Point of interest representing a drop or bin location.
     """
 
     bin_opening_pose: PoseStamped = field(default_factory=PoseStamped)
@@ -35,5 +35,3 @@ class DropPoint(PointOfInterest):
 if __name__ == "__main__":
     drop_point = DropPoint(name="example_drop_point")
     print(drop_point.bin_center_pose)
-
-

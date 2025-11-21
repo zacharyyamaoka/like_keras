@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 """
-    Histogram helpers for score/value visualization.
+Histogram helpers for score/value visualization.
 
-    Combines the previous math_utils histogram helpers with the plotting
-    utilities so everything lives under bam.utils.histogram.
+Combines the previous math_utils histogram helpers with the plotting
+utilities so everything lives under bam.utils.histogram.
 """
 
 # PYTHON
@@ -145,12 +145,16 @@ def plot_bins(
     if fig is None or axes is None:
         fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
-    raw_counts, raw_bins, _ = axes[0].hist(values, bins=20, color="gray", edgecolor="black")
+    raw_counts, raw_bins, _ = axes[0].hist(
+        values, bins=20, color="gray", edgecolor="black"
+    )
     axes[0].set_title("Raw Values")
     axes[0].set_xlabel(x_label)
     axes[0].set_ylabel("Count")
     axes[0].set_xticks(raw_bins)
-    axes[0].set_xticklabels([f"{edge:.2f}" for edge in raw_bins], rotation=45, ha="right")
+    axes[0].set_xticklabels(
+        [f"{edge:.2f}" for edge in raw_bins], rotation=45, ha="right"
+    )
 
     for x_val, count in zip(raw_bins[:-1], raw_counts):
         if count > 0:
@@ -165,8 +169,13 @@ def plot_bins(
 
     hist_counts, _ = np.histogram(values, bins=bin_edges)
     bar_positions = np.arange(len(hist_counts))
-    bar_labels = [f"{bin_edges[idx]:.2f} – {bin_edges[idx + 1]:.2f}" for idx in range(len(hist_counts))]
-    bars = axes[1].bar(bar_positions, hist_counts, width=0.8, color="steelblue", edgecolor="black")
+    bar_labels = [
+        f"{bin_edges[idx]:.2f} – {bin_edges[idx + 1]:.2f}"
+        for idx in range(len(hist_counts))
+    ]
+    bars = axes[1].bar(
+        bar_positions, hist_counts, width=0.8, color="steelblue", edgecolor="black"
+    )
 
     axes[1].set_xticks(bar_positions)
     axes[1].set_xticklabels(bar_labels, rotation=45, ha="right")

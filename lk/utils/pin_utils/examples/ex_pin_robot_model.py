@@ -1,7 +1,7 @@
 from robot_descriptions.loaders.pinocchio import load_robot_description
 
 
-# What should I use here as a base library in case bam.descriptions not installed? 
+# What should I use here as a base library in case bam.descriptions not installed?
 # https://github.com/robot-descriptions/robot_descriptions.py
 # https://github.com/google-deepmind/mujoco_menagerie?tab=readme-ov-file#via-robot-descriptions
 # Mujoco meagerie reecomdsn uses the robot_descriptions package, thats a great endorsement!

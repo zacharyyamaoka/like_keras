@@ -9,11 +9,11 @@ the rendering backend. Objects are organized into:
 
 Usage:
     import bam.msgs.visual_objects as viz
-    
+
     # Create visual objects
     path = viz.Path(pose_list=[...])
     grid = viz.Grid()
-    
+
     # Draw via artist
     artist.draw(path)
 """
@@ -81,4 +81,3 @@ from .plotting import (
 
 # Binning utilities
 from bam.utils import BinConfig
-

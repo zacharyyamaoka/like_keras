@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Point cloud helpers for RGB-D processing and visualization workflows.
+Point cloud helpers for RGB-D processing and visualization workflows.
 """
 
 # PYTHON
@@ -17,7 +17,10 @@ from transforms3d.euler import euler2mat
 if TYPE_CHECKING:
     import open3d as o3d
 
-def xyz_2_pc(xyz: np.ndarray, color: list[float] | tuple[float, float, float] | None = None) -> o3d.geometry.PointCloud:
+
+def xyz_2_pc(
+    xyz: np.ndarray, color: list[float] | tuple[float, float, float] | None = None
+) -> o3d.geometry.PointCloud:
     import open3d as o3d
 
     """Convert XYZ array to Open3D point cloud with optional uniform color."""
@@ -44,11 +47,15 @@ def rgb_2_patch(rgb: np.ndarray, x: int, y: int, window_size: int = 10) -> np.nd
     return xyz_2_patch(rgb, x, y, window_size)
 
 
-def xyz_2_patch(xyz: np.ndarray, x: int, y: int, window_size: int = 10, verbose: bool = False) -> np.ndarray:
+def xyz_2_patch(
+    xyz: np.ndarray, x: int, y: int, window_size: int = 10, verbose: bool = False
+) -> np.ndarray:
     """Return XYZ patch centered at (x, y)."""
     height, width, _ = xyz.shape
     if not (0 <= x < width and 0 <= y < height):
-        raise ValueError(f"Point (x={x}, y={y}) out of bounds for shape {(height, width)}")
+        raise ValueError(
+            f"Point (x={x}, y={y}) out of bounds for shape {(height, width)}"
+        )
 
     half = window_size // 2
     y_min = max(y - half, 0)
@@ -63,7 +70,12 @@ def xyz_2_patch(xyz: np.ndarray, x: int, y: int, window_size: int = 10, verbose:
     return xyz[y_min:y_max, x_min:x_max, :]
 
 
-def plane_2_depth(T_camera_plane: np.ndarray, img_height: int, img_width: int, camera_matrix: np.ndarray) -> np.ndarray:
+def plane_2_depth(
+    T_camera_plane: np.ndarray,
+    img_height: int,
+    img_width: int,
+    camera_matrix: np.ndarray,
+) -> np.ndarray:
     """Ray-plane intersection producing dense depth image (slow loop implementation)."""
     plane_normal = T_camera_plane[:3, 2]
     plane_origin = T_camera_plane[:3, 3]
@@ -84,7 +96,12 @@ def plane_2_depth(T_camera_plane: np.ndarray, img_height: int, img_width: int, c
     return depth_image
 
 
-def plane_2_depth_vectorized(T_camera_plane: np.ndarray, img_height: int, img_width: int, camera_matrix: np.ndarray) -> np.ndarray:
+def plane_2_depth_vectorized(
+    T_camera_plane: np.ndarray,
+    img_height: int,
+    img_width: int,
+    camera_matrix: np.ndarray,
+) -> np.ndarray:
     """Vectorized ray-plane intersection ~60x faster for VGA images."""
     plane_normal = T_camera_plane[:3, 2]
     plane_origin = T_camera_plane[:3, 3]
@@ -94,7 +111,9 @@ def plane_2_depth_vectorized(T_camera_plane: np.ndarray, img_height: int, img_wi
     ys = np.arange(img_height)
     u_coord, v_coord = np.meshgrid(xs, ys)
 
-    rays = np.stack([(u_coord - cx) / fx, (v_coord - cy) / fy, np.ones_like(u_coord)], axis=-1)
+    rays = np.stack(
+        [(u_coord - cx) / fx, (v_coord - cy) / fy, np.ones_like(u_coord)], axis=-1
+    )
     rays_unit = rays / np.linalg.norm(rays, axis=2, keepdims=True)
     denom = np.tensordot(rays_unit, plane_normal, axes=([2], [0]))
 
@@ -109,7 +128,9 @@ def plane_2_depth_vectorized(T_camera_plane: np.ndarray, img_height: int, img_wi
     return depth_image
 
 
-def align_xyz(xyz: np.ndarray, x: float, y: float, z: float, rx: float, ry: float, rz: float) -> np.ndarray:
+def align_xyz(
+    xyz: np.ndarray, x: float, y: float, z: float, rx: float, ry: float, rz: float
+) -> np.ndarray:
     """Transform XYZ points into frame defined by pose."""
     if xyz.shape[1] != 3:
         raise ValueError(f"Expected xyz with shape (N, 3), got {xyz.shape}")
@@ -119,7 +140,9 @@ def align_xyz(xyz: np.ndarray, x: float, y: float, z: float, rx: float, ry: floa
     return (rotation.T @ translated.T).T
 
 
-def unalign_xyz(xyz_local: np.ndarray, x: float, y: float, z: float, rx: float, ry: float, rz: float) -> np.ndarray:
+def unalign_xyz(
+    xyz_local: np.ndarray, x: float, y: float, z: float, rx: float, ry: float, rz: float
+) -> np.ndarray:
     """Transform points from local pose frame back to world."""
     if xyz_local.shape[1] != 3:
         raise ValueError(f"Expected xyz with shape (N, 3), got {xyz_local.shape}")
@@ -128,13 +151,20 @@ def unalign_xyz(xyz_local: np.ndarray, x: float, y: float, z: float, rx: float, 
     return (rotation @ xyz_local.T).T + translation
 
 
-def get_intrinsics(camera_info: np.ndarray | object) -> tuple[float, float, float, float]:
+def get_intrinsics(
+    camera_info: np.ndarray | object,
+) -> tuple[float, float, float, float]:
     """Extract (cx, cy, fx, fy) from ROS-like camera info or numpy matrix."""
     if hasattr(camera_info, "k"):
         K = camera_info.k
         return float(K[2]), float(K[5]), float(K[0]), float(K[4])
     if hasattr(camera_info, "shape"):
-        return float(camera_info[0, 2]), float(camera_info[1, 2]), float(camera_info[0, 0]), float(camera_info[1, 1])
+        return (
+            float(camera_info[0, 2]),
+            float(camera_info[1, 2]),
+            float(camera_info[0, 0]),
+            float(camera_info[1, 1]),
+        )
     raise ValueError("camera_info must have 'k' attribute or be 3x3 matrix.")
 
 
@@ -164,7 +194,9 @@ def update_intriniscs(
     raise ValueError("camera_info must have 'k' attribute or be 3x3 matrix.")
 
 
-def px_2_point(x: float, y: float, depth: np.ndarray, camera_info: np.ndarray | object) -> tuple[float, float, float]:
+def px_2_point(
+    x: float, y: float, depth: np.ndarray, camera_info: np.ndarray | object
+) -> tuple[float, float, float]:
     """Return XYZ for pixel coordinate given depth image + intrinsics."""
     cx, cy, fx, fy = get_intrinsics(camera_info)
     z_val = float(depth[round(y), round(x)])
@@ -189,7 +221,9 @@ def average_from_around(depth_img: np.ndarray, px: int, py: int) -> float:
     return 0.0
 
 
-def px_2_point_safe(x: int, y: int, depth: np.ndarray, camera_info: np.ndarray | object) -> tuple[float, float, float]:
+def px_2_point_safe(
+    x: int, y: int, depth: np.ndarray, camera_info: np.ndarray | object
+) -> tuple[float, float, float]:
     """Safer px_2_point that fills missing depth from local average."""
     z_val = depth[y, x]
     if z_val == 0:
@@ -214,22 +248,43 @@ def get_new_size(
     raise ValueError("Either scale or both new_height and new_width must be provided.")
 
 
-def downsample_mask(mask: np.ndarray, new_height: int | None = None, new_width: int | None = None, scale: float | None = None) -> np.ndarray:
+def downsample_mask(
+    mask: np.ndarray,
+    new_height: int | None = None,
+    new_width: int | None = None,
+    scale: float | None = None,
+) -> np.ndarray:
     """Nearest-neighbor downsample for binary masks."""
     height, width = get_new_size(mask, scale, new_height, new_width)
-    return cv2.resize(mask.astype(np.uint8), (width, height), interpolation=cv2.INTER_NEAREST)
+    return cv2.resize(
+        mask.astype(np.uint8), (width, height), interpolation=cv2.INTER_NEAREST
+    )
 
 
-def downsample_color(color: np.ndarray, new_height: int | None = None, new_width: int | None = None, scale: float | None = None) -> np.ndarray:
+def downsample_color(
+    color: np.ndarray,
+    new_height: int | None = None,
+    new_width: int | None = None,
+    scale: float | None = None,
+) -> np.ndarray:
     """Area downsample for color images."""
     height, width = get_new_size(color, scale, new_height, new_width)
-    return cv2.resize(color.astype(np.uint8), (width, height), interpolation=cv2.INTER_AREA)
+    return cv2.resize(
+        color.astype(np.uint8), (width, height), interpolation=cv2.INTER_AREA
+    )
 
 
-def downsample_depth(depth: np.ndarray, new_height: int | None = None, new_width: int | None = None, scale: float | None = None) -> np.ndarray:
+def downsample_depth(
+    depth: np.ndarray,
+    new_height: int | None = None,
+    new_width: int | None = None,
+    scale: float | None = None,
+) -> np.ndarray:
     """Nearest-neighbor downsample for depth."""
     height, width = get_new_size(depth, scale, new_height, new_width)
-    return cv2.resize(depth.astype(np.float32), (width, height), interpolation=cv2.INTER_NEAREST)
+    return cv2.resize(
+        depth.astype(np.float32), (width, height), interpolation=cv2.INTER_NEAREST
+    )
 
 
 def downsample_rgbd(
@@ -242,7 +297,9 @@ def downsample_rgbd(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray | object]:
     """Downsample color/depth images and adjust intrinsics accordingly."""
     if color.shape[:2] != depth.shape[:2]:
-        raise ValueError(f"Shape mismatch: color {color.shape[:2]}, depth {depth.shape[:2]}")
+        raise ValueError(
+            f"Shape mismatch: color {color.shape[:2]}, depth {depth.shape[:2]}"
+        )
     height, width = get_new_size(color, scale, new_height, new_width)
     color_ds = downsample_color(color, height, width, None)
     depth_ds = downsample_depth(depth, height, width, None)
@@ -265,15 +322,23 @@ def downsample_rgdb_mask(
     """Downsample RGB, depth, mask, and intrinsics."""
     if color.shape[:2] != depth.shape[:2] or color.shape[:2] != mask.shape[:2]:
         raise ValueError("Color, depth, and mask must share dimensions.")
-    color_ds, depth_ds, camera_ds = downsample_rgbd(color, depth, camera_info, new_height, new_width, scale)
+    color_ds, depth_ds, camera_ds = downsample_rgbd(
+        color, depth, camera_info, new_height, new_width, scale
+    )
     mask_ds = downsample_mask(mask, new_height, new_width, scale)
     return color_ds, depth_ds, mask_ds, camera_ds
 
 
-def decimate_xyzrgb(xyz: np.ndarray, rgb: np.ndarray, scale: float = 0.5) -> tuple[np.ndarray, np.ndarray]:
+def decimate_xyzrgb(
+    xyz: np.ndarray, rgb: np.ndarray, scale: float = 0.5
+) -> tuple[np.ndarray, np.ndarray]:
     """Decimate XYZ and RGB arrays via OpenCV resize."""
-    xyz_resized = cv2.resize(xyz, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
-    rgb_resized = cv2.resize(rgb, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
+    xyz_resized = cv2.resize(
+        xyz, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST
+    )
+    rgb_resized = cv2.resize(
+        rgb, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST
+    )
     return xyz_resized, rgb_resized
 
 
@@ -288,7 +353,9 @@ def depth_2_xyz(depth: np.ndarray, camera_info: np.ndarray | object) -> np.ndarr
     return np.dstack((x_vals, y_vals, z_vals))
 
 
-def rgbd_2_xyz(rgb: np.ndarray, depth: np.ndarray, camera_info: np.ndarray | object) -> np.ndarray:
+def rgbd_2_xyz(
+    rgb: np.ndarray, depth: np.ndarray, camera_info: np.ndarray | object
+) -> np.ndarray:
     """Wrapper for depth_2_xyz ensuring RGB/depth shape match."""
     if rgb.shape[:2] != depth.shape:
         raise ValueError(f"Shape mismatch: rgb {rgb.shape[:2]} vs depth {depth.shape}")
@@ -336,4 +403,3 @@ __all__ = [
     "rgbd_2_xyz",
     "save_point_cloud",
 ]
-

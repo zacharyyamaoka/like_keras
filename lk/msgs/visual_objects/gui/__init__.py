@@ -1,8 +1,8 @@
 """
-    GUI Objects for Interactive Controls
+GUI Objects for Interactive Controls
 
-    Lightweight data structures that describe GUI controls to be rendered
-    by visualization backends. The actual rendering logic lives in the viewer.
+Lightweight data structures that describe GUI controls to be rendered
+by visualization backends. The actual rendering logic lives in the viewer.
 """
 
 from .NamespaceVisibilityGui import NamespaceVisibilityGui
@@ -22,4 +22,3 @@ __all__ = [
     "ScoreCloudGui",
     "UrdfJointControlGui",
 ]
-

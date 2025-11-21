@@ -1,5 +1,5 @@
 """
-    Joint initial state configuration.
+Joint initial state configuration.
 """
 
 # BAM
@@ -16,4 +16,3 @@ class PerJointState:
 if __name__ == "__main__":
     initial_state = PerJointState()
     print(initial_state)
-

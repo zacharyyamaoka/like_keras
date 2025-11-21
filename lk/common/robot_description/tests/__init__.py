@@ -1,10 +1,5 @@
 """
-    Tests for robot_description module.
+Tests for robot_description module.
 """
 
 # PYTHON
-
-
-
-
-

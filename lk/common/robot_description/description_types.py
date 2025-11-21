@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 """
-    Description Types Facade
-    
-    This module provides a flat import interface for all description types.
-    Instead of importing from nested modules, users can import all types
-    from this single module.
-    
-    This also helps break circular import dependencies.
+Description Types Facade
+
+This module provides a flat import interface for all description types.
+Instead of importing from nested modules, users can import all types
+from this single module.
+
+This also helps break circular import dependencies.
 """
 
 # BAM
@@ -46,4 +46,3 @@ from .description import (
 )
 
 # PYTHON
-

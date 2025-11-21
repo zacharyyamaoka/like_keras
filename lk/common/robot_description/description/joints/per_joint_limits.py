@@ -1,5 +1,5 @@
 """
-    Joint limit parameters for robot modeling.
+Joint limit parameters for robot modeling.
 """
 
 # BAM
@@ -47,4 +47,3 @@ class PerJointLimits:
 if __name__ == "__main__":
     limits = PerJointLimits()
     print(limits)
-

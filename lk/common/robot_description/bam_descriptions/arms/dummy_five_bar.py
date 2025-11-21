@@ -31,12 +31,14 @@ This is what this dummy_dh robot is
 
 """
 
+
 class DummyFiveBar(RobotDescription):
 
     def __init__(
         self,
-        dh_d1: float = 0.1565, # z distance from origin to joint 2
-        j2_axis_offset: float = 69/1000, # distance from z axis to joint 2, Check y joint value in  <joint name="${prefix}joint_2" type="revolute">
+        dh_d1: float = 0.1565,  # z distance from origin to joint 2
+        j2_axis_offset: float = 69
+        / 1000,  # distance from z axis to joint 2, Check y joint value in  <joint name="${prefix}joint_2" type="revolute">
         L_l1: float = 0.240,
         L_l2: float = 0.240,
         L_c1: float = 0.120,
@@ -46,11 +48,11 @@ class DummyFiveBar(RobotDescription):
         theta_elbow_offset: float = np.deg2rad(45.0),
         reflect: int = 1,
         prefix: str = "",
-        world_xyz=(0,0,0),
-        world_rpy=(0,0,0),
-        base_xyz=(0,0,0),
-        base_rpy=(0,0,-np.pi/2),
-        only_five_bar: bool = False, # If true, only the five bar is loaded, no other joints
+        world_xyz=(0, 0, 0),
+        world_rpy=(0, 0, 0),
+        base_xyz=(0, 0, 0),
+        base_rpy=(0, 0, -np.pi / 2),
+        only_five_bar: bool = False,  # If true, only the five bar is loaded, no other joints
         k_damping: float = 0.1,
         k_friction: float = 0.1,
         **kwargs
@@ -107,32 +109,35 @@ class DummyFiveBar(RobotDescription):
         }
 
     def _init_dynamics(self):
-        """ Define locking behavior and default positions.
-        
-            Used like:
-                model = reduce_model(model, rp.lock_joints, rp.model_lock_position)
+        """Define locking behavior and default positions.
+
+        Used like:
+            model = reduce_model(model, rp.lock_joints, rp.model_lock_position)
         """
         self.lock_joints: List[str] = ["L2_coupler_joint"]
-        self.model_lock_position = None # use pin.neutral()
-
+        self.model_lock_position = None  # use pin.neutral()
 
     def _init_urdf(self):
 
         self.xacro_args = {
             "reflect": str(self.reflect),
             "prefix": self.prefix,
-            "world_xyz": ' '.join(map(str, self.world_xyz)),
-            "world_rpy": ' '.join(map(str, self.world_rpy)),
-            "base_xyz": ' '.join(map(str, self.base_xyz)),
-            "base_rpy": ' '.join(map(str, self.base_rpy)),
+            "world_xyz": " ".join(map(str, self.world_xyz)),
+            "world_rpy": " ".join(map(str, self.world_rpy)),
+            "base_xyz": " ".join(map(str, self.base_xyz)),
+            "base_rpy": " ".join(map(str, self.base_rpy)),
             "k_damping": str(self.k_damping),
             "k_friction": str(self.k_friction),
         }
 
         if self.only_five_bar:
-            self.urdf_path = BAM_DESCRIPTIONS_PATH + "/urdf/dummy_five_bar/five_bar.urdf.xacro"
+            self.urdf_path = (
+                BAM_DESCRIPTIONS_PATH + "/urdf/dummy_five_bar/five_bar.urdf.xacro"
+            )
         else:
-            self.urdf_path = BAM_DESCRIPTIONS_PATH + "/urdf/dummy_five_bar/dummy_five_bar.urdf.xacro"
+            self.urdf_path = (
+                BAM_DESCRIPTIONS_PATH + "/urdf/dummy_five_bar/dummy_five_bar.urdf.xacro"
+            )
 
             self.xacro_args = {
                 **self.xacro_args,
@@ -140,16 +145,16 @@ class DummyFiveBar(RobotDescription):
                 "j2_axis_offset": str(self.j2_axis_offset),
             }
 
-
-
         five_bar_dict_str = {k: str(v) for k, v in self.five_bar_dict.items()}
 
         self.xacro_args = {**self.xacro_args, **five_bar_dict_str}
 
+        self.abs_package_dirs = {
+            "descriptions": BAM_MESH_PACKAGE_PATH
+        }  # where does the urdf mesh point to?
 
-        self.abs_package_dirs = {"descriptions": BAM_MESH_PACKAGE_PATH}  # where does the urdf mesh point to?
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     rd = DummyFiveBar()
     print(rd)

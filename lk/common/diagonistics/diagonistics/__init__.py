@@ -1,6 +1,11 @@
 # Keep this empty. As these are included at various levels of imports, it gets complicated...
 
-from .diagnostic_status import DiagnosticStatus, DiagnosticStatusWrapper, KeyValue, DiagnosticTask
+from .diagnostic_status import (
+    DiagnosticStatus,
+    DiagnosticStatusWrapper,
+    KeyValue,
+    DiagnosticTask,
+)
 from .common_tasks import (
     # Threshold dataclasses
     DiagnosticValue,
@@ -25,24 +30,27 @@ try:
 except ImportError:
     DiagonisticClient = None  # ROS not available
 
+
 def print_diagnostic_status(stat: DiagnosticStatusWrapper):
     """Print diagnostic status in a formatted way."""
     level_names = {
-        DiagnosticStatus.OK: 'OK',
-        DiagnosticStatus.WARN: 'WARN', 
-        DiagnosticStatus.ERROR: 'ERROR',
-        DiagnosticStatus.STALE: 'STALE'
+        DiagnosticStatus.OK: "OK",
+        DiagnosticStatus.WARN: "WARN",
+        DiagnosticStatus.ERROR: "ERROR",
+        DiagnosticStatus.STALE: "STALE",
     }
-    
-    level_name = level_names.get(stat.level, f'UNKNOWN({stat.level})')
-    
-    print(f"{stat.__class__.__name__}:\n"
-          f"  name        : {stat.name}\n"
-          f"  level       : {level_name}\n"
-          f"  message     : {stat.message}\n"
-          f"  hardware_id : {stat.hardware_id}\n"
-          f"  values      : {len(stat.values)} items")
-    
+
+    level_name = level_names.get(stat.level, f"UNKNOWN({stat.level})")
+
+    print(
+        f"{stat.__class__.__name__}:\n"
+        f"  name        : {stat.name}\n"
+        f"  level       : {level_name}\n"
+        f"  message     : {stat.message}\n"
+        f"  hardware_id : {stat.hardware_id}\n"
+        f"  values      : {len(stat.values)} items"
+    )
+
     item: KeyValue
     for item in stat.values:
         # Find the maximum key length to align all keys

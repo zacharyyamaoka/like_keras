@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-    Simple RR (Revolute-Revolute) Robot Description
-    
-    Minimal example for testing lk_viewer reactive visualization.
+Simple RR (Revolute-Revolute) Robot Description
+
+Minimal example for testing lk_viewer reactive visualization.
 """
 
 # BAM
@@ -17,17 +17,17 @@ import numpy as np
 @dataclass
 class SimpleRRRobot(RobotDescription):
     """Simple 2-DOF revolute-revolute robot."""
-    
+
     # Configurable parameters
     link1_length: float = 0.5  # meters
     link2_length: float = 0.3  # meters
-    
+
     base_radius: float = 0.1
     link_radius: float = 0.05
-    
+
     joint1_angle: float = 0.0  # radians
     joint2_angle: float = 0.0  # radians
-    
+
     def to_dict(self) -> dict:
         """Serialize to dict for viewer."""
         return {
@@ -99,9 +99,7 @@ class SimpleRRRobot(RobotDescription):
 if __name__ == "__main__":
     """Quick test to see the serialized output."""
     robot = SimpleRRRobot(link1_length=0.6, link2_length=0.4)
-    
+
     import json
+
     print(json.dumps(robot.to_dict(), indent=2))
-
-
-

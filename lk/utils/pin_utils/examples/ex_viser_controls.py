@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
 
 """
-    Example: Viser Interactive Controls
-    
-    Demonstrates the control panels for PinViser:
-    - Joint position control (sliders)
-    - Inertial properties (COM spheres and inertia boxes)
-    - Visual appearance (opacity and color)
-    - Collision visualization (show/hide and opacity)
-    - Frame control (size and labels for links and joints)
-    
-    Note: By default, PinViser automatically adds all control panels.
-    This example uses auto_add_controls=False to demonstrate manual control addition.
+Example: Viser Interactive Controls
+
+Demonstrates the control panels for PinViser:
+- Joint position control (sliders)
+- Inertial properties (COM spheres and inertia boxes)
+- Visual appearance (opacity and color)
+- Collision visualization (show/hide and opacity)
+- Frame control (size and labels for links and joints)
+
+Note: By default, PinViser automatically adds all control panels.
+This example uses auto_add_controls=False to demonstrate manual control addition.
 """
 
 if __name__ == "__main__":
-    
+
     # PYTHON
     import numpy as np
-    
+
     # BAM
     from bam.utils.pin_utils import PinViser, PinRobotModel
     from robot_descriptions.loaders.pinocchio import load_robot_description
-    
+
     # Load a robot description
     # Example: UR5 robot
-    rd = load_robot_description("ur5_description") # Interia on wrist is wrong!!!
+    rd = load_robot_description("ur5_description")  # Interia on wrist is wrong!!!
 
     from bam.descriptions import UR
 
@@ -36,27 +36,27 @@ if __name__ == "__main__":
     viz = PinViser.from_robot_description(rd, auto_add_controls=False)
 
     viz.robot_model.inspect()
-    
+
     # Manually add the control panels (optional when auto_add_controls=False):
-    
+
     # Add joint position control sliders
     viz.add_robot_control_sliders()
-    
+
     # Add inertial property controls (COM and inertia)
     viz.add_inertial_control()
-    
+
     # Add visual appearance controls (opacity and color)
     viz.add_visual_control()
-    
+
     # Add collision controls (show/hide and opacity)
     viz.add_collision_control()
-    
+
     # Add frame control (size and labels)
     viz.add_frame_control()
-    
-    print("\n" + "="*60)
+
+    print("\n" + "=" * 60)
     print("Viser Interactive Controls Demo")
-    print("="*60)
+    print("=" * 60)
     print("\nNote: This example uses auto_add_controls=False for demonstration.")
     print("By default, PinViser automatically adds all control panels.")
     print("\nAvailable controls in the Viser GUI:")
@@ -91,8 +91,7 @@ if __name__ == "__main__":
     print("  viz.add_robot_control_sliders()  # Add specific panels as needed")
     print("\nOpen your web browser to view the Viser interface")
     print(f"URL: http://localhost:{viz.port}")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Keep the visualizer running
     input("\nPress Enter to exit...")
-

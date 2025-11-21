@@ -1,5 +1,5 @@
 """
-    Principal inertia tensor components for a rigid body.
+Principal inertia tensor components for a rigid body.
 """
 
 # BAM

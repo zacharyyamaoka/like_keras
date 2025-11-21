@@ -40,27 +40,31 @@ class Properties:
     def __post_init__(self):
         self.mass_kg = self.mass_g / 1000.0
         self.com_m = [x / 1000.0 for x in self.com_mm]
-        self.inertia_kgm2 = {k: v * 1e-9 for k, v in self.inertia_gmm2.items()}  # g·mm² to kg·m²
+        self.inertia_kgm2 = {
+            k: v * 1e-9 for k, v in self.inertia_gmm2.items()
+        }  # g·mm² to kg·m²
         self.bbox_m = [d / 1000.0 for d in self.bbox_mm]
-    
+
     def get_inertia_matrix(self) -> np.ndarray:
         """
         Build 3x3 inertia matrix from inertia properties.
-        
+
         Returns:
             np.ndarray: 3x3 symmetric inertia tensor in kg·m²
         """
         I = self.inertia_kgm2
-        return np.array([
-            [I['ixx'], I['ixy'], I['ixz']],
-            [I['ixy'], I['iyy'], I['iyz']],
-            [I['ixz'], I['iyz'], I['izz']],
-        ])
-    
+        return np.array(
+            [
+                [I["ixx"], I["ixy"], I["ixz"]],
+                [I["ixy"], I["iyy"], I["iyz"]],
+                [I["ixz"], I["iyz"], I["izz"]],
+            ]
+        )
+
     def get_inertia_matrix_string(self) -> str:
         """
         Get formatted string representation of inertia matrix.
-        
+
         Returns:
             str: Multi-line string showing the 3x3 inertia matrix
         """
@@ -78,7 +82,7 @@ def parse_properties_file(filename="properties.txt", verbose=False) -> Propertie
     com_mm = None
     inertia_gmm2 = dict()
     bbox_mm = None
-    
+
     inertia_section = False
 
     def print_v(msg):
@@ -91,7 +95,7 @@ def parse_properties_file(filename="properties.txt", verbose=False) -> Propertie
 
             if not line:
                 continue
-            
+
             line_split = line.split()
             first_word = line_split[0]
 
@@ -99,8 +103,8 @@ def parse_properties_file(filename="properties.txt", verbose=False) -> Propertie
                 print_v(line)
                 # Extract name from "Part Name\tComponent1" or "Part Name Component1" format
                 # Try tab first, then fall back to splitting by whitespace
-                if '\t' in line:
-                    parts = line.split('\t')
+                if "\t" in line:
+                    parts = line.split("\t")
                 else:
                     parts = line.split(None, 1)  # Split on whitespace, max 1 split
                 if len(parts) >= 2:
@@ -115,7 +119,9 @@ def parse_properties_file(filename="properties.txt", verbose=False) -> Propertie
             elif first_word == "Center":
                 print_v(line)
                 # Improved regex to capture floats, including scientific notation
-                values = re.findall(r"[-+]?\d*\.\d+(?:[eE][-+]?\d+)?|[-+]?\d+(?:[eE][-+]?\d+)?", line)
+                values = re.findall(
+                    r"[-+]?\d*\.\d+(?:[eE][-+]?\d+)?|[-+]?\d+(?:[eE][-+]?\d+)?", line
+                )
                 com_mm = [float(v) for v in values]
                 print_v(f"COM (mm) : {com_mm}")
 
@@ -135,9 +141,9 @@ def parse_properties_file(filename="properties.txt", verbose=False) -> Propertie
 
             elif inertia_section:
                 print_v(line)
-                inertia_gmm2[first_word.lower()] = float(line_split[1])    
+                inertia_gmm2[first_word.lower()] = float(line_split[1])
                 if len(inertia_gmm2.keys()) >= 9:
-                    inertia_section = False  
+                    inertia_section = False
                     print_v(inertia_gmm2)
 
     return Properties(name, mass_g, com_mm, inertia_gmm2, bbox_mm)
@@ -187,50 +193,52 @@ def generate_link_py(name, mesh_path, interial: Properties, collision: Propertie
 # def generate_link_py(name, mesh_path, bbox_mm, com_mm):
 
 
-def parse_vertices_and_compute_obb(vertices_file: str) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
+def parse_vertices_and_compute_obb(
+    vertices_file: str,
+) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
     """
     Parse vertices CSV file and compute oriented bounding boxes for each component.
-    
+
     Args:
         vertices_file: Path to CSV file with columns: component_name,body_name,vertex_index,x,y,z
                       Assumes vertex coordinates are in centimeters (Fusion 360 default)
-        
+
     Returns:
         Dictionary mapping component name to tuple of (extents, transform_matrix)
         - extents: numpy array of shape (3,) containing the box dimensions in meters
-        - transform_matrix: numpy array of shape (4,4) representing the transform from 
+        - transform_matrix: numpy array of shape (4,4) representing the transform from
           box center frame to world frame (positions in meters)
     """
     from bam.utils.bbox import oriented_bbox_from_points
-    
+
     # Parse CSV file and group vertices by component
     component_vertices = {}
-    
-    with open(vertices_file, 'r') as f:
+
+    with open(vertices_file, "r") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            component_name = row['component_name']
+            component_name = row["component_name"]
             # Fusion 360 exports in cm, convert to meters
-            x = float(row['x']) / 100.0
-            y = float(row['y']) / 100.0
-            z = float(row['z']) / 100.0
-            
+            x = float(row["x"]) / 100.0
+            y = float(row["y"]) / 100.0
+            z = float(row["z"]) / 100.0
+
             if component_name not in component_vertices:
                 component_vertices[component_name] = []
             component_vertices[component_name].append([x, y, z])
-    
+
     # Compute OBB for each component
     result = {}
-    
+
     for component_name, vertices_list in component_vertices.items():
         # Convert to numpy array (already in meters)
         vertices = np.array(vertices_list, dtype=np.float64)
-        
+
         # Compute oriented bounding box from points
         extents, transform = oriented_bbox_from_points(vertices)
-        
+
         result[component_name] = (extents, transform)
-    
+
     return result
 
 
@@ -250,7 +258,9 @@ if __name__ == "__main__":
         dir_path = "/home/bam/bam_ws/src/bam_common/bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev"
 
         # Double bam_descriptions as is inside the python package
-        mesh_dir = "package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/"
+        mesh_dir = (
+            "package://bam_descriptions/bam_descriptions/arms/bam_fb/bam_fb_dev/mesh/"
+        )
         mesh_path = os.path.join(mesh_dir, f"{link_name}.stl")
 
         interial_file = os.path.join(dir_path, "interial", f"{link_name}.txt")
@@ -266,16 +276,16 @@ if __name__ == "__main__":
         # print(urdf_collision)
         # print(urdf_inertial)
 
-        link_py = generate_link_py(link_name, mesh_path, interial_props, collision_props)
+        link_py = generate_link_py(
+            link_name, mesh_path, interial_props, collision_props
+        )
 
         # print("\n--- PY ---")
         print(link_py)
 
-
-
     # print("\nLoading collision properties from:")
     # # This supports compound collision shapes
-    # # Ex: L1.txt, L1_1.txt, L1_2.txt 
+    # # Ex: L1.txt, L1_1.txt, L1_2.txt
     # urdf_collision_blocks = []
     # for path in collision_files:
     #     print(f" - {path}")

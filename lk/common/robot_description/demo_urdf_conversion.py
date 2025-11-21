@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 """
-    Simple demonstration of URDF import/export functionality.
-    
-    Run this script to see URDF conversion in action without pytest.
+Simple demonstration of URDF import/export functionality.
+
+Run this script to see URDF conversion in action without pytest.
 """
 
 # PYTHON
@@ -12,6 +12,7 @@ from pathlib import Path
 
 try:
     import yourdfpy
+
     print("✓ yourdfpy is installed\n")
 except ImportError:
     print("✗ yourdfpy not installed. Install with: pip install yourdfpy")
@@ -53,14 +54,17 @@ test_urdf = """<?xml version="1.0"?>
   </joint>
 </robot>"""
 
-print("="*70)
+print("=" * 70)
 print("URDF CONVERTER DEMONSTRATION")
-print("="*70)
+print("=" * 70)
 
 # Test yourdfpy parsing
 print("\n1. Testing yourdfpy parsing...")
 import io
-urdf = yourdfpy.URDF.load(io.StringIO(test_urdf), load_meshes=False, build_scene_graph=True)
+
+urdf = yourdfpy.URDF.load(
+    io.StringIO(test_urdf), load_meshes=False, build_scene_graph=True
+)
 print(f"   ✓ Parsed URDF: '{urdf.robot.name}'")
 print(f"     - {len(urdf.link_map)} links: {list(urdf.link_map.keys())}")
 print(f"     - {len(urdf.joint_map)} joints: {list(urdf.joint_map.keys())}")
@@ -101,17 +105,13 @@ print("   - UR10, Panda, IIWA, UR5, Kinova Gen3, Fetch, etc.")
 print("   - Validates structure preservation through round-trip")
 print("   - Compares joint types, limits, parent/child links")
 
-print("\n" + "="*70)
+print("\n" + "=" * 70)
 print("SETUP COMPLETE")
-print("="*70)
+print("=" * 70)
 print("\nTo test with robot_descriptions package:")
 print("  1. Install dependencies: pip install robot_descriptions yourdfpy")
 print("  2. Run: python test_urdf_roundtrip.py")
 print("\nTo use in your code:")
 print("  robot_desc = RobotDescription.from_urdf_file('path/to/robot.urdf')")
 print("  urdf_xml = robot_desc.to_urdf_xml()")
-print("="*70 + "\n")
-
-
-
-
+print("=" * 70 + "\n")

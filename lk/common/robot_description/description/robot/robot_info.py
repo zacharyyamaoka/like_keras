@@ -1,5 +1,5 @@
 """
-    Robot description metadata for assembled robot records.
+Robot description metadata for assembled robot records.
 """
 
 # BAM
@@ -32,10 +32,10 @@ class RobotInfo:
 
     def add_prefix(self, prefix: str) -> None:
         """Add a prefix to the existing prefix, appending instead of overwriting.
-        
+
         This allows calling prefix() multiple times to build up a prefix chain.
         If prefix is None, sets it to the new prefix. Otherwise, appends the new prefix.
-        
+
         Args:
             prefix: The prefix string to add
         """
@@ -56,7 +56,7 @@ class RobotInfo:
 
     def get_file_name(self) -> str:
         """Get file name, choosing between hash-based or info-based name.
-        
+
         If urdf_hash is set, returns hash-based name. Otherwise returns info-based name.
         """
         if self.urdf_hash:
@@ -66,24 +66,24 @@ class RobotInfo:
 
     def get_file_path(self, file_extension: str, subdir: Optional[str] = None) -> str:
         """Get full file path with the specified extension.
-        
+
         Args:
             file_extension: File extension (e.g., '.yaml', '.json', '.srdf')
                            Should include the leading dot.
             subdir: Optional subdirectory to add between save_dir and filename
-        
+
         Returns:
             Full file path: save_dir / [subdir] / file_name + file_extension
         """
         if not self.save_dir:
             raise ValueError("save_dir is not set on RobotInfo")
         file_name = self.get_file_name()
-        
+
         if subdir:
             target_dir = os.path.join(self.save_dir, subdir)
         else:
             target_dir = self.save_dir
-            
+
         file_path = os.path.join(target_dir, file_name + file_extension)
         # Ensure the parent directory exists (not the file itself!)
         os.makedirs(target_dir, exist_ok=True)

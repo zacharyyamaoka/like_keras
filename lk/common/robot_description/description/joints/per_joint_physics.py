@@ -1,5 +1,5 @@
 """
-    Joint physics parameters for dynamics simulation.
+Joint physics parameters for dynamics simulation.
 """
 
 # BAM
@@ -17,4 +17,3 @@ class PerJointPhysics:
 if __name__ == "__main__":
     physics = PerJointPhysics()
     print(physics)
-

@@ -9,7 +9,7 @@ This demonstrates the visual object pattern: data + visual properties → render
 Example:
     import bam.msgs.visual_objects as viz
     from bam_artist import Artist
-    
+
     # Create path from poses
     path = viz.Path(
         name="robot_path",
@@ -17,10 +17,10 @@ Example:
         frame_props=viz.Frame(axis_length=0.05),
         line_props=viz.LineSegments(colors=[viz.RGBA.blue()], line_width=2.0)
     )
-    
+
     # Draw it
     artist.draw(path)
-    
+
 Factory Methods (Future):
     - Path.from_WaypointAction(action) - create from waypoint action data
     - Path.from_Trajectory(traj) - create from trajectory samples
@@ -37,6 +37,7 @@ from bam.msgs import TransformStamped, Pose, PoseStamped, Transform, PoseType
 from dataclasses import dataclass, field
 import copy
 
+
 @dataclass
 class Path(CompoundVisualObject):
     """Visual representation of a sequence of poses as frames + connecting lines."""
@@ -51,13 +52,13 @@ class Path(CompoundVisualObject):
     def __post_init__(self):
         super().__post_init__()
         self.build_model()
-    
+
     def build_model(self):
         """Build the path model geometry based on current parameters."""
         super().build_model()
-        
+
         # We automatically populate the children of the CompoundVisualObject based on the data + viz properties.
-        
+
         # Add frames for each pose
         if self.frame_props is not None:
             for i, pose in enumerate(self.pose_list):
@@ -73,10 +74,12 @@ class Path(CompoundVisualObject):
             for i in range(len(self.pose_list) - 1):
                 p1 = self.pose_list[i]
                 p2 = self.pose_list[i + 1]
-                points.extend([p1.xyz.tolist(), p2.xyz.tolist()]) # this will work on any type that supports this,
+                points.extend(
+                    [p1.xyz.tolist(), p2.xyz.tolist()]
+                )  # this will work on any type that supports this,
 
             # num. line segments = (len(self.pose_list) - 1)
-            # len(points) == (len(self.pose_list) - 1) * 2 
+            # len(points) == (len(self.pose_list) - 1) * 2
 
             n_colors = len(self.line_props.colors)
 
@@ -85,9 +88,11 @@ class Path(CompoundVisualObject):
             elif n_colors == 1:
                 colors = self.line_props.colors * len(points)
             else:
-                assert n_colors == len(points), "Number of colors must be equal to the number of points"
+                assert n_colors == len(
+                    points
+                ), "Number of colors must be equal to the number of points"
                 colors = self.line_props.colors
-    
+
             line_segments = copy.deepcopy(self.line_props)
             line_segments.name = f"{self.visual_id}/lines"
             line_segments.points = points
@@ -112,7 +117,7 @@ if __name__ == "__main__":
         pose_list=pose_list,
         frame_props=Frame(axis_length=0.05),
         line_props=LineSegments(colors=[RGBA.red()], line_width=3.0),
-        visible=False
+        visible=False,
     )
 
     print(path)

@@ -12,8 +12,8 @@ dependencies = [
   # Bare-minimum runtime requirement
   "dacite",
   "numpy",
-  "dash",
-  "dash-cytoscape"
+  "gymnasium",
+
 ]
 
 [project.optional-dependencies]
@@ -54,5 +54,31 @@ filterwarnings = [
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+]
+
+[tool.ruff]
+line-length = 88
+exclude = [
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+# Similar to Pinocchio's configuration
+select = [
+    "E",    # pycodestyle errors
+    "F",    # Pyflakes
+    "I",    # isort (import sorting)
+    "PTH",  # flake8-use-pathlib
+    "RUF",  # Ruff-specific rules
+    "UP",   # pyupgrade
+    "W",    # pycodestyle warnings
+]
+extend-ignore = [
+    "RUF048",  # Following Pinocchio's ignore
 ]
 

@@ -1,12 +1,10 @@
-
-
 # # TODO change this to use centered differences, like the trapedzoidal calculation!
 # # Mabye it actually makes sense to do the same calculation that Pilz is doing internally to validate...
 # def path_to_traj_dataset(path: List[PoseStamped]) -> TrajectoryDataset:
 #     dataset = TrajectoryDataset()
 #     dataset.joint_names = ['translation', 'rotation']
 #     n_points = len(path)
-#     trans_point = JointTrajectoryPoint()   
+#     trans_point = JointTrajectoryPoint()
 #     rot_point = JointTrajectoryPoint()
 
 
@@ -33,7 +31,7 @@
 
 #             rot_point.velocities.append(0.0)
 #             rot_point.accelerations.append(0.0)
-            
+
 #             continue
 
 #         # Δt
@@ -73,7 +71,6 @@
 #         alpha = dw / dt
 
 #         rot_point.accelerations.append(alpha)
-    
+
 #     dataset.data = [trans_point, rot_point]
 #     return dataset
-    

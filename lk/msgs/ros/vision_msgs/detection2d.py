@@ -6,6 +6,7 @@ from ..std_msgs.header import Header
 from .object_hypothesis_with_pose import ObjectHypothesisWithPose
 from .bounding_box2d import BoundingBox2D
 
+
 class Detection2D:
     def __init__(self):
         self.header: Header = Header()
@@ -19,14 +20,15 @@ class Detection2D:
             "results": [r.to_dict() for r in self.results],
             "bbox": self.bbox.to_dict(),
             "id": self.id,
-
         }
 
     @classmethod
     def from_dict(cls, d: dict):
         obj = cls()
         obj.header = Header.from_dict(d.get("header", {}))
-        obj.results = [ObjectHypothesisWithPose.from_dict(r) for r in d.get("results", [])]
+        obj.results = [
+            ObjectHypothesisWithPose.from_dict(r) for r in d.get("results", [])
+        ]
         obj.bbox = BoundingBox2D.from_dict(d.get("bbox", {}))
         obj.id = d.get("id", "")
         return obj

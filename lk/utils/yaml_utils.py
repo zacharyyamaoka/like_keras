@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Helper for applying lightweight modifications to YAML files.
+Helper for applying lightweight modifications to YAML files.
 """
 
 # PYTHON
@@ -45,4 +45,3 @@ def load_and_edit_save_yaml(
 
 
 __all__ = ["load_and_edit_save_yaml"]
-

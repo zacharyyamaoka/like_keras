@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Plane fitting utilities (z = ax + by + c form and SVD/RANSAC methods).
+Plane fitting utilities (z = ax + by + c form and SVD/RANSAC methods).
 """
 
 # PYTHON
@@ -50,6 +50,7 @@ def calculate_plane(points: np.ndarray) -> tuple[float, float, float]:
 def fit_plane_to_height_image(height_image, mask):
     """Fit plane to masked region of height image."""
     import cv2
+
     # Perform a least squares fit of a plane to the masked region of
     # the height_image. Find the 3 element vector a for the equation
     # aX ~= z where X[:,i] = [x_i, y_i, 1]^T, z[i] = z_i and a=[alpha,
@@ -57,17 +58,17 @@ def fit_plane_to_height_image(height_image, mask):
     z = height_image[mask > 0]
     nonzero = cv2.findNonZero(mask)
     perform_test = False
-    if perform_test: 
-        print('z.shape =', z.shape)
+    if perform_test:
+        print("z.shape =", z.shape)
         print(z)
-        for n in range(10): 
+        for n in range(10):
             test_x, test_y = nonzero[n][0]
             test_z = height_image[test_y, test_x]
-            
-            print('x, y, z, z_test =', test_x, test_y, test_z, z[n])
+
+            print("x, y, z, z_test =", test_x, test_y, test_z, z[n])
     num_points, s1, s2 = nonzero.shape
     nonzero = np.reshape(nonzero, (num_points, 2))
-    X_T = np.append(nonzero, np.ones((num_points,1)), axis=1)
+    X_T = np.append(nonzero, np.ones((num_points, 1)), axis=1)
     a0 = np.matmul(z, X_T)
     A1 = np.matmul(X_T.transpose(), X_T)
     A1 = np.linalg.inv(A1)
@@ -84,20 +85,20 @@ def fit_plane_to_height_image_error(a, X, z):
     return fit_error, z_fit
 
 
-def svd_fit(points, verbose=False): 
+def svd_fit(points, verbose=False):
     """Fit plane using SVD on covariance matrix."""
     # calculate and subtract the mean
     center = np.mean(points, axis=0)
 
     if verbose:
-        print( 'center =', center )
+        print("center =", center)
 
     # make the point distribution have zero mean
     points_zero_mean = points - center
 
-    if verbose: 
-        print( 'points_zero_mean[:5] =', points_zero_mean[:5] )
-        print( 'points_zero_mean.shape =', points_zero_mean.shape )
+    if verbose:
+        print("points_zero_mean[:5] =", points_zero_mean[:5])
+        print("points_zero_mean.shape =", points_zero_mean.shape)
 
     # find the covariance matrix, C, for the data
     C = np.cov(points_zero_mean.transpose())
@@ -105,28 +106,29 @@ def svd_fit(points, verbose=False):
     # find the SVD of the covariance matrix
     u, s, vh = np.linalg.svd(C)
 
-    e0 = np.reshape(u[:, 0], (3,1))
-    e1 = np.reshape(u[:, 1], (3,1))
-    e2 = np.reshape(u[:, 2], (3,1))
-    
-    center = np.reshape(center, (3,1))
-        
+    e0 = np.reshape(u[:, 0], (3, 1))
+    e1 = np.reshape(u[:, 1], (3, 1))
+    e2 = np.reshape(u[:, 2], (3, 1))
+
+    center = np.reshape(center, (3, 1))
+
     return center, e0, e1, e2
 
 
-class FitPlane():
+class FitPlane:
     """Plane fitting class with SVD and RANSAC methods."""
+
     def __init__(self):
         self.d = None
         self.n = None
         # defines the direction from points to the camera
-        self.towards_camera = np.reshape(np.array([0.0, 0.0, -1.0]), (3,1))
+        self.towards_camera = np.reshape(np.array([0.0, 0.0, -1.0]), (3, 1))
 
     def set_plane(self, n, d):
         self.n = n
         self.d = d
         self.update()
-        
+
     def update(self):
         return
 
@@ -137,53 +139,63 @@ class FitPlane():
         z_p = -self.n
         # two options to avoid selecting poor choice that is almost
         # parallel to z_p
-        x_approx = np.reshape(np.array([1.0, 0.0, 0.0]), (3,1))
+        x_approx = np.reshape(np.array([1.0, 0.0, 0.0]), (3, 1))
         x_approx_1 = x_approx - (np.matmul(z_p.transpose(), x_approx) * z_p)
-        x_approx = np.reshape(np.array([0.0, 1.0, 0.0]), (3,1))
+        x_approx = np.reshape(np.array([0.0, 1.0, 0.0]), (3, 1))
         x_approx_2 = x_approx - (np.matmul(z_p.transpose(), x_approx) * z_p)
         x_approx_1_mag = np.linalg.norm(x_approx_1)
         x_approx_2_mag = np.linalg.norm(x_approx_2)
-        if x_approx_1_mag > x_approx_2_mag: 
+        if x_approx_1_mag > x_approx_2_mag:
             x_p = x_approx_1 / x_approx_1_mag
         else:
             x_p = x_approx_2 / x_approx_2_mag
-        y_p = np.reshape(np.cross(z_p.flatten(), x_p.flatten()), (3,1))
+        y_p = np.reshape(np.cross(z_p.flatten(), x_p.flatten()), (3, 1))
 
         p_origin = self.d * self.n
         return x_p, y_p, z_p, p_origin
-        
-        
-    def get_points_on_plane(self, plane_origin=None, side_length=1.0, sample_spacing=0.01):
+
+    def get_points_on_plane(
+        self, plane_origin=None, side_length=1.0, sample_spacing=0.01
+    ):
         x_p, y_p, z_p, p_origin = self.get_plane_coordinate_system()
-        h = side_length/2.0
-        if plane_origin is None: 
-            plane_list = [np.reshape((x_p * alpha) + (y_p * beta) + p_origin, (3,))
-                          for alpha in np.arange(-h, h, sample_spacing)
-                          for beta in np.arange(-h, h, sample_spacing)]
+        h = side_length / 2.0
+        if plane_origin is None:
+            plane_list = [
+                np.reshape((x_p * alpha) + (y_p * beta) + p_origin, (3,))
+                for alpha in np.arange(-h, h, sample_spacing)
+                for beta in np.arange(-h, h, sample_spacing)
+            ]
         else:
             plane_origin = np.reshape(plane_origin, (3, 1))
-            plane_list = [np.reshape((x_p * alpha) + (y_p * beta) + plane_origin, (3,))
-                          for alpha in np.arange(-h, h, sample_spacing)
-                          for beta in np.arange(-h, h, sample_spacing)]
+            plane_list = [
+                np.reshape((x_p * alpha) + (y_p * beta) + plane_origin, (3,))
+                for alpha in np.arange(-h, h, sample_spacing)
+                for beta in np.arange(-h, h, sample_spacing)
+            ]
 
         plane_array = np.array(plane_list)
         return plane_array
 
-        
     def abs_dist(self, points_array):
-        out = np.abs(np.matmul(self.n.transpose(), points_array.transpose()) - self.d).flatten()
+        out = np.abs(
+            np.matmul(self.n.transpose(), points_array.transpose()) - self.d
+        ).flatten()
         return out
-        
+
     def height(self, points_array):
         # positive is closer to the camera (e.g., above floor)
         # negative is farther from the camera (e.g., below floor)?
-        out = - (np.matmul(self.n.transpose(), points_array.transpose()) - self.d).flatten()
+        out = -(
+            np.matmul(self.n.transpose(), points_array.transpose()) - self.d
+        ).flatten()
         return out
 
     def get_points_nearby(self, points_array, dist_threshold_mm):
         # return points that are within a distance from the current plane
-        if (self.n is not None) and (self.d is not None): 
-            dist = np.abs(np.matmul(self.n.transpose(), points_array.transpose()) - self.d).flatten()
+        if (self.n is not None) and (self.d is not None):
+            dist = np.abs(
+                np.matmul(self.n.transpose(), points_array.transpose()) - self.d
+            ).flatten()
             # only points < dist_threshold meters away from the plane are
             # considered in the fit dist_threshold = 0.2 #1.0 #0.5 #0.2
 
@@ -193,26 +205,28 @@ class FitPlane():
         else:
             points = points_array
         return points
-        
-    
+
     def pix_to_point_on_plane(self, pix_x, pix_y, cx, cy, fx, fy):
         z = 1.0
         x = ((pix_x - cx) / fx) * z
         y = ((pix_y - cy) / fy) * z
         point = np.array([x, y, z])
-        ray = point/np.linalg.norm(point)
+        ray = point / np.linalg.norm(point)
         point = ((self.d / np.matmul(self.n.transpose(), ray)) * ray).flatten()
         return point
-    
-    def fit_svd(self, points_array,
-                dist_threshold_mm=200.0,
-                prefilter_points=False,
-                verbose=True):
+
+    def fit_svd(
+        self,
+        points_array,
+        dist_threshold_mm=200.0,
+        prefilter_points=False,
+        verbose=True,
+    ):
         # relevant numpy documentation for SVD:
         #
         # "When a is a 2D array, it is factorized as u @ np.diag(s) @ vh"
         #
-        #" The rows of vh are the eigenvectors of A^H A and the
+        # " The rows of vh are the eigenvectors of A^H A and the
         # columns of u are the eigenvectors of A A^H. In both cases
         # the corresponding (possibly non-zero) eigenvalues are given
         # by s**2. "
@@ -224,40 +238,42 @@ class FitPlane():
             points = points_array
 
         center, e0, e1, e2 = svd_fit(points, verbose)
-        
+
         # find the smallest eigenvector, which corresponds to the
         # normal of the plane
         n = e2
-        
+
         # ensure that the direction of the normal matches our convention
         approximate_up = self.towards_camera
         if np.matmul(n.transpose(), approximate_up) > 0.0:
             n = -n
-        if verbose: 
-            print( 'SVD fit' ) 
-            print( 'n =', n )
-            print( 'np.linalg.norm(n) =', np.linalg.norm(n) )
+        if verbose:
+            print("SVD fit")
+            print("n =", n)
+            print("np.linalg.norm(n) =", np.linalg.norm(n))
 
-        #center = np.reshape(center, (3,1))
+        # center = np.reshape(center, (3,1))
         d = np.matmul(n.transpose(), center)
-        if verbose: 
-            print( 'd =', d )
+        if verbose:
+            print("d =", d)
 
         self.d = d
         self.n = n
-        if verbose: 
-            print( 'self.d =', self.d )
-            print( 'self.n =', self.n )
+        if verbose:
+            print("self.d =", self.d)
+            print("self.n =", self.n)
         self.update()
-        
-         
-    def fit_ransac(self, points_array,
-                   dist_threshold=0.2,
-                   ransac_inlier_threshold_m=0.04,
-                   use_density_normalization=False,
-                   number_of_iterations=100,
-                   prefilter_points=False,
-                   verbose=True):
+
+    def fit_ransac(
+        self,
+        points_array,
+        dist_threshold=0.2,
+        ransac_inlier_threshold_m=0.04,
+        use_density_normalization=False,
+        number_of_iterations=100,
+        prefilter_points=False,
+        verbose=True,
+    ):
         # Initial RANSAC algorithm based on pseudocode on Wikipedia
         # https://en.wikipedia.org/wiki/Random_sample_consensus
 
@@ -267,7 +283,7 @@ class FitPlane():
             points = self.get_points_nearby(points_array, dist_threshold_mm)
         else:
             points = points_array
-            
+
         num_points = points.shape[0]
         indices = np.arange(num_points)
 
@@ -276,24 +292,24 @@ class FitPlane():
         min_num_inliers = 100
 
         approximate_up = self.towards_camera
-        
+
         # should be well above the maximum achievable error, since
         # error is average distance in meters
 
         best_model_inlier_selector = None
         best_model_inlier_count = 0
-        
+
         for i in range(number_of_iterations):
             if verbose:
-                print( 'RANSAC iteration', i )
+                print("RANSAC iteration", i)
             candidate_inliers = points[np.random.choice(indices, 3), :]
             c0, c1, c2 = candidate_inliers
             # fit plane to candidate inliers
             n = np.cross(c1 - c0, c2 - c0)
             if np.dot(n, approximate_up) > 0.0:
                 n = -n
-            n = np.reshape(n / np.linalg.norm(n), (3,1))
-            c0 = np.reshape(c0, (3,1))
+            n = np.reshape(n / np.linalg.norm(n), (3, 1))
+            c0 = np.reshape(c0, (3, 1))
             d = np.matmul(n.transpose(), c0)
 
             dist = np.abs(np.matmul(n.transpose(), points.transpose()) - d).flatten()
@@ -306,10 +322,12 @@ class FitPlane():
                 number_model_inliers = np.count_nonzero(select_model_inliers)
             if number_model_inliers > min_num_inliers:
                 if verbose:
-                    print( 'model found with %d inliers' % number_model_inliers )
+                    print("model found with %d inliers" % number_model_inliers)
                 if number_model_inliers > best_model_inlier_count:
                     if verbose:
-                        print( 'model has more inliers than the previous best model, so updating' )
+                        print(
+                            "model has more inliers than the previous best model, so updating"
+                        )
                     best_model_n = n
                     best_model_d = d
                     best_model_inlier_count = number_model_inliers
@@ -318,22 +336,36 @@ class FitPlane():
                     best_model_error = None
                 elif number_model_inliers == best_model_inlier_count:
                     if verbose:
-                        print( 'model has the same number of inliers as the previous best model, so comparing' )
+                        print(
+                            "model has the same number of inliers as the previous best model, so comparing"
+                        )
                     model_inliers = points[select_model_inliers]
                     # error is the average distance of points from the plane
                     # sum_i | n^T p_i - d |
                     # should be able to make this faster by selecting from the already computed distances
-                    new_error = np.average(np.abs(np.matmul(n.transpose(), model_inliers.transpose()) - d))
-                    if best_model_inliers is None: 
+                    new_error = np.average(
+                        np.abs(np.matmul(n.transpose(), model_inliers.transpose()) - d)
+                    )
+                    if best_model_inliers is None:
                         best_model_inliers = points[best_model_inlier_selector]
                     if best_model_error is None:
                         # should be able to make this faster by
                         # selecting from the already computed
                         # distances
-                        best_model_error = np.average(np.abs(np.matmul(best_model_n.transpose(), best_model_inliers.transpose()) - best_model_d))
+                        best_model_error = np.average(
+                            np.abs(
+                                np.matmul(
+                                    best_model_n.transpose(),
+                                    best_model_inliers.transpose(),
+                                )
+                                - best_model_d
+                            )
+                        )
                     if new_error < best_model_error:
                         if verbose:
-                            print( 'model has a lower error than the previous model, so updating' )
+                            print(
+                                "model has a lower error than the previous model, so updating"
+                            )
                         best_model_n = n
                         best_model_d = d
                         best_model_inlier_count = number_model_inliers
@@ -342,16 +374,16 @@ class FitPlane():
                         best_model_error = new_error
         if best_model_inlier_count > 0:
             if verbose:
-                print( 'RANSAC FINISHED' ) 
-                print( 'new model found by RANSAC:' )
+                print("RANSAC FINISHED")
+                print("new model found by RANSAC:")
             self.d = best_model_d
             self.n = best_model_n
             if verbose:
-                print( 'self.d =', self.d )
-                print( 'self.n =', self.n )
+                print("self.d =", self.d)
+                print("self.n =", self.n)
             self.update()
         else:
-            print( 'RANSAC FAILED TO FIND A MODEL' )
+            print("RANSAC FAILED TO FIND A MODEL")
 
 
 __all__ = [
@@ -363,4 +395,3 @@ __all__ = [
     "svd_fit",
     "FitPlane",
 ]
-

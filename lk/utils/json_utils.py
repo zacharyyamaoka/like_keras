@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    JSON serialization helpers for dataclasses and nested containers.
+JSON serialization helpers for dataclasses and nested containers.
 """
 
 # PYTHON
@@ -18,7 +18,10 @@ def to_jsonable(obj: Any, array_as_shape: bool = False) -> Any:
         return to_jsonable(asdict(obj), array_as_shape=array_as_shape)
 
     if isinstance(obj, Mapping):
-        return {key: to_jsonable(value, array_as_shape=array_as_shape) for key, value in obj.items()}
+        return {
+            key: to_jsonable(value, array_as_shape=array_as_shape)
+            for key, value in obj.items()
+        }
 
     if isinstance(obj, (list, tuple, set)):
         return [to_jsonable(value, array_as_shape=array_as_shape) for value in obj]
@@ -52,4 +55,3 @@ __all__ = ["to_jsonable"]
 if __name__ == "__main__":
     sample = {"demo": 1}
     print(to_jsonable(sample))
-

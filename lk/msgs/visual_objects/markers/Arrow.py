@@ -2,10 +2,10 @@
 from bam.msgs import PoseStamped
 from .Marker import Marker
 from ..RGBA import RGBA
+
 # PYTHON
 from dataclasses import dataclass
 import numpy as np
-
 
 
 @dataclass
@@ -15,7 +15,7 @@ class Arrow(Marker):
     uniform_thickness: bool = True
     cone_length_frac: float = 0.15
     cone_angle: float = 60.0  # Internal angle of cone in degrees
-    
+
     # Calculated dimensions (set by build_model)
     cylinder_radius: float = None
     cylinder_height: float = None
@@ -25,14 +25,14 @@ class Arrow(Marker):
     def __post_init__(self):
         super().__post_init__()
         self.build_model()
-    
+
     def build_model(self):
         """Build the arrow model geometry based on current parameters.
-        
+
         Convention: pose is at origin, arrow extends along +Z axis
         - cone_length = cone_length_frac * length
         - cylinder_length = (1 - cone_length_frac) * length
-        
+
         Thickness modes:
         - uniform_thickness=True: cylinder_radius is constant, cone_radius = 2x
         - uniform_thickness=False: cone_radius calculated from cone_angle, cylinder_radius = cone_radius/2
@@ -40,7 +40,7 @@ class Arrow(Marker):
         # Calculate cone and cylinder heights
         self.cone_height = self.cone_length_frac * self.length
         self.cylinder_height = (1.0 - self.cone_length_frac) * self.length
-        
+
         # Calculate radii based on thickness mode
         if self.uniform_thickness:
             # Uniform: radius is independent of length
@@ -53,7 +53,9 @@ class Arrow(Marker):
             # If internal angle is θ, then half-angle is θ/2
             # tan(θ/2) = cone_radius / cone_height
             half_angle_rad = np.radians(self.cone_angle / 2.0)
-            self.cone_radius = self.cone_height * np.tan(half_angle_rad) * self.thickness_scale
+            self.cone_radius = (
+                self.cone_height * np.tan(half_angle_rad) * self.thickness_scale
+            )
             # Cylinder radius is half of cone radius for smooth transition
             self.cylinder_radius = self.cone_radius / 2.0
 
@@ -66,12 +68,11 @@ class Arrow(Marker):
         thickness_scale: float = 1.0,
         uniform_thickness: bool = True,
         cone_angle: float = 60.0,
-        name: str = ""
-    ) -> 'Arrow':
-
+        name: str = "",
+    ) -> "Arrow":
         """
         Create arrow from origin to end point.
-        
+
         Creates a 4x4 transform matrix that:
         - Places origin at the specified origin point
         - Aligns +Z axis with the vector from origin to end
@@ -107,8 +108,9 @@ class Arrow(Marker):
             thickness_scale=thickness_scale,
             uniform_thickness=uniform_thickness,
             cone_angle=cone_angle,
-            name=name
+            name=name,
         )
+
 
 if __name__ == "__main__":
 

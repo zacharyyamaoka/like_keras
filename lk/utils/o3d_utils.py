@@ -17,10 +17,13 @@ try:
     import open3d as o3d
 
 except ImportError as e:
-    raise ImportError("The 'open3d' package is required but not installed. Please install it via 'pip install open3d' and try again.") from e
+    raise ImportError(
+        "The 'open3d' package is required but not installed. Please install it via 'pip install open3d' and try again."
+    ) from e
 
 
-#region Viewers
+# region Viewers
+
 
 @dataclass
 class O3DViewerConfig:
@@ -40,19 +43,22 @@ class O3DViewerConfig:
     up: list[float] = field(default_factory=lambda: [0, 0, 1.0])
     zoom: float = 1.0
 
-
     @classmethod
     def make_optical_frame(cls):
         return cls(up=[0, -1.0, 0])
 
-    def look_at_xz(self, cam_pos=[0, -1, 0], lookat=[0, 0, 0], up=[0, 0, 1.0], zoom=1.0):
+    def look_at_xz(
+        self, cam_pos=[0, -1, 0], lookat=[0, 0, 0], up=[0, 0, 1.0], zoom=1.0
+    ):
         self.update_view_control(cam_pos=cam_pos, lookat=lookat, up=up, zoom=zoom)
         return self
 
-    def look_at_yz(self, cam_pos=[1, 0, 0.5], lookat=[0, 0, 0.5], up=[0, 0, 1.0], zoom=1.0):
+    def look_at_yz(
+        self, cam_pos=[1, 0, 0.5], lookat=[0, 0, 0.5], up=[0, 0, 1.0], zoom=1.0
+    ):
         self.update_view_control(cam_pos=cam_pos, lookat=lookat, up=up, zoom=zoom)
         return self
-    
+
     def look_at_xy(self, cam_pos=[0, 0, 0], lookat=[0, 0, 0], up=[0, 0, 1.0], zoom=1.0):
         self.update_view_control(cam_pos=cam_pos, lookat=lookat, up=up, zoom=zoom)
         return self
@@ -81,7 +87,7 @@ class O3DViewerConfig:
         cam_pos = np.array(cam_pos)
         lookat = np.array(lookat)
         up = np.array(up)
-        front = (cam_pos - lookat)
+        front = cam_pos - lookat
         front = front / np.linalg.norm(front)
         up = up / np.linalg.norm(up)
 
@@ -98,6 +104,7 @@ class O3DViewerConfig:
 
         return self
 
+
 class O3DViewer:
     """
     Interactive Open3D viewer with a non-blocking rendering loop.
@@ -108,13 +115,14 @@ class O3DViewer:
             viewer.update()
         viewer.close()
     """
+
     def __init__(
         self,
         geometries: list[o3d.geometry.Geometry3D] = [],
         scene_list: list[list[o3d.geometry.Geometry3D]] = [],
         config: O3DViewerConfig = None,
-        origin_frame_scale = 0.0,
-        camera_frame_scale = 0.0,
+        origin_frame_scale=0.0,
+        camera_frame_scale=0.0,
     ):
         if config is None:
             config = O3DViewerConfig()
@@ -125,22 +133,21 @@ class O3DViewer:
         # self.vis = o3d.visualization.Visualizer()
         self.vis = o3d.visualization.VisualizerWithKeyCallback()
         self.vis.create_window(
-            width=config.width,
-            height=config.height,
-            left=config.left,
-            top=config.top
+            width=config.width, height=config.height, left=config.left, top=config.top
         )
         self.is_closed = False
 
         # Doesn't seem to be able to differentiate between upper and lower case keys
 
         print("Press [SPACE] or [ESC] to end blocking")
+
         def space_callback(vis):
             # print("Space bar pressed!")
             self._space_pressed = True
             return False  #
-        
+
         print("Press [T] to switch between scenes")
+
         def T_callback(vis):
             if self.scene_list:
                 self.scene_ptr += 1
@@ -149,13 +156,12 @@ class O3DViewer:
                 self.update(self.scene_list[self.scene_ptr])
             return False
 
-        
             # Register key callbacks
-        self.vis.register_key_callback(32, space_callback)   # Space bar
-        self.vis.register_key_callback(ord('T'), T_callback)       # 'T'
 
+        self.vis.register_key_callback(32, space_callback)  # Space bar
+        self.vis.register_key_callback(ord("T"), T_callback)  # 'T'
 
-        self.geometries = geometries # holds all the currently loaded geometries
+        self.geometries = geometries  # holds all the currently loaded geometries
         self.scene_list = scene_list
         if len(self.scene_list) == 0:
             self.scene_list = [self.geometries]
@@ -163,20 +169,21 @@ class O3DViewer:
 
         self.show_camera_frame = True
 
-        self.set_inital_view = False # flag as it doesn't seem to set here in init, so need to set agian once later
+        self.set_inital_view = False  # flag as it doesn't seem to set here in init, so need to set agian once later
         self.load_config(config)
         self.update_scenes(self.scene_list)
 
         self.window = False
         self.is_closed = False
 
-
     def _update_geometries(self, new_geometries):
         # Remove previous geometries
         if not new_geometries:
             return
-        
-        origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=self.origin_frame_scale)
+
+        origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+            size=self.origin_frame_scale
+        )
         new_geometries.append(origin_frame)
 
         # store current view parameters to restore after adding geometries
@@ -191,9 +198,6 @@ class O3DViewer:
             self.geometries.append(g)
 
         view_ctl.convert_from_pinhole_camera_parameters(params)
-
-
-
 
     def load_config(self, config: O3DViewerConfig):
         # Only update attributes if new values are provided
@@ -225,7 +229,9 @@ class O3DViewer:
             raise RuntimeError("Viewer window is closed.")
         self._update_geometries(geometries)
 
-        if not self.set_inital_view or reset_view: # to fix behaviour where inital view control is not being set
+        if (
+            not self.set_inital_view or reset_view
+        ):  # to fix behaviour where inital view control is not being set
             self.set_inital_view = True
             self.load_config(self.config)
 
@@ -237,7 +243,7 @@ class O3DViewer:
             raise RuntimeError("Viewer window is closed.")
         if not isinstance(geometry, list):
             geometry = [geometry]
-        
+
         # store current view parameters to restore after adding geometries
         view_ctl = self.vis.get_view_control()
         params = view_ctl.convert_to_pinhole_camera_parameters()
@@ -250,7 +256,15 @@ class O3DViewer:
         view_ctl.convert_from_pinhole_camera_parameters(params)
 
         # self._set_view_control()
-    def run(self, update_callback=None, n_iter=None, duration=5.0, blocking=False, break_on_esc=False):
+
+    def run(
+        self,
+        update_callback=None,
+        n_iter=None,
+        duration=5.0,
+        blocking=False,
+        break_on_esc=False,
+    ):
         """
         Custom rendering loop.
         If update_callback is provided, it is called every iteration.
@@ -262,7 +276,7 @@ class O3DViewer:
 
         if self.is_closed:
             raise RuntimeError("Viewer window is closed.")
-        
+
         self._space_pressed = False
 
         i = 0
@@ -274,11 +288,11 @@ class O3DViewer:
             for g in self.geometries:
                 self.vis.update_geometry(g)
             # esc closing doesn't work beacuse once window is closed it doesn't reset
-            # if not self.vis.poll_events(): 
+            # if not self.vis.poll_events():
 
             success = self.vis.poll_events()
             self.vis.update_renderer()
-            
+
             i += 1
             if blocking:
                 if self._space_pressed:
@@ -291,26 +305,26 @@ class O3DViewer:
             if duration is not None and (time.time() - start_time) >= duration:
                 break
 
-
     def close(self):
         if not self.is_closed:
             self.vis.destroy_window()
             self.is_closed = True
 
+
 def o3d_viewer(
-        geometries: List[o3d.geometry.Geometry3D],
-        config: O3DViewerConfig = None,
-        origin_frame_scale = 0.0,
-        ):
+    geometries: List[o3d.geometry.Geometry3D],
+    config: O3DViewerConfig = None,
+    origin_frame_scale=0.0,
+):
     """
     Visualize a list of Open3D geometries with a specified point size and axis length.
-    
+
     Args:
         geometries: List of Open3D geometry objects to visualize.
         point_size: Size of points in the point cloud.
         axis_length: Length of the coordinate frame arrows.
     """
-    _config = config # simple logic to deal with case if no config passed
+    _config = config  # simple logic to deal with case if no config passed
     if _config is None:
         _config = O3DViewerConfig()
 
@@ -318,12 +332,14 @@ def o3d_viewer(
     vis.create_window(
         width=_config.width,
         height=_config.height,
-        left=_config.left,   # x position in pixels
-        top=_config.top     # y position in pixels
+        left=_config.left,  # x position in pixels
+        top=_config.top,  # y position in pixels
     )
-    
+
     if origin_frame_scale > 0.0:
-        origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=origin_frame_scale)
+        origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+            size=origin_frame_scale
+        )
         geometries.append(origin_frame)
 
     for g in geometries:
@@ -345,30 +361,38 @@ def o3d_viewer(
     vis.destroy_window()
 
 
-#endregion Viewers
+# endregion Viewers
 
-#region Model Factory
+# region Model Factory
+
 
 def calculate_zy_rotation_for_arrow(vec):
     gamma = np.arctan2(vec[1], vec[0])
-    Rz = np.array([
-                    [np.cos(gamma), -np.sin(gamma), 0],
-                    [np.sin(gamma), np.cos(gamma), 0],
-                    [0, 0, 1]
-                ])
+    Rz = np.array(
+        [
+            [np.cos(gamma), -np.sin(gamma), 0],
+            [np.sin(gamma), np.cos(gamma), 0],
+            [0, 0, 1],
+        ]
+    )
 
     vec = Rz.T @ vec
 
     beta = np.arctan2(vec[0], vec[2])
-    Ry = np.array([
-                    [np.cos(beta), 0, np.sin(beta)],
-                    [0, 1, 0],
-                    [-np.sin(beta), 0, np.cos(beta)]
-                ])
+    Ry = np.array(
+        [[np.cos(beta), 0, np.sin(beta)], [0, 1, 0], [-np.sin(beta), 0, np.cos(beta)]]
+    )
     return Rz, Ry
 
-def create_arrow(end, origin=np.array([0., 0., 0.]), thickness_scale=1, uniform_thickness=True, color=[0.5, 0.0, 0.5]) -> o3d.geometry.TriangleMesh:
-    assert(not np.all(end == origin))
+
+def create_arrow(
+    end,
+    origin=np.array([0.0, 0.0, 0.0]),
+    thickness_scale=1,
+    uniform_thickness=True,
+    color=[0.5, 0.0, 0.5],
+) -> o3d.geometry.TriangleMesh:
+    assert not np.all(end == origin)
     vec = end - origin
     length = np.linalg.norm(vec)
     if length < 1e-9:
@@ -376,7 +400,7 @@ def create_arrow(end, origin=np.array([0., 0., 0.]), thickness_scale=1, uniform_
 
     # Thickness control
     if uniform_thickness:
-        radius = 0.02 * thickness_scale   # fixed thickness
+        radius = 0.02 * thickness_scale  # fixed thickness
     else:
         radius = (length / 30.0) * thickness_scale  # thickness_scales with arrow length
 
@@ -391,35 +415,34 @@ def create_arrow(end, origin=np.array([0., 0., 0.]), thickness_scale=1, uniform_
         cylinder_height=cyl_height,
     )
 
-
     Rz, Ry = calculate_zy_rotation_for_arrow(vec)
     mesh.rotate(Ry, center=np.array([0, 0, 0]))
     mesh.rotate(Rz, center=np.array([0, 0, 0]))
     mesh.translate(origin)
     mesh.paint_uniform_color(color)
-    return(mesh)
+    return mesh
+
 
 def draw_vectors(
-        vectors,
-        origin=np.array([0.0, 0.0, 0.0]),
-        colors=None,
-        uniform_thickness=True,
-        scale=1.0,
-        origin_frame_scale=1.0,
-        config=None,
-        show=True
-    ) -> List[o3d.geometry.TriangleMesh]:
+    vectors,
+    origin=np.array([0.0, 0.0, 0.0]),
+    colors=None,
+    uniform_thickness=True,
+    scale=1.0,
+    origin_frame_scale=1.0,
+    config=None,
+    show=True,
+) -> List[o3d.geometry.TriangleMesh]:
 
     geometries = []
-    
+
     if colors is None:
-        colors = [(0.5, 0., 0.5)] * len(vectors)  # violet RGB color
+        colors = [(0.5, 0.0, 0.5)] * len(vectors)  # violet RGB color
         colors = np.array(colors)
 
     elif len(colors) == 3 and not isinstance(colors[0], (list, tuple, np.ndarray)):
-        colors = [(colors)] * len(vectors)
+        colors = [colors] * len(vectors)
         colors = np.array(colors)
-
 
     for i, v in enumerate(vectors):
         arrow = create_arrow(v, origin, scale, uniform_thickness, color=colors[i])
@@ -432,9 +455,18 @@ def draw_vectors(
     if show:
         # o3d.visualization.draw_geometries(geometries)
         o3d_viewer(geometries, config)
-    return geometries  
+    return geometries
 
-def draw_R_list(R_list, scale=1.0, only_z=False, show=True, origin_frame_scale=1.0, config:O3DViewerConfig=None, color_by_order=False) -> List[o3d.geometry.TriangleMesh]:
+
+def draw_R_list(
+    R_list,
+    scale=1.0,
+    only_z=False,
+    show=True,
+    origin_frame_scale=1.0,
+    config: O3DViewerConfig = None,
+    color_by_order=False,
+) -> List[o3d.geometry.TriangleMesh]:
     """
     Visualize a list of coordinate frames or just their Z axes using Open3D.
 
@@ -459,7 +491,7 @@ def draw_R_list(R_list, scale=1.0, only_z=False, show=True, origin_frame_scale=1
         R_list = [R_list]
 
     num_frames = len(R_list)
-    
+
     for i, R in enumerate(R_list):
         # Compute color gradient from blue to white if color_by_order is True
         if color_by_order and num_frames > 1:
@@ -468,7 +500,7 @@ def draw_R_list(R_list, scale=1.0, only_z=False, show=True, origin_frame_scale=1
             color = [t, t, 1.0]  # Red and Green go from 0 to 1, Blue stays at 1
         else:
             color = None
-        
+
         if only_z:
             if color is not None:
                 arrow = create_arrow(R[:, 2], np.array([0, 0, 0]), scale, color=color)
@@ -479,25 +511,28 @@ def draw_R_list(R_list, scale=1.0, only_z=False, show=True, origin_frame_scale=1
             frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=scale)
             frame.rotate(R, center=(0, 0, 0))
             # if color is not None:
-                # frame.paint_uniform_color(color)
+            # frame.paint_uniform_color(color)
             geometries.append(frame)
 
     # Global reference frame
     if origin_frame_scale > 0.0:
-        origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=origin_frame_scale)
+        origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+            size=origin_frame_scale
+        )
         geometries.append(origin_frame)
 
     if show:
         o3d_viewer(geometries, config)
     return geometries
 
+
 def draw_frames(
-        frame_list: list[np.ndarray],
-        frame_scale: float | list[float] = 1.0,
-        only_z: bool = False,
-        config: O3DViewerConfig = None,
-        show: bool = True
-    ) -> List[o3d.geometry.TriangleMesh]:
+    frame_list: list[np.ndarray],
+    frame_scale: float | list[float] = 1.0,
+    only_z: bool = False,
+    config: O3DViewerConfig = None,
+    show: bool = True,
+) -> List[o3d.geometry.TriangleMesh]:
     geometries = []
 
     if isinstance(frame_scale, float):
@@ -505,11 +540,15 @@ def draw_frames(
 
     for i, frame_i in enumerate(frame_list):
         if only_z:
-            arrow = create_arrow(frame_i[:, 2], frame_i[:3, 3], frame_scale[i], color=[0.0, 0.0, 1.0])
+            arrow = create_arrow(
+                frame_i[:, 2], frame_i[:3, 3], frame_scale[i], color=[0.0, 0.0, 1.0]
+            )
             geometries.append(arrow)
         else:
             if frame_scale[i] > 0.0:
-                frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=frame_scale[i])
+                frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+                    size=frame_scale[i]
+                )
                 frame.transform(frame_i)
                 geometries.append(frame)
 
@@ -518,30 +557,35 @@ def draw_frames(
 
     return geometries
 
+
 def draw_path(
-        waypoints: list[np.ndarray],
-        show_lines=True,
-        line_color: list[float] | list[list[float]] | np.ndarray = [0.5, 0.5, 0.5],
-        point_radius=0.0025,
-        point_color: list[float] | list[list[float]] | np.ndarray = [0.0, 0.0, 0.0],
-        config: O3DViewerConfig = None,
-        show: bool = True
-    ) -> List[o3d.geometry.TriangleMesh]:
+    waypoints: list[np.ndarray],
+    show_lines=True,
+    line_color: list[float] | list[list[float]] | np.ndarray = [0.5, 0.5, 0.5],
+    point_radius=0.0025,
+    point_color: list[float] | list[list[float]] | np.ndarray = [0.0, 0.0, 0.0],
+    config: O3DViewerConfig = None,
+    show: bool = True,
+) -> List[o3d.geometry.TriangleMesh]:
     geometries = []
 
     points = []
     line_start_end_indices = []
 
-    if len(line_color) == 3 and not isinstance(line_color[0], (list, tuple, np.ndarray)):
+    if len(line_color) == 3 and not isinstance(
+        line_color[0], (list, tuple, np.ndarray)
+    ):
         line_color = [line_color] * (len(waypoints) - 1)
     line_color = np.array(line_color)
 
-    if len(point_color) == 3 and not isinstance(point_color[0], (list, tuple, np.ndarray)):
+    if len(point_color) == 3 and not isinstance(
+        point_color[0], (list, tuple, np.ndarray)
+    ):
         point_color = [point_color] * len(waypoints)
     point_color = np.array(point_color)
 
-    assert(len(line_color) == len(waypoints)-1)
-    assert(len(point_color) == len(waypoints))
+    assert len(line_color) == len(waypoints) - 1
+    assert len(point_color) == len(waypoints)
 
     for i, waypoint in enumerate(waypoints):
 
@@ -557,77 +601,88 @@ def draw_path(
         if i > 0:
             line_start_end_indices.append([i - 1, i])
 
-    if show_lines: # no support for setting line width at the moment...
+    if show_lines:  # no support for setting line width at the moment...
         line_set = o3d.geometry.LineSet()
         line_set.points = o3d.utility.Vector3dVector(points)
         line_set.lines = o3d.utility.Vector2iVector(line_start_end_indices)
         line_set.colors = o3d.utility.Vector3dVector(line_color)
         geometries.append(line_set)
-    
+
     if show:
         o3d_viewer(geometries, config)
     return geometries
 
-def create_centered_box(pose_matrix, size, color, center_shift = [0, 0, 0]):
-    """ 
-        Creates a box centered at the origin with a given size and color.
-        The standard o3d box is from the edge
 
-        By default center_shift is [0.5, 0.5, 0.5] which means the box is centered at the origin.
-        If you want the box to be centered at the origin, you can set center_shift to [0, 0, 0].
+def create_centered_box(pose_matrix, size, color, center_shift=[0, 0, 0]):
     """
-    box = o3d.geometry.TriangleMesh.create_box(width=size[0], height=size[1], depth=size[2])
+    Creates a box centered at the origin with a given size and color.
+    The standard o3d box is from the edge
+
+    By default center_shift is [0.5, 0.5, 0.5] which means the box is centered at the origin.
+    If you want the box to be centered at the origin, you can set center_shift to [0, 0, 0].
+    """
+    box = o3d.geometry.TriangleMesh.create_box(
+        width=size[0], height=size[1], depth=size[2]
+    )
     box.paint_uniform_color(color)
     box.compute_vertex_normals()
-    
+
     # Shift the box to center it around the origin
     transformation = np.eye(4)
-    transformation[:3, 3] = [-size[0] * 0.5 + center_shift[0], -size[1] * 0.5 + center_shift[1], -size[2] * 0.5 + center_shift[2]]
+    transformation[:3, 3] = [
+        -size[0] * 0.5 + center_shift[0],
+        -size[1] * 0.5 + center_shift[1],
+        -size[2] * 0.5 + center_shift[2],
+    ]
     box.transform(transformation)
 
     # Then transform to desired pose
     box.transform(pose_matrix)
-    
+
     return box
 
-def create_centered_cylinder(pose_matrix, radius, height, color, center_shift = [0, 0, 0]):
+
+def create_centered_cylinder(
+    pose_matrix, radius, height, color, center_shift=[0, 0, 0]
+):
     """
-        Creates a cylinder with a given radius, height, and color.
-        The standard o3d cylinder is centered at origin and aligned along Z-axis.
-        
-        By default center_shift is [0.5, 0.5, 0.5] which keeps the cylinder centered in XY,
-        and centered along Z-axis (height direction).
-        center_shift[2] controls the Z-axis shift: 0.5 centers it, 0.0 places base at origin.
+    Creates a cylinder with a given radius, height, and color.
+    The standard o3d cylinder is centered at origin and aligned along Z-axis.
+
+    By default center_shift is [0.5, 0.5, 0.5] which keeps the cylinder centered in XY,
+    and centered along Z-axis (height direction).
+    center_shift[2] controls the Z-axis shift: 0.5 centers it, 0.0 places base at origin.
     """
     cylinder = o3d.geometry.TriangleMesh.create_cylinder(radius=radius, height=height)
     cylinder.paint_uniform_color(color)
     cylinder.compute_vertex_normals()
-    
+
     # Shift the cylinder to adjust centering
     # O3D cylinder is already centered in XY, but extends from -height/2 to +height/2 in Z
     transformation = np.eye(4)
     transformation[:3, 3] = [center_shift[0], center_shift[1], center_shift[2]]
     cylinder.transform(transformation)
-    
+
     # Then transform to desired pose
     cylinder.transform(pose_matrix)
-    
+
     return cylinder
 
-#TODO update the grippers to work for tool0 ref vs tcp_world vs tcp_tool
+
+# TODO update the grippers to work for tool0 ref vs tcp_world vs tcp_tool
 # Defines this symetrical to the TCP, which is useful for seeing TCP location but not viz of wrist offset
 def parallel_gripper_model(
-        T_world_to_tcp, 
-        grasp_width, 
-        thickness=0.01, 
-        finger_height=0.06, 
-        finger_width=0.02, 
-        palm_thickness=0.01, 
-        color=[1.0, 0.0, 0.0], 
-        frame_scale=0.025, 
-        z_into_table=False, 
-        opening_axis='x'
-    ):
+    T_world_to_tcp,
+    grasp_width,
+    thickness=0.01,
+    finger_height=0.06,
+    finger_width=0.02,
+    palm_thickness=0.01,
+    color=[1.0, 0.0, 0.0],
+    frame_scale=0.025,
+    z_into_table=False,
+    opening_axis="x",
+):
     """
     T_world_to_tcp is defined for tcp_world frame (between fingers tips, with z_axis pointing into hand)
     """
@@ -637,33 +692,54 @@ def parallel_gripper_model(
     else:
         z_dir = 1
 
-    if opening_axis == 'x':
+    if opening_axis == "x":
         T_world_to_tcp_rot = T_world_to_tcp
-    elif opening_axis == 'y':
-        T_world_to_tcp_rot = xyzrpy_offset(T_world_to_tcp, rpy=(0, 0, np.pi/2), local=True)
+    elif opening_axis == "y":
+        T_world_to_tcp_rot = xyzrpy_offset(
+            T_world_to_tcp, rpy=(0, 0, np.pi / 2), local=True
+        )
 
     if grasp_width == 0:
-            grasp_width = 0.00001 #avoid errors when drawing boxes
+        grasp_width = 0.00001  # avoid errors when drawing boxes
 
     # Right finger
-    T_gripper_finger_r = xyzrpy_to_matrix([grasp_width/2 + thickness/2, 0, z_dir*finger_height/2], [0,0,0])
+    T_gripper_finger_r = xyzrpy_to_matrix(
+        [grasp_width / 2 + thickness / 2, 0, z_dir * finger_height / 2], [0, 0, 0]
+    )
     T_world_finger_r = T_world_to_tcp_rot @ T_gripper_finger_r
-    finger_r = create_centered_box(T_world_finger_r, [thickness, finger_width, finger_height], color)
+    finger_r = create_centered_box(
+        T_world_finger_r, [thickness, finger_width, finger_height], color
+    )
 
     # Left finger
-    T_gripper_finger_l = xyzrpy_to_matrix([-grasp_width/2 - thickness/2, 0, z_dir*finger_height/2], [0,0,0])
+    T_gripper_finger_l = xyzrpy_to_matrix(
+        [-grasp_width / 2 - thickness / 2, 0, z_dir * finger_height / 2], [0, 0, 0]
+    )
     T_world_finger_l = T_world_to_tcp_rot @ T_gripper_finger_l
-    finger_l = create_centered_box(T_world_finger_l, [thickness, finger_width, finger_height], color)
+    finger_l = create_centered_box(
+        T_world_finger_l, [thickness, finger_width, finger_height], color
+    )
 
     # Palm
-    T_gripper_palm = xyzrpy_to_matrix([0, 0, z_dir*(finger_height + palm_thickness/2)], [0,0,0])
+    T_gripper_palm = xyzrpy_to_matrix(
+        [0, 0, z_dir * (finger_height + palm_thickness / 2)], [0, 0, 0]
+    )
     T_world_palm = T_world_to_tcp_rot @ T_gripper_palm
-    palm = create_centered_box(T_world_palm, [grasp_width, finger_width, palm_thickness], color)
+    palm = create_centered_box(
+        T_world_palm, [grasp_width, finger_width, palm_thickness], color
+    )
 
     # Wrist, aka. fork handle
-    T_gripper_wrist = xyzrpy_to_matrix([0, 0, z_dir*(finger_height + palm_thickness/2)], [0,0,0])
+    T_gripper_wrist = xyzrpy_to_matrix(
+        [0, 0, z_dir * (finger_height + palm_thickness / 2)], [0, 0, 0]
+    )
     T_world_wrist = T_world_to_tcp_rot @ T_gripper_wrist
-    wrist = create_centered_box(T_world_wrist, [finger_width, finger_width, finger_height*0.2], center_shift=[0,0,(finger_height*0.2)/2], color=color)
+    wrist = create_centered_box(
+        T_world_wrist,
+        [finger_width, finger_width, finger_height * 0.2],
+        center_shift=[0, 0, (finger_height * 0.2) / 2],
+        color=color,
+    )
 
     geometries = [finger_r, finger_l, palm, wrist]
     if frame_scale > 0.0:
@@ -673,71 +749,97 @@ def parallel_gripper_model(
 
     return geometries
 
-def skeleton_gripper_model(        
-        T_world_to_tcp, 
-        grasp_width=0.03, 
-        color=[1.0, 0.0, 0.0], 
-        thickness_scale=1.0,
-        frame_scale=0.025, 
-        z_into_table=False, 
-        opening_axis='x'):
 
-        thickness = thickness_scale * 0.0025
-        finger_height = thickness_scale * 0.075
-        finger_width = thickness_scale * 0.0025
-        palm_thickness = thickness_scale * 0.0025
+def skeleton_gripper_model(
+    T_world_to_tcp,
+    grasp_width=0.03,
+    color=[1.0, 0.0, 0.0],
+    thickness_scale=1.0,
+    frame_scale=0.025,
+    z_into_table=False,
+    opening_axis="x",
+):
 
-        return parallel_gripper_model(
-            T_world_to_tcp,
-            grasp_width,
-            thickness,
-            finger_height,
-            finger_width,
-            palm_thickness,
-            color,
-            frame_scale,
-            z_into_table,
-            opening_axis
-        )
+    thickness = thickness_scale * 0.0025
+    finger_height = thickness_scale * 0.075
+    finger_width = thickness_scale * 0.0025
+    palm_thickness = thickness_scale * 0.0025
+
+    return parallel_gripper_model(
+        T_world_to_tcp,
+        grasp_width,
+        thickness,
+        finger_height,
+        finger_width,
+        palm_thickness,
+        color,
+        frame_scale,
+        z_into_table,
+        opening_axis,
+    )
+
 
 # pose is of the wrist, so helpful to see offsets..
 def claw_gripper_model(
-        T_world_to_tcp,
-        opening_angle,
-        servo_diameter=0.05,
-        finger_length=0.12,
-        finger_thickness=0.01,
-        finger_width=0.02,
-        wrist_offset=0.0,
-        color=[1.0, 0.0, 0.0],
-        frame_scale=0.025,
-        z_into_table=False,
-        opening_axis='x'
-    ):
+    T_world_to_tcp,
+    opening_angle,
+    servo_diameter=0.05,
+    finger_length=0.12,
+    finger_thickness=0.01,
+    finger_width=0.02,
+    wrist_offset=0.0,
+    color=[1.0, 0.0, 0.0],
+    frame_scale=0.025,
+    z_into_table=False,
+    opening_axis="x",
+):
 
     if z_into_table:
         z_dir = -1
     else:
         z_dir = 1
 
-    if opening_axis == 'x':
+    if opening_axis == "x":
         T_world_to_tcp_rot = T_world_to_tcp
-    elif opening_axis == 'y':
-        T_world_to_tcp_rot = xyzrpy_offset(T_world_to_tcp, rpy=(0, 0, np.pi/2), local=True)
+    elif opening_axis == "y":
+        T_world_to_tcp_rot = xyzrpy_offset(
+            T_world_to_tcp, rpy=(0, 0, np.pi / 2), local=True
+        )
 
-    T_claw_center = xyzrpy_offset(T_world_to_tcp_rot, xyz=(0, 0, z_dir*(finger_length)), rpy=(np.pi/2, 0, 0), local=True)
+    T_claw_center = xyzrpy_offset(
+        T_world_to_tcp_rot,
+        xyz=(0, 0, z_dir * (finger_length)),
+        rpy=(np.pi / 2, 0, 0),
+        local=True,
+    )
 
     # base = create_centered_box(T_world_to_tcp, [servo_diameter, finger_width, servo_diameter], color, center_shift=[0.5,0.5,0])
-    servo = create_centered_cylinder(T_claw_center, servo_diameter/2, finger_width*0.8, color) # reduce thickness a bit by 0.8 so that you can see the fingers
+    servo = create_centered_cylinder(
+        T_claw_center, servo_diameter / 2, finger_width * 0.8, color
+    )  # reduce thickness a bit by 0.8 so that you can see the fingers
 
     # Finger 1 - rotate +angle around Z, then translate along x
-    T_finger_1 = xyzrpy_offset(T_claw_center, xyz=(finger_thickness/2, -z_dir*(finger_length/2), 0), local=True)
-    finger_1 = create_centered_box(T_finger_1, [finger_thickness, finger_length, finger_width], color)
+    T_finger_1 = xyzrpy_offset(
+        T_claw_center,
+        xyz=(finger_thickness / 2, -z_dir * (finger_length / 2), 0),
+        local=True,
+    )
+    finger_1 = create_centered_box(
+        T_finger_1, [finger_thickness, finger_length, finger_width], color
+    )
 
     # Beacuse we need to rotate it, we actually want to offset the visual box and keep this centered...
-    T_claw_center_rot = xyzrpy_offset(T_claw_center, rpy=(0, 0, -z_dir*opening_angle), local=True)
-    T_finger_2 = xyzrpy_offset(T_claw_center_rot, xyz=(-finger_thickness/2, -z_dir*(finger_length/2), 0), local=True)
-    finger_2 = create_centered_box(T_finger_2, [finger_thickness, finger_length, finger_width], color)
+    T_claw_center_rot = xyzrpy_offset(
+        T_claw_center, rpy=(0, 0, -z_dir * opening_angle), local=True
+    )
+    T_finger_2 = xyzrpy_offset(
+        T_claw_center_rot,
+        xyz=(-finger_thickness / 2, -z_dir * (finger_length / 2), 0),
+        local=True,
+    )
+    finger_2 = create_centered_box(
+        T_finger_2, [finger_thickness, finger_length, finger_width], color
+    )
 
     # geometries = [base, claw_frame, finger_1, finger_2]
 
@@ -749,10 +851,18 @@ def claw_gripper_model(
         claw_frame.transform(T_claw_center)
         geometries.append(claw_frame)
 
-
-        T_claw_center_half_rot = xyzrpy_offset(T_claw_center, rpy=(0, 0, -z_dir*opening_angle/2), local=True)
-        T_virtual_tip = xyzrpy_offset(T_claw_center_half_rot, xyz=(0, -z_dir*finger_length, 0), rpy=(-np.pi/2, 0, 0), local=True)
-        virtual_tip_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=frame_scale)
+        T_claw_center_half_rot = xyzrpy_offset(
+            T_claw_center, rpy=(0, 0, -z_dir * opening_angle / 2), local=True
+        )
+        T_virtual_tip = xyzrpy_offset(
+            T_claw_center_half_rot,
+            xyz=(0, -z_dir * finger_length, 0),
+            rpy=(-np.pi / 2, 0, 0),
+            local=True,
+        )
+        virtual_tip_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+            size=frame_scale
+        )
         virtual_tip_frame.transform(T_virtual_tip)
         geometries.append(virtual_tip_frame)
 
@@ -762,15 +872,16 @@ def claw_gripper_model(
 
     return geometries
 
+
 def draw_points(
-        points: List[np.ndarray],
-        colors: List[np.ndarray] = None,
-        point_size = 5.0,
-        origin_frame_scale = 1.0,
-        extra_geometries: List[o3d.geometry.Geometry3D] = [],
-        config: O3DViewerConfig = None,
-        show=True
-        ) -> List[o3d.geometry.Geometry3D]:
+    points: List[np.ndarray],
+    colors: List[np.ndarray] = None,
+    point_size=5.0,
+    origin_frame_scale=1.0,
+    extra_geometries: List[o3d.geometry.Geometry3D] = [],
+    config: O3DViewerConfig = None,
+    show=True,
+) -> List[o3d.geometry.Geometry3D]:
     """
     Visualize a point cloud with coordinate frame(s).
 
@@ -781,7 +892,7 @@ def draw_points(
     """
     geometries = []
     geometries.extend(extra_geometries)
-    
+
     if colors:
         assert len(points) == len(colors), "Points and colors must have the same length"
 
@@ -792,27 +903,30 @@ def draw_points(
         if colors:
             if isinstance(colors[i], np.ndarray):
                 pcd.colors = o3d.utility.Vector3dVector(colors[i])
-            else: # assumes its a list/tuple (R, G, B) ex. (0.1, 0.1, 0.1)
+            else:  # assumes its a list/tuple (R, G, B) ex. (0.1, 0.1, 0.1)
                 pcd.paint_uniform_color(colors[i])
         geometries.append(pcd)
-    
-    origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=origin_frame_scale)
+
+    origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+        size=origin_frame_scale
+    )
     geometries.append(origin_frame)
 
     if show:
         o3d_viewer(geometries, config)
     return geometries
 
+
 def draw_rgbd_mask_scenes(
-        camera_info,
-        color: np.ndarray,
-        depth: np.ndarray,
-        mask: np.ndarray,
-        bg_color: np.ndarray = None,
-        bg_depth: np.ndarray = None,
-        origin_frame_scale=1.0,
-        config: O3DViewerConfig = None,
-    ):
+    camera_info,
+    color: np.ndarray,
+    depth: np.ndarray,
+    mask: np.ndarray,
+    bg_color: np.ndarray = None,
+    bg_depth: np.ndarray = None,
+    origin_frame_scale=1.0,
+    config: O3DViewerConfig = None,
+):
     """
     Display 4 Open3D scenes:
     1. Full color point cloud.
@@ -836,7 +950,6 @@ def draw_rgbd_mask_scenes(
     masked_pc = rgbxyz_2_pc(color_masked, xyz)
     scene_list.append([masked_pc])
 
-
     if bg_depth is not None:
         if np.nanmedian(bg_depth) > 10:
             assert False, "Depth values in mm"
@@ -855,13 +968,15 @@ def draw_rgbd_mask_scenes(
         grey_bg_pc = xyz_2_pc(bg_xyz, [0.1, 0.1, 0.1])
         scene_list.append([masked_pc, bg_pc])
 
-
-
-    origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=origin_frame_scale)
+    origin_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+        size=origin_frame_scale
+    )
     for scene in scene_list:
         o3d_viewer(scene + [origin_frame], config)
 
-#endregion Model Factory
+
+# endregion Model Factory
+
 
 def main(args=None):
 
@@ -869,9 +984,9 @@ def main(args=None):
     config.update_4k_window()
     config.zoom = 0.5
 
-    center_pose = xyzrpy_to_matrix([0,0,0],[0,0,0])
+    center_pose = xyzrpy_to_matrix([0, 0, 0], [0, 0, 0])
     size = [0.05, 0.05, 0.05]
-    color = [1,0,0]
+    color = [1, 0, 0]
     # o3d_viewer([create_centered_box(center_pose, size, color, center_shift=[0, 0, 0])], origin_frame_scale=0.1)
     # o3d_viewer([create_centered_box(center_pose, size, color, center_shift=[0, 0, size[2]/2])], origin_frame_scale=0.1)
 
@@ -880,15 +995,22 @@ def main(args=None):
     # o3d_viewer([create_centered_cylinder(center_pose, size[0], size[1], color, center_shift=[0, 0, -size[2]/2])], origin_frame_scale=0.1)
 
     # parallel_gripper = parallel_gripper_model(xyzrpy_to_matrix([0,0,0.1],[np.pi,0,0]), 20/1000, frame_scale=0.1, z_into_table=False, opening_axis='y')
-    claw_gripper = claw_gripper_model(xyzrpy_to_matrix([0,0.2,0.1],[np.pi,0,0]), np.deg2rad(45), frame_scale=0.1, opening_axis='x', z_into_table=True)
+    claw_gripper = claw_gripper_model(
+        xyzrpy_to_matrix([0, 0.2, 0.1], [np.pi, 0, 0]),
+        np.deg2rad(45),
+        frame_scale=0.1,
+        opening_axis="x",
+        z_into_table=True,
+    )
     # claw_gripper = claw_gripper_model(xyzrpy_to_matrix([0,0.2,0.1],[0,0,0]), np.deg2rad(45), frame_scale=0.1, opening_axis='x', z_into_table=False)
 
     # Test center box with shift
-    T_table = xyzrpy_to_matrix([0,0,0],[0,0,0])
-    table = create_centered_box(T_table, [0.5, 0.5, 0.05], [0,0,0], center_shift=[0, 0, -0.05/2])
+    T_table = xyzrpy_to_matrix([0, 0, 0], [0, 0, 0])
+    table = create_centered_box(
+        T_table, [0.5, 0.5, 0.05], [0, 0, 0], center_shift=[0, 0, -0.05 / 2]
+    )
 
-
-    o3d_viewer([table]+claw_gripper, config, origin_frame_scale=0.1)
+    o3d_viewer([table] + claw_gripper, config, origin_frame_scale=0.1)
 
     # # Sample random points in a wave
     # N = 200
@@ -910,44 +1032,49 @@ def main(args=None):
     # # o3d.visualization.draw_geometries([frame, table]+gripper)
 
 
-#region - Mesh Processing Helpers
+# region - Mesh Processing Helpers
 
-def analyze_mesh(mesh: o3d.geometry.TriangleMesh, name: str = "Mesh", print_info: bool = True) -> dict:
+
+def analyze_mesh(
+    mesh: o3d.geometry.TriangleMesh, name: str = "Mesh", print_info: bool = True
+) -> dict:
     """Analyze mesh and return statistics.
-    
+
     Args:
         mesh: Open3D triangle mesh
         name: Name for the mesh (used in printed output)
         print_info: Whether to print the analysis
-        
+
     Returns:
         Dictionary with mesh statistics
     """
     vertices = np.asarray(mesh.vertices)
     triangles = np.asarray(mesh.triangles)
-    
+
     # Estimate memory size
     mem_vertices = vertices.nbytes / 1024 / 1024  # MB
     mem_triangles = triangles.nbytes / 1024 / 1024 if len(triangles) > 0 else 0
     total_mem = mem_vertices + mem_triangles
-    
+
     stats = {
-        'name': name,
-        'num_vertices': len(vertices),
-        'num_triangles': len(triangles),
-        'memory_mb': total_mem,
-        'has_vertex_normals': mesh.has_vertex_normals(),
-        'has_triangle_normals': mesh.has_triangle_normals(),
-        'has_vertex_colors': mesh.has_vertex_colors()
+        "name": name,
+        "num_vertices": len(vertices),
+        "num_triangles": len(triangles),
+        "memory_mb": total_mem,
+        "has_vertex_normals": mesh.has_vertex_normals(),
+        "has_triangle_normals": mesh.has_triangle_normals(),
+        "has_vertex_colors": mesh.has_vertex_colors(),
     }
-    
+
     if print_info:
         print(f"\n  {name}:")
         print(f"    Vertices : {stats['num_vertices']:,}")
         print(f"    Triangles: {stats['num_triangles']:,}")
         print(f"    Memory   : {stats['memory_mb']:.2f} MB")
-        print(f"    Normals  : V={stats['has_vertex_normals']}, T={stats['has_triangle_normals']}")
-    
+        print(
+            f"    Normals  : V={stats['has_vertex_normals']}, T={stats['has_triangle_normals']}"
+        )
+
     return stats
 
 
@@ -958,10 +1085,10 @@ def create_lowres_mesh(
     min_faces: int = 500,
     max_faces: int = 10000,
     use_proportional: bool = True,
-    verbose: bool = True
+    verbose: bool = True,
 ) -> o3d.geometry.TriangleMesh:
     """Create a low-resolution version of a mesh.
-    
+
     Args:
         mesh: Input high-resolution mesh
         target_faces: Target number of triangles (used if use_proportional=False)
@@ -970,7 +1097,7 @@ def create_lowres_mesh(
         max_faces: Maximum number of faces (upper bound)
         use_proportional: If True, reduces proportionally; if False, uses target_faces
         verbose: Whether to print progress
-        
+
     Returns:
         Low-resolution mesh
     """
@@ -979,32 +1106,36 @@ def create_lowres_mesh(
         if verbose:
             print("⚠️  Point cloud detected, converting to mesh first...")
         mesh.estimate_normals()
-        mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(mesh, depth=9)
-    
+        mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
+            mesh, depth=9
+        )
+
     curr_triangles = len(mesh.triangles)
-    
+
     # Calculate target faces
     if use_proportional:
         target = int(curr_triangles * reduction_ratio)
         target = max(min_faces, min(max_faces, target))
     else:
         target = target_faces if target_faces else 10000
-    
+
     if verbose:
         print(f"  Decimating {curr_triangles:,} → {target:,} triangles...")
-    
+
     # Decimate mesh
     if curr_triangles > target:
         mesh_lowres = mesh.simplify_quadric_decimation(target)
     else:
         if verbose:
-            print(f"  ℹ️  Mesh already has {curr_triangles:,} triangles, skipping decimation")
+            print(
+                f"  ℹ️  Mesh already has {curr_triangles:,} triangles, skipping decimation"
+            )
         mesh_lowres = mesh
-    
+
     # Compute normals (required for many file formats like STL)
     mesh_lowres.compute_vertex_normals()
     mesh_lowres.compute_triangle_normals()
-    
+
     return mesh_lowres
 
 
@@ -1012,51 +1143,53 @@ def save_mesh_with_verification(
     mesh: o3d.geometry.TriangleMesh,
     output_path: str | Path,
     verify: bool = True,
-    verbose: bool = True
+    verbose: bool = True,
 ) -> bool:
     """Save mesh and optionally verify it was saved correctly.
-    
+
     Args:
         mesh: Mesh to save
         output_path: Path to save the mesh
         verify: Whether to load and verify the saved mesh
         verbose: Whether to print progress
-        
+
     Returns:
         True if save (and verification if enabled) succeeded
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Save mesh
     success = o3d.io.write_triangle_mesh(str(output_path), mesh)
-    
+
     if not success:
         if verbose:
             print(f"❌ Failed to save mesh to {output_path}")
         return False
-    
+
     if verbose and not verify:
         print(f"✓ Mesh saved: {output_path}")
-    
+
     if verify:
         # Load and verify
         mesh_test = o3d.io.read_triangle_mesh(str(output_path))
-        
+
         if len(mesh_test.vertices) == 0:
             if verbose:
                 print(f"❌ Saved file is empty: {output_path}")
             return False
-        
+
         if len(mesh_test.triangles) == 0:
             if verbose:
                 print(f"⚠️  Saved mesh has no triangles: {output_path}")
             # This might still be okay for point clouds
-        
+
         if verbose:
             print(f"✓ Mesh saved and verified: {output_path}")
-            print(f"  Loaded: {len(mesh_test.vertices):,} vertices, {len(mesh_test.triangles):,} triangles")
-    
+            print(
+                f"  Loaded: {len(mesh_test.vertices):,} vertices, {len(mesh_test.triangles):,} triangles"
+            )
+
     return True
 
 
@@ -1064,10 +1197,10 @@ def visualize_meshes_side_by_side(
     meshes: list[o3d.geometry.TriangleMesh],
     labels: list[str] = None,
     spacing: float = 0.3,
-    window_name: str = "Mesh Comparison"
+    window_name: str = "Mesh Comparison",
 ) -> None:
     """Visualize multiple meshes side-by-side in Open3D viewer.
-    
+
     Args:
         meshes: List of meshes to visualize
         labels: Optional list of labels for each mesh
@@ -1076,14 +1209,14 @@ def visualize_meshes_side_by_side(
     """
     if labels is None:
         labels = [f"Mesh {i}" for i in range(len(meshes))]
-    
+
     # Create copies and offset them
     meshes_to_show = []
     for i, mesh in enumerate(meshes):
         mesh_copy = o3d.geometry.TriangleMesh(mesh)
         mesh_copy.translate([i * spacing, 0, 0])
         meshes_to_show.append(mesh_copy)
-    
+
     # Add coordinate frames at each position
     geometries = []
     for i, (mesh, label) in enumerate(zip(meshes_to_show, labels)):
@@ -1092,7 +1225,7 @@ def visualize_meshes_side_by_side(
         frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
         frame.translate([i * spacing, 0, 0])
         geometries.append(frame)
-    
+
     # Visualize
     print(f"\n{'='*70}")
     print(f"Visualizing {len(meshes)} meshes side-by-side")
@@ -1101,17 +1234,14 @@ def visualize_meshes_side_by_side(
         print(f"  Position {i}: {label}")
     print(f"\nSpacing: {spacing}m")
     print(f"{'='*70}\n")
-    
+
     o3d.visualization.draw_geometries(
-        geometries,
-        window_name=window_name,
-        width=1920,
-        height=1080
+        geometries, window_name=window_name, width=1920, height=1080
     )
 
-#endregion - Mesh Processing Helpers
+
+# endregion - Mesh Processing Helpers
 
 
 if __name__ == "__main__":
     main()
-

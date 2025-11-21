@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Simple stopwatch for wall-clock profiling.
+Simple stopwatch for wall-clock profiling.
 """
 
 # PYTHON
@@ -31,4 +31,3 @@ class StopWatch:
 
 
 __all__ = ["StopWatch"]
-

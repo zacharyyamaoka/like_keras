@@ -14,10 +14,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from bam.descriptions import RobotDescription
 
-class PinMeshcat():
+
+class PinMeshcat:
 
     @classmethod
-    def from_robot_description(cls, rd: 'RobotDescription', zmq_url="", color=None):
+    def from_robot_description(cls, rd: "RobotDescription", zmq_url="", color=None):
         robot_model = PinRobotModel.from_robot_description(rd)
         return cls(robot_model, zmq_url=zmq_url, color=color)
 
@@ -27,12 +28,23 @@ class PinMeshcat():
         return cls(robot_model, zmq_url=zmq_url, color=color)
 
     @classmethod
-    def from_xacro(cls, xacro_path: str, xacro_args: dict, mesh_package_dirs: str | list[str], zmq_url="", color=None):
-        robot_model = PinRobotModel.from_xacro(xacro_path, xacro_args, mesh_package_dirs)
+    def from_xacro(
+        cls,
+        xacro_path: str,
+        xacro_args: dict,
+        mesh_package_dirs: str | list[str],
+        zmq_url="",
+        color=None,
+    ):
+        robot_model = PinRobotModel.from_xacro(
+            xacro_path, xacro_args, mesh_package_dirs
+        )
         return cls(robot_model, zmq_url=zmq_url, color=color)
-    
+
     @classmethod
-    def from_urdf(cls, urdf_path: str, mesh_package_dirs: str | list[str], zmq_url="", color=None):
+    def from_urdf(
+        cls, urdf_path: str, mesh_package_dirs: str | list[str], zmq_url="", color=None
+    ):
         robot_model = PinRobotModel.from_urdf(urdf_path, mesh_package_dirs)
         return cls(robot_model, zmq_url=zmq_url, color=color)
 
@@ -48,18 +60,21 @@ class PinMeshcat():
 
         self.robot_model = robot_model
 
-
-        self.viz = MeshcatVisualizer(self.robot_model.model, self.robot_model.collision_model, self.robot_model.visual_model)
+        self.viz = MeshcatVisualizer(
+            self.robot_model.model,
+            self.robot_model.collision_model,
+            self.robot_model.visual_model,
+        )
 
         self.update_frames = False
         self.color = color
-        
+
         if zmq_url == "":
             self.viz.initViewer(open=True)
         else:
-            print(f"Attemping to connect to Meshcat on: {zmq_url}") 
-            self.viz.initViewer(zmq_url=zmq_url) # cli: 
-            
+            print(f"Attemping to connect to Meshcat on: {zmq_url}")
+            self.viz.initViewer(zmq_url=zmq_url)  # cli:
+
             print(f"Connected on: {zmq_url}")
 
         self.robot_prefix = None
@@ -71,16 +86,16 @@ class PinMeshcat():
         print("[READY] MeshcatClient")
 
     def sleep_for_load(self):
-        time.sleep(0.5) #wait for robot to load
+        time.sleep(0.5)  # wait for robot to load
 
     def wait_for_load(self):
-        time.sleep(0.5) #wait for robot to load
+        time.sleep(0.5)  # wait for robot to load
 
     def load_robot(self):
         """(Re)load the robot model into the Meshcat viewer."""
         if self.robot_model.model is None:
             raise ValueError("Model is not set. Cannot load robot.")
-        
+
         # give a unique id so you can have multiple robots in same viewer
         # random_id = np.random.randint(1000, 9999)
         # self.robot_prefix = f"robot_{random_id}"
@@ -97,14 +112,14 @@ class PinMeshcat():
     def zmq_url(self) -> str:
         """Return the ZMQ URL of the connected Meshcat viewer."""
         return self.viz.viewer.window.zmq_url
-    
+
     def show_frame(self, frame_name, verbose=True):
         """Show a single frame."""
         return self.display_frames([frame_name], verbose)
 
     def display_frames(self, frame_names, verbose=True):
         """Show multiple frames at the same time.
-        
+
         DescriptionArgs:
             frame_names: List of frame names to display
             verbose: If True, print frame information
@@ -112,7 +127,9 @@ class PinMeshcat():
         if verbose:
             print(f"\nFrames (n = {self.model.nframes}):")
             for i, frame in enumerate(self.model.frames):
-                print(f"  Frame {i}: {frame.name}, type: {frame.type}, parent: {frame.parentJoint}")
+                print(
+                    f"  Frame {i}: {frame.name}, type: {frame.type}, parent: {frame.parentJoint}"
+                )
 
         frame_ids = []
         for frame_name in frame_names:
@@ -133,7 +150,7 @@ class PinMeshcat():
 
     def reset(self):
         self.viz.reset()
-        
+
     def clear_robot(self):
         """Remove the robot model from the Meshcat viewer."""
         if self.robot_prefix:
@@ -143,9 +160,9 @@ class PinMeshcat():
             self._robot_loaded = False
 
     def get_frame_transform(self, frame_name: str) -> np.ndarray:
-        """ Get transform of current display """
+        """Get transform of current display"""
 
-        #BUG: This won't for for non joint frames unless you manually update them all!
+        # BUG: This won't for for non joint frames unless you manually update them all!
         # Manually update all frame placements so transforms are up-to-date
         # This ensures that get_frame_transform works for non-joint frames as well
 
@@ -168,7 +185,9 @@ class PinMeshcat():
             print("[INFO] Robot not loaded — loading now.")
             self.load_robot()
 
-        assert(q.shape[0] == self.robot_model.n_dof), f"Expected {self.robot_model.n_dof} joints, got {q.shape[0]}"
+        assert (
+            q.shape[0] == self.robot_model.n_dof
+        ), f"Expected {self.robot_model.n_dof} joints, got {q.shape[0]}"
 
         self.viz.display(q)
 
@@ -180,19 +199,20 @@ class PinMeshcat():
     #     self.viz.viewer[name].delete()
 
     def display_trajectory(self, t, q, speed=1):
-        last_time = 0.0 
+        last_time = 0.0
         for i, q_i in enumerate(q):
             time_from_start = t[i]
             sleep_time = time_from_start - last_time
-            last_time = time_from_start  
+            last_time = time_from_start
 
             self.viz.display(q_i)
-            time.sleep(sleep_time*(1/speed))  
-
+            time.sleep(sleep_time * (1 / speed))
 
     # https://github.com/meshcat-dev/meshcat-python/blob/master/src/meshcat/transformations.py#L1252
     # Meshcat leads with w
-    def display_path(self, pose_matrix_list: list[np.ndarray], name="path", axis_scale=0.05):
+    def display_path(
+        self, pose_matrix_list: list[np.ndarray], name="path", axis_scale=0.05
+    ):
         """
         Display a nav_msgs/Path message as a series of coordinate frames and connecting lines in Meshcat.
 
@@ -212,9 +232,8 @@ class PinMeshcat():
 
         points = []
 
-
         for i, T in enumerate(pose_matrix_list):
-    
+
             # Display triad at pose
             if axis_scale > 0:
                 frame_name = f"{group_name}/frame_{i}"
@@ -236,13 +255,14 @@ class PinMeshcat():
 
             self.viz.viewer[f"{group_name}/lines"].set_object(lines)
 
-        print(f"[DISPLAYED] Path with {len(pose_matrix_list)} poses under: {group_name}")
-
+        print(
+            f"[DISPLAYED] Path with {len(pose_matrix_list)} poses under: {group_name}"
+        )
 
     def clear_path(self, name="path", clear_all=False):
         """
         Remove all triads associated with a previously displayed path.
-        
+
         DescriptionArgs:
             name_prefix: The prefix used in `display_path`.
         """
@@ -252,14 +272,13 @@ class PinMeshcat():
                 print(f"[CLEARED] Path group '{group_name}' removed.")
                 self.path_frames_group_names.remove(group_name)
 
-            
     def display_pointcloud(
         self,
         points: np.ndarray,
         colors: np.ndarray = None,
         size: float = 0.01,
         name: str = "point_cloud",
-        hide_black_points=False
+        hide_black_points=False,
     ):
         """
         Display a colored point cloud in Meshcat.
@@ -276,7 +295,7 @@ class PinMeshcat():
         if colors is not None and colors.shape[0] != 3:
             if colors.shape[1] == 3:
                 colors = colors.T
-            elif colors.shape[1] == 4: # Alpha channel not supported
+            elif colors.shape[1] == 4:  # Alpha channel not supported
                 colors = colors[:, :3].T
 
         assert points.shape[0] == 3, f"Expected points shape (3, N), got {points.shape}"
@@ -320,7 +339,7 @@ class PinMeshcat():
     def clear_xyzrpy(self, name="frame"):
         """
         Remove a coordinate frame previously displayed with display_xyzrpy.
-        
+
         DescriptionArgs:
             name: The Meshcat path name used when displaying the frame.
         """
@@ -330,11 +349,17 @@ class PinMeshcat():
         except:
             print(f"[WARNING] Coordinate frame '{name}' not found in viewer.")
 
-    def display_arrow(self, start_point: np.ndarray, direction: np.ndarray, name: str = "arrow", 
-                     color: np.ndarray = None, scale: float = 1.0):
+    def display_arrow(
+        self,
+        start_point: np.ndarray,
+        direction: np.ndarray,
+        name: str = "arrow",
+        color: np.ndarray = None,
+        scale: float = 1.0,
+    ):
         """
         Display an arrow vector in 3D space.
-        
+
         DescriptionArgs:
             start_point: (3,) numpy array of XYZ coordinates for arrow start
             direction: (3,) numpy array representing the arrow direction (will be normalized)
@@ -346,29 +371,29 @@ class PinMeshcat():
             raise ValueError(f"start_point must be shape (3,), got {start_point.shape}")
         if direction.shape != (3,):
             raise ValueError(f"direction must be shape (3,), got {direction.shape}")
-        
+
         # Normalize direction vector
         direction_norm = direction / np.linalg.norm(direction)
-        
+
         # Default to red if no color specified, convert to list
         if color is None:
             color = [1.0, 0.0, 0.0]  # Red
         else:
             # Convert numpy array to list if needed
-            color = color.tolist() if hasattr(color, 'tolist') else list(color)
-        
+            color = color.tolist() if hasattr(color, "tolist") else list(color)
+
         # Create arrow geometry
         arrow_length = 0.2 * scale
         arrow_width = 0.02 * scale
-        
+
         # Create a cylinder for the arrow shaft
         shaft = g.Cylinder(arrow_length, arrow_width)
-        
+
         # Create a shorter, wider cylinder for the arrow head (simulating a cone)
         head_length = 0.05 * scale
         head_width = 0.04 * scale
         head = g.Cylinder(head_length, head_width)
-        
+
         # Calculate transform for the shaft (centered at start, pointing in direction)
         # Find rotation to align z-axis with direction
         z_axis = np.array([0, 0, 1])
@@ -382,30 +407,36 @@ class PinMeshcat():
             axis = axis / np.linalg.norm(axis)
             angle = np.arccos(np.clip(np.dot(z_axis, direction_norm), -1, 1))
             rotation = tf.rotation_matrix(angle, axis)[:3, :3]
-        
+
         # Transform matrix for shaft
         shaft_transform = np.eye(4)
         shaft_transform[:3, :3] = rotation
         shaft_transform[:3, 3] = start_point + 0.5 * arrow_length * direction_norm
-        
+
         # Transform matrix for head
         head_transform = np.eye(4)
         head_transform[:3, :3] = rotation
         head_transform[:3, 3] = start_point + arrow_length * direction_norm
-        
+
         # Display shaft and head
-        self.viz.viewer[f"{name}_shaft"].set_object(g.Mesh(shaft, g.MeshLambertMaterial(color=color)))
+        self.viz.viewer[f"{name}_shaft"].set_object(
+            g.Mesh(shaft, g.MeshLambertMaterial(color=color))
+        )
         self.viz.viewer[f"{name}_shaft"].set_transform(shaft_transform)
-        
-        self.viz.viewer[f"{name}_head"].set_object(g.Mesh(head, g.MeshLambertMaterial(color=color)))
+
+        self.viz.viewer[f"{name}_head"].set_object(
+            g.Mesh(head, g.MeshLambertMaterial(color=color))
+        )
         self.viz.viewer[f"{name}_head"].set_transform(head_transform)
-        
-        print(f"[ARROW] Displayed arrow '{name}' from {start_point} in direction {direction_norm}")
+
+        print(
+            f"[ARROW] Displayed arrow '{name}' from {start_point} in direction {direction_norm}"
+        )
 
     def clear_arrow(self, name: str = "arrow"):
         """
         Remove an arrow previously displayed with display_arrow.
-        
+
         DescriptionArgs:
             name: The Meshcat path name used when displaying the arrow.
         """
@@ -416,10 +447,18 @@ class PinMeshcat():
         except:
             print(f"[WARNING] Arrow '{name}' not found in viewer.")
 
-    def display_cube(self, pose: np.ndarray, size=0.1, name: str = "cube", color: np.ndarray = None, opacity: float = 1.0, wireframe: bool = False):
+    def display_cube(
+        self,
+        pose: np.ndarray,
+        size=0.1,
+        name: str = "cube",
+        color: np.ndarray = None,
+        opacity: float = 1.0,
+        wireframe: bool = False,
+    ):
         """
         Display a box/cube at the specified pose with customizable dimensions.
-        
+
         DescriptionArgs:
             pose: 4x4 numpy array representing the pose (position + orientation)
             size: float for uniform cube OR (3,) array/list for [length, width, height]
@@ -427,59 +466,73 @@ class PinMeshcat():
             color: (3,) numpy array of RGB values in [0, 1]; defaults to blue
             opacity: float in [0, 1] for transparency (1.0 = opaque, 0.0 = fully transparent)
             wireframe: if True, display wireframe edges for better visibility (default: True)
-            
+
         Examples:
             # Uniform cube
             display_cube(pose, size=0.1, name="cube1")
-            
+
             # Box with different dimensions [length, width, height]
             display_cube(pose, size=[0.2, 0.1, 0.05], name="box1")
-            
+
             # Semi-transparent cube without wireframe
             display_cube(pose, size=0.1, name="cube2", opacity=0.5, wireframe=False)
         """
         if pose.shape != (4, 4):
             raise ValueError(f"pose must be shape (4, 4), got {pose.shape}")
-        
+
         # Handle size as either float or 3-element array
         if isinstance(size, (int, float)):
             dimensions = [size, size, size]
         else:
             if len(size) != 3:
-                raise ValueError(f"size must be a float or 3-element array [length, width, height], got {size}")
+                raise ValueError(
+                    f"size must be a float or 3-element array [length, width, height], got {size}"
+                )
             dimensions = list(size)
-        
+
         # Default to blue if no color specified
         if color is None:
             color = [0.0, 0.5, 1.0]  # Blue
         else:
             # Convert numpy array to list if needed
-            color = color.tolist() if hasattr(color, 'tolist') else list(color)
-        
+            color = color.tolist() if hasattr(color, "tolist") else list(color)
+
         # Convert RGB to integer format for meshcat (0xRRGGBB)
-        color_int = int(color[0] * 255) * 256**2 + int(color[1] * 255) * 256 + int(color[2] * 255)
-        
+        color_int = (
+            int(color[0] * 255) * 256**2
+            + int(color[1] * 255) * 256
+            + int(color[2] * 255)
+        )
+
         # Create box geometry with [length, width, height]
         box = g.Box(dimensions)
-        
+
         # Display cube with color and shading (MeshPhongMaterial gives nice 3D appearance)
-        material = g.MeshPhongMaterial(color=color_int, opacity=opacity, transparent=(opacity < 1.0))
+        material = g.MeshPhongMaterial(
+            color=color_int, opacity=opacity, transparent=(opacity < 1.0)
+        )
         self.viz.viewer[name].set_object(g.Mesh(box, material))
         self.viz.viewer[name].set_transform(pose)
-        
+
         # Optionally add wireframe edges for better depth perception
         if wireframe:
             wireframe_color = 0x000000  # Black edges
-            wireframe_material = g.MeshBasicMaterial(color=wireframe_color, wireframe=True, linewidth=2)
-            self.viz.viewer[f"{name}_wireframe"].set_object(g.Mesh(box, wireframe_material))
+            wireframe_material = g.MeshBasicMaterial(
+                color=wireframe_color, wireframe=True, linewidth=2
+            )
+            self.viz.viewer[f"{name}_wireframe"].set_object(
+                g.Mesh(box, wireframe_material)
+            )
             self.viz.viewer[f"{name}_wireframe"].set_transform(pose)
-        
-        print(f"[CUBE] Displayed cube '{name}' at pose with dimensions [L,W,H]: {dimensions}")
+
+        print(
+            f"[CUBE] Displayed cube '{name}' at pose with dimensions [L,W,H]: {dimensions}"
+        )
 
     def clear_cube(self, name: str = "cube"):
         """
         Remove a cube previously displayed with display_cube.
-        
+
         DescriptionArgs:
             name: The Meshcat path name used when displaying the cube.
         """
@@ -496,7 +549,6 @@ class PinMeshcat():
 
     def set_visbility(self, name: str, visible: bool):
         self.viz.viewer[name].set_property("visible", visible)
-
 
     # Camera Controls were not added until 2023
     # https://github.com/meshcat-dev/meshcat-python/commit/bf370150eab898c620817f6a829de4a4f78130b8
@@ -545,11 +597,12 @@ class PinMeshcat():
         self.check_camera_controls()
 
         self.viz.setCameraZoom(zoom)
-        print(f"[CAMERA] Set zoom: {zoom}") 
+        print(f"[CAMERA] Set zoom: {zoom}")
 
-    def set_camera_view(self, position: tuple | list | np.ndarray, target: tuple | list | np.ndarray):
+    def set_camera_view(
+        self, position: tuple | list | np.ndarray, target: tuple | list | np.ndarray
+    ):
         """Set both camera position and target at once."""
         self.set_camera_position(np.array(position))
         self.set_camera_target(np.array(target))
         print(f"[CAMERA] Set view - position: {position}, target: {target}")
-

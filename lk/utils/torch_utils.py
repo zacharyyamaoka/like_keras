@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Utility helpers for inspecting datasets and CUDA availability.
+Utility helpers for inspecting datasets and CUDA availability.
 """
 
 # PYTHON
@@ -17,7 +17,9 @@ try:
     from torchvision.utils import make_grid
 
 except ImportError as e:
-    raise ImportError("The 'torch' package is required but not installed. Please install it via 'pip install torch' and try again.") from e
+    raise ImportError(
+        "The 'torch' package is required but not installed. Please install it via 'pip install torch' and try again."
+    ) from e
 
 
 def cuda_health_check() -> None:
@@ -97,7 +99,7 @@ def show_batch_histograms(data_loader: DataLoader, n_batches: int = 1) -> None:
 
 
 def numpy_to_tensor_pairs(
-    numpy_pairs: list[tuple[np.ndarray, np.ndarray]]
+    numpy_pairs: list[tuple[np.ndarray, np.ndarray]],
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Convert list of numpy (image, label) pairs to tensors."""
     tensor_pairs: list[tuple[torch.Tensor, torch.Tensor]] = []
@@ -166,7 +168,9 @@ def env_to_tensor_pairs(
     test_size: int,
     verbose: bool = True,
     show: bool = False,
-) -> tuple[list[tuple[torch.Tensor, torch.Tensor]], list[tuple[torch.Tensor, torch.Tensor]]]:
+) -> tuple[
+    list[tuple[torch.Tensor, torch.Tensor]], list[tuple[torch.Tensor, torch.Tensor]]
+]:
     """Create dataset tensors via an env that exposes create_dataset."""
     if not hasattr(env.unwrapped, "create_dataset"):
         raise AttributeError("Environment must have a create_dataset method")
@@ -201,4 +205,3 @@ __all__ = [
     "plot_numpy_pairs",
     "env_to_tensor_pairs",
 ]
-

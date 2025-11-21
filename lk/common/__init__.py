@@ -1,7 +1,6 @@
 """
-    Common shared components and data structures
+Common shared components and data structures
 """
-
 
 from .component import Component
 from .config import Config
@@ -18,6 +17,3 @@ from .dataset import (
     diffdiff,
     assert_datasets_equal,
 )
-
-
-

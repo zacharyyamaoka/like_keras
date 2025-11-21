@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 """
 https://docs.ros2.org/foxy/api/geometry_msgs/msg/Transform.html
 """
+
+
 @dataclass
 class Transform(PoseMsg):
     translation: Vector3 = field(default_factory=Vector3)
@@ -39,12 +41,14 @@ class Transform(PoseMsg):
         self.rotation = value
 
     @classmethod
-    def from_pose(cls, pose: 'Pose') -> 'Transform':
+    def from_pose(cls, pose: "Pose") -> "Transform":
         return cls(translation=pose.position.to_vector3(), rotation=pose.orientation)
 
-    def to_pose(self) -> 'Pose':
+    def to_pose(self) -> "Pose":
         from .pose import Pose
+
         return Pose(position=self.translation.to_point(), orientation=self.rotation)
+
 
 if __name__ == "__main__":
     transform = Transform.random()

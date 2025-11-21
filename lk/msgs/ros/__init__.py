@@ -11,7 +11,13 @@ from .geometry_msgs import (
     Vector3,
 )
 from .ros_msg import RosMsg
-from .sensor_msgs import CameraInfo, CompressedImage, Image, JointState, RegionOfInterest
+from .sensor_msgs import (
+    CameraInfo,
+    CompressedImage,
+    Image,
+    JointState,
+    RegionOfInterest,
+)
 from .std_msgs import Header
 from .trajectory_msgs import JointTrajectory, JointTrajectoryPoint
 from .vision_msgs import (

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Backwards-compatible wrappers for tf_transformations matrix helpers.
+Backwards-compatible wrappers for tf_transformations matrix helpers.
 """
 
 # ROS
@@ -62,4 +62,3 @@ __all__ = [
     "CartesianPathMetrics",
     "cartesian_path_analysis",
 ]
-

@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 
 """
-    Robotiq 2F-140 hand description.
+Robotiq 2F-140 hand description.
 
-    Defines the Robotiq 2F-140 specific joint, link, and metadata configuration
-    while reusing the shared Robotiq base helpers.
+Defines the Robotiq 2F-140 specific joint, link, and metadata configuration
+while reusing the shared Robotiq base helpers.
 """
 
 # BAM
 from bam.descriptions import (
-    JointDescription, LinkDescription,
-    ROBOTIQ_DESCRIPTION_PATH, TAGS
+    JointDescription,
+    LinkDescription,
+    ROBOTIQ_DESCRIPTION_PATH,
+    TAGS,
 )
 from .robotiq import (
     RobotiqArgs,
@@ -29,7 +31,9 @@ from dataclasses import dataclass, field
 @dataclass
 class Robotiq2F140Joints(Joints):
     finger_joint: JointDescription = field(
-        default_factory=lambda: JointDescription(name="finger_joint", initial_position=0.0)
+        default_factory=lambda: JointDescription(
+            name="finger_joint", initial_position=0.0
+        )
     )
     right_outer_knuckle_joint: JointDescription = field(
         default_factory=lambda: JointDescription(
@@ -66,7 +70,9 @@ class Robotiq2F140Joints(Joints):
 @dataclass
 class Robotiq2F140Links(Links):
     robotiq_base_link: LinkDescription = field(
-        default_factory=lambda: LinkDescription(display=True, scene_obj_collision=True, tags=[TAGS.hand_to_arm_mount])
+        default_factory=lambda: LinkDescription(
+            display=True, scene_obj_collision=True, tags=[TAGS.hand_to_arm_mount]
+        )
     )
     left_outer_knuckle: LinkDescription = field(
         default_factory=lambda: LinkDescription(scene_obj_collision=True)
@@ -100,13 +106,17 @@ class Robotiq2F140Links(Links):
     )
     # tcp_tool: LinkDescription = field(default_factory=lambda: LinkDescription(is_frame=True))
     tcp_world: LinkDescription = field(
-        default_factory=lambda: LinkDescription(is_frame=True, display=True, tags=[TAGS.tcp_world])
+        default_factory=lambda: LinkDescription(
+            is_frame=True, display=True, tags=[TAGS.tcp_world]
+        )
     )
+
 
 @dataclass
 class Robotiq2F140Info(RobotiqInfo):
     name: str = "robotiq_2f_140"
     sku: str = "2f_140"
+
 
 @dataclass
 class Robotiq2F140Args(RobotiqArgs):
@@ -115,15 +125,18 @@ class Robotiq2F140Args(RobotiqArgs):
     gripper_max_force: float = 125.0
     gripper_closed_position: float = 0.695
 
+
 @dataclass
 class Robotiq2F140UrdfInfo(RobotiqUrdfInfo):
     macro_path: str = f"{ROBOTIQ_DESCRIPTION_PATH}/urdf/robotiq_2f_140_macro.urdf.xacro"
-    xacro_path: str = f"{ROBOTIQ_DESCRIPTION_PATH}/urdf/robotiq_2f_140_config.urdf.xacro"
+    xacro_path: str = (
+        f"{ROBOTIQ_DESCRIPTION_PATH}/urdf/robotiq_2f_140_config.urdf.xacro"
+    )
+
 
 @dataclass
 class Robotiq2F140(Robotiq):
     """Robotiq 2F-140 parallel jaw gripper."""
-
 
     info: Robotiq2F140Info = field(default_factory=Robotiq2F140Info)
     joints: Robotiq2F140Joints = field(default_factory=Robotiq2F140Joints)
@@ -131,4 +144,3 @@ class Robotiq2F140(Robotiq):
 
     args: Robotiq2F140Args = field(default_factory=Robotiq2F140Args)
     urdf: Robotiq2F140UrdfInfo = field(default_factory=Robotiq2F140UrdfInfo)
-

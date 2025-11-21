@@ -8,12 +8,15 @@ from enum import Enum
 import numpy as np
 
 from typing import TYPE_CHECKING
+
 # from .robot_description import RobotDescription
 
 """
 Idea is to format the data structures for xacro.
 
 """
+
+
 def format_for_xacro(obj) -> dict[str, str]:
     if isinstance(obj, dict):
         return {k: format_for_xacro(v) for k, v in obj.items()}
@@ -25,7 +28,7 @@ def format_for_xacro(obj) -> dict[str, str]:
     if isinstance(obj, (Pose, Transform, PoseStamped, TransformStamped)):
         return {
             "xyz": format_for_xacro(obj.xyz.tolist()),
-            "rpy": format_for_xacro(obj.rpy.tolist())
+            "rpy": format_for_xacro(obj.rpy.tolist()),
         }
 
     if isinstance(obj, JointPositions):
@@ -33,12 +36,12 @@ def format_for_xacro(obj) -> dict[str, str]:
         return {
             "joint_names": format_for_xacro(obj.joint_names),
             "positions": {k: format_for_xacro(v) for k, v in obj.positions.items()},
-            "default_positions": obj.default_positions
+            "default_positions": obj.default_positions,
         }
 
-    if isinstance(obj, ConfigFileInfo): # return so you can easily load into xacro arg
+    if isinstance(obj, ConfigFileInfo):  # return so you can easily load into xacro arg
         return obj.path
-        
+
     # Do special procesing above ^^^, before turning dataclass into dict
 
     if hasattr(obj, "__dataclass_fields__"):
@@ -49,7 +52,7 @@ def format_for_xacro(obj) -> dict[str, str]:
         result = {}
         for field_name in obj.__dict__:
             # Skip private fields
-            if field_name.startswith('_'):
+            if field_name.startswith("_"):
                 continue
             field_value = getattr(obj, field_name)
             result[field_name] = format_for_xacro(field_value)
@@ -65,10 +68,10 @@ def format_for_xacro(obj) -> dict[str, str]:
         # Check if all elements are simple types (can be converted directly to string)
         simple_types = (int, float, str, bool, np.float32, np.float64, Enum)
         all_simple = all(isinstance(item, simple_types) for item in obj)
-        
+
         if all_simple and len(obj) > 0:
             # Convert simple list/tuple to space-separated string for xacro
-            return ' '.join(map(str, obj))
+            return " ".join(map(str, obj))
         else:
             return [format_for_xacro(item) for item in obj]
     if isinstance(obj, int):

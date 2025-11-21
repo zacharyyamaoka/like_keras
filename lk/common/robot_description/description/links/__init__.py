@@ -1,5 +1,5 @@
 """
-    Link description exports.
+Link description exports.
 """
 
 # BAM
@@ -11,4 +11,3 @@ from .material import Material
 from .physical_properties import PhysicalProperties
 from .rgba import RGBA
 from .visual_properties import VisualProperties
-

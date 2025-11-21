@@ -1,5 +1,5 @@
 """
-    Flat import facade for BAM message helpers.
+Flat import facade for BAM message helpers.
 """
 
 # BAM
@@ -109,7 +109,7 @@ from .ros import (
 )
 
 # Visual Objects
-# from . import visual_objects 
+# from . import visual_objects
 # from .visual_objects import (
 #     VisualObject,
 #     VisualId,

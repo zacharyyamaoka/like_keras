@@ -21,9 +21,10 @@ Downsides, is perhaps not as clear with the classes...
 
 However for some of them it does make sense I think...
 """
+
+
 @dataclass
 class PoseMsg(RosMsg):
-
 
     # To unify both Transform and Pose we can use a generic getter/setter
     @property
@@ -49,7 +50,6 @@ class PoseMsg(RosMsg):
         klass.quat = Quaternion.random(rpy_lower, rpy_upper)
         return klass
 
-
     @classmethod
     def from_matrix(cls, matrix: np.ndarray):
         klass = cls()
@@ -68,7 +68,6 @@ class PoseMsg(RosMsg):
         T[:3, 3] = self.pos.to_numpy()
         return T
 
-
     @classmethod
     def from_list(cls, list: list[float], euler=True):
         klass = cls()
@@ -83,7 +82,6 @@ class PoseMsg(RosMsg):
     def to_list(self, euler=True) -> List[float]:
         return [*self.pos.to_list(), *self.quat.to_list(euler)]
 
-
     @classmethod
     def from_xyzrpy(cls, xyz: list[float], rpy: list[float]):
         return cls.from_list(list=list(xyz) + list(rpy), euler=True)
@@ -94,7 +92,7 @@ class PoseMsg(RosMsg):
     def to_xyzrpy(self) -> tuple[list[float], list[float]]:
         return self.pos.to_list(), self.quat.to_list(euler=True)
 
-    def interpolate(self, target: 'PoseMsg', fraction: float, in_place=False):
+    def interpolate(self, target: "PoseMsg", fraction: float, in_place=False):
         pos = self.pos.lerp(target.pos, fraction)
         quat = self.quat.slerp(target.quat, fraction)
 
@@ -108,12 +106,14 @@ class PoseMsg(RosMsg):
         klass.quat = quat
         return klass
 
-    def difference(self, target: 'PoseMsg') -> tuple[float, float]:
+    def difference(self, target: "PoseMsg") -> tuple[float, float]:
         distance = self.pos.distance(target.pos)
         vec, theta = self.quat.axangle_diff(target.quat)
         return distance, theta
 
-    def offset(self, xyz=[0.,0.,0.], rpy=[0.,0.,0.], local=False, in_place=False):
+    def offset(
+        self, xyz=[0.0, 0.0, 0.0], rpy=[0.0, 0.0, 0.0], local=False, in_place=False
+    ):
         matrix = xyzrpy_offset(self.to_matrix(), xyz, rpy, local=local)
         if in_place:
             return self.set_matrix(matrix)
@@ -121,12 +121,14 @@ class PoseMsg(RosMsg):
         return type(self).from_matrix(matrix)
 
     def flip_z(self, in_place=False):
-        return self.offset(xyz=[0.,0.,0.], rpy=[np.pi, 0., 0.], local=True, in_place=in_place)
+        return self.offset(
+            xyz=[0.0, 0.0, 0.0], rpy=[np.pi, 0.0, 0.0], local=True, in_place=in_place
+        )
 
     @property
     def xyz(self) -> np.ndarray:
         return self.pos.to_numpy()
-    
+
     @xyz.setter
     def xyz(self, value: list | tuple | np.ndarray):
         self.pos = type(self.pos).from_list(value)
@@ -134,7 +136,7 @@ class PoseMsg(RosMsg):
     @property
     def rpy(self) -> np.ndarray:
         return np.array(self.quat.to_list(euler=True, wxyz=False))
-    
+
     @rpy.setter
     def rpy(self, value: list | tuple | np.ndarray):
         self.quat = Quaternion.from_list(value, euler=True)
@@ -150,7 +152,7 @@ class PoseMsg(RosMsg):
     def xyzrpy_str(self) -> str:
         xyzrpy = self.to_list()
         return f"xyz: {xyzrpy[:3]}, rpy: {np.rad2deg(xyzrpy[3:])}"
-    
+
 
 if __name__ == "__main__":
     pass

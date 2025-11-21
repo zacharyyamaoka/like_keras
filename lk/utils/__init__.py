@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 """
-    Public exports for the bam.utils package.
-    
-    Very selectively import only the most commonly used utilities.
-    For specific utilities, import directly: bam.utils.pointcloud, etc.
+Public exports for the bam.utils package.
+
+Very selectively import only the most commonly used utilities.
+For specific utilities, import directly: bam.utils.pointcloud, etc.
 """
 from tf_transformations import *
 
@@ -20,6 +20,7 @@ from .pin_utils import (
     PinRobotModel,
     generate_srdf_from_urdf,
 )
+
 try:
     from .pin_utils import PinViser, PinMeshcat
 except ImportError:
@@ -35,10 +36,8 @@ from lk.utils.plot_graph import (
     system_to_mermaid,
     plot_system,
     system_to_cytoscape_elements,
-    launch_interactive_viewer
+    launch_interactive_viewer,
 )
 
 
 # PYTHON
-
-

@@ -41,14 +41,22 @@ Ultimately we will ne to turn the cartesian into joint info at each waypoint for
 I like how I can collect all the information in this one data struct, the cartesian and joint info
 """
 
+
 @dataclass
 class WaypointAction(MdpAction):
 
-    start_state: JointState = field(default_factory=JointState) # Optional - add more information regarding starting state
-    context: WaypointContext = field(default_factory=WaypointContext) # Global parameters not associated with a particular waypoint. helpful to avoid repeating parameters in each waypoint.
-    waypoints: list[PoseStamped] = field(default_factory=list) # List of waypoints to reach
-    params: list[WaypointParams] = field(default_factory=list) # List of parameters associated with each waypoint
-
+    start_state: JointState = field(
+        default_factory=JointState
+    )  # Optional - add more information regarding starting state
+    context: WaypointContext = field(
+        default_factory=WaypointContext
+    )  # Global parameters not associated with a particular waypoint. helpful to avoid repeating parameters in each waypoint.
+    waypoints: list[PoseStamped] = field(
+        default_factory=list
+    )  # List of waypoints to reach
+    params: list[WaypointParams] = field(
+        default_factory=list
+    )  # List of parameters associated with each waypoint
 
     def is_sync_required(self) -> bool:
         for p in self.params:
@@ -69,26 +77,36 @@ class WaypointAction(MdpAction):
         #     print(f"joint_angles: {param.arm.joint_angles} {type(param.arm.joint_angles)} + {param.hand.joint_angles} {type(param.hand.joint_angles)}")
 
         return [
-            wp.arm.joint_angles.extend(wp.hand.joint_angles) or wp.arm.joint_angles if use_hand else wp.arm.joint_angles
+            (
+                wp.arm.joint_angles.extend(wp.hand.joint_angles) or wp.arm.joint_angles
+                if use_hand
+                else wp.arm.joint_angles
+            )
             for wp in self.params
         ]
 
-    def get_waypoint_joint_limits(self, use_hand: bool = True, skip_0: bool = True) -> list[JointLimits]:
+    def get_waypoint_joint_limits(
+        self, use_hand: bool = True, skip_0: bool = True
+    ) -> list[JointLimits]:
         """Extract kinematic limits for each section between waypoints.
-        
+
         Returns a list of JointLimits, one for each waypoint (combined arm + hand if use_hand=True).
         If no limits are specified in waypoints, returns empty list.
         """
         section_limits = []
-        
+
         for i, wp in enumerate(self.params):
             if skip_0 and i == 0:
                 continue
-            
+
             arm, hand = wp.arm, wp.hand
-            
+
             # Use JointLimits.extend() helper to combine arm and hand limits
-            combined_limits = arm.joint_limits.extend(hand.joint_limits) if use_hand else arm.joint_limits
+            combined_limits = (
+                arm.joint_limits.extend(hand.joint_limits)
+                if use_hand
+                else arm.joint_limits
+            )
             section_limits.append(combined_limits)
-        
+
         return section_limits

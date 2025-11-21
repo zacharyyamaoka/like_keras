@@ -8,6 +8,7 @@ from ..std_msgs.header import Header
 from .region_of_interest import RegionOfInterest
 from ..ros_msg import RosMsg
 
+
 @dataclass
 class CameraInfo(RosMsg):
     def __init__(self):
@@ -18,10 +19,10 @@ class CameraInfo(RosMsg):
 
         # Calibration parameters
         self.distortion_model: str = ""
-        self.d: List[float] = []           # Distortion coefficients
-        self.k: List[float] = [0.0] * 9     # Intrinsic matrix
-        self.r: List[float] = [0.0] * 9     # Rectification matrix
-        self.p: List[float] = [0.0] * 12    # Projection matrix
+        self.d: List[float] = []  # Distortion coefficients
+        self.k: List[float] = [0.0] * 9  # Intrinsic matrix
+        self.r: List[float] = [0.0] * 9  # Rectification matrix
+        self.p: List[float] = [0.0] * 12  # Projection matrix
 
         # Operational parameters
         self.binning_x: int = 0
@@ -33,13 +34,11 @@ class CameraInfo(RosMsg):
             "header": self.header.to_dict(),
             "height": self.height,
             "width": self.width,
-
             "distortion_model": self.distortion_model,
             "d": self.d,
             "k": self.k,
             "r": self.r,
             "p": self.p,
-
             "binning_x": self.binning_x,
             "binning_y": self.binning_y,
             "roi": self.roi.to_dict(),

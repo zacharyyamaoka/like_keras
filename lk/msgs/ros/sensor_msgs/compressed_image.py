@@ -4,6 +4,7 @@ from typing import List
 
 from ..std_msgs.header import Header
 
+
 class CompressedImage:
     def __init__(self):
         self.header: Header = Header()
@@ -16,7 +17,7 @@ class CompressedImage:
             "format": self.format,
             "data": self.data,
         }
-    
+
     @classmethod
     def from_dict(cls, d: dict):
         obj = cls()

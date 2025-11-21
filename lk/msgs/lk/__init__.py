@@ -1,5 +1,3 @@
-
-
 from .action import (
     ActuatorCommand,
     ActuatorState,

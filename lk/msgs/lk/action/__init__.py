@@ -1,5 +1,5 @@
 """
-    Action-layer message helpers for trajectories, limits, and waypoints.
+Action-layer message helpers for trajectories, limits, and waypoints.
 """
 
 # Re-export common types for convenience
@@ -12,7 +12,6 @@ from .mdp_action import MdpAction
 from .numpy_trajectory import NumpyTrajectory
 from .path_params import PathParams
 from .path_tolerance import PathTolerance
-
 
 
 from .actuator import (
@@ -30,4 +29,3 @@ from .waypoint import (
     WaypointContext,
     WaypointParams,
 )
-

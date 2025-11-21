@@ -1,7 +1,3 @@
 """
-    World model representation and state estimation
+World model representation and state estimation
 """
-
-
-
-

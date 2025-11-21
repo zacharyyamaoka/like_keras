@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 """
-    Debug Composite URDF Generation
-    
-    Saves the generated URDF to a file for inspection.
+Debug Composite URDF Generation
+
+Saves the generated URDF to a file for inspection.
 """
 
 # BAM
@@ -25,14 +25,14 @@ mount_joint = JointDescription(
         xyz=[0, 0, 0],
         rpy=[0, 0, 0],
         frame_id=arm.hand_mount,
-        child_frame_id=hand.arm_mount
-    )
+        child_frame_id=hand.arm_mount,
+    ),
 )
 
 composite = Composite(
     descriptions=[arm, hand],
     mounting_joints=[mount_joint],
-    add_timestamp=True  # Force unique config to avoid reusing stale files
+    add_timestamp=True,  # Force unique config to avoid reusing stale files
 )
 
 print(f"\nComposite created:")
@@ -45,7 +45,7 @@ urdf_string = composite.get_urdf_xml()
 
 # Save to file
 urdf_file = "/home/bam/bam_ws/src/bam_common/bam_descriptions/urdf/composite/debug_composite.urdf"
-with open(urdf_file, 'w') as f:
+with open(urdf_file, "w") as f:
     f.write(urdf_string)
 
 print(f"Saved URDF to: {urdf_file}")
@@ -72,4 +72,3 @@ if "base_link" in urdf_string:
 print(f"\nYou can inspect the URDF at: {urdf_file}")
 print("To validate with urdf_parser:")
 print(f"  check_urdf {urdf_file}")
-

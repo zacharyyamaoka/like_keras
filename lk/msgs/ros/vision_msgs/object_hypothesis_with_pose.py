@@ -14,7 +14,7 @@ class ObjectHypothesisWithPose:
             "hypothesis": self.hypothesis.to_dict(),
             "pose": self.pose.to_dict(),
         }
-    
+
     @classmethod
     def from_dict(cls, d: dict):
         obj = cls()

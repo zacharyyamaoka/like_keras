@@ -6,6 +6,7 @@ from ..builtin_interfaces import Duration
 
 # https://docs.ros2.org/foxy/api/trajectory_msgs/msg/JointTrajectory.html
 
+
 @dataclass
 class JointTrajectory:
     header: Header = field(default_factory=Header)
@@ -18,12 +19,11 @@ class JointTrajectory:
         time_from_start: list[float],
         header: Header = None,
         joint_names: list[str] = None,
-
         positions: list[list[float]] = None,
         velocities: list[list[float]] = None,
         accelerations: list[list[float]] = None,
         effort: list[list[float]] = None,
-    ) -> 'JointTrajectory':
+    ) -> "JointTrajectory":
 
         points = []
 

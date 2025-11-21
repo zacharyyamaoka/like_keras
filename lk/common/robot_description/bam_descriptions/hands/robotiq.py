@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 
 """
-    Shared Robotiq hand definitions and convenience factories.
+Shared Robotiq hand definitions and convenience factories.
 
-    Provides the generic Robotiq metadata, URDF configuration, and the
-    convenience factories used across Robotiq variants.
+Provides the generic Robotiq metadata, URDF configuration, and the
+convenience factories used across Robotiq variants.
 """
 
 from __future__ import annotations
 
 # BAM
 from bam.descriptions import (
-    UrdfInfo, RobotInfo,
-    BAM_DESCRIPTIONS_PATH, ROBOTIQ_DESCRIPTION_PATH, ROBOTIQ_MESH_PACKAGE_PATH, TAGS, HandArgs, RobotDescription
+    UrdfInfo,
+    RobotInfo,
+    BAM_DESCRIPTIONS_PATH,
+    ROBOTIQ_DESCRIPTION_PATH,
+    ROBOTIQ_MESH_PACKAGE_PATH,
+    TAGS,
+    HandArgs,
+    RobotDescription,
 )
 
 
@@ -22,15 +28,18 @@ from typing import Any, Optional
 
 import os
 
+
 @dataclass
 class RobotiqUrdfInfo(UrdfInfo):
     """URDF information for Robotiq grippers."""
 
     macro_path: str = ""
     xacro_path: str = ""
-    abs_package_dirs: dict[str, str] = field(default_factory=lambda: {
-        "robotiq_description": ROBOTIQ_MESH_PACKAGE_PATH,
-    })
+    abs_package_dirs: dict[str, str] = field(
+        default_factory=lambda: {
+            "robotiq_description": ROBOTIQ_MESH_PACKAGE_PATH,
+        }
+    )
 
 
 @dataclass
@@ -41,7 +50,10 @@ class RobotiqInfo(RobotInfo):
     type: str = "Robotiq"
     sku: str = ""
     version: str = "0.0.0"
-    save_dir: str = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(os.path.basename(__file__))[0]}_configs")
+    save_dir: str = os.path.join(
+        os.path.dirname(__file__),
+        f"{os.path.splitext(os.path.basename(__file__))[0]}_configs",
+    )
 
 
 @dataclass
@@ -85,8 +97,8 @@ class Robotiq(RobotDescription):
         from .robotiq_2f140 import Robotiq2F140, Robotiq2F140Args, Robotiq2F140Info
 
         return Robotiq2F140(
-            info = Robotiq2F140Info(prefix=prefix),
-            args = Robotiq2F140Args(),
+            info=Robotiq2F140Info(prefix=prefix),
+            args=Robotiq2F140Args(),
             **kwargs,
         )
 
@@ -98,8 +110,7 @@ class Robotiq(RobotDescription):
         from .robotiq_2f85 import Robotiq2F85, Robotiq2F85Args, Robotiq2F85Info
 
         return Robotiq2F85(
-            info = Robotiq2F85Info(prefix=prefix),
-            args = Robotiq2F85Args(),
+            info=Robotiq2F85Info(prefix=prefix),
+            args=Robotiq2F85Args(),
             **kwargs,
         )
-

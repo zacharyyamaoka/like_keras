@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Parametric 2D path generators plus derivative helpers.
+Parametric 2D path generators plus derivative helpers.
 """
 
 # PYTHON
@@ -70,7 +70,13 @@ def plot_path(path: Iterable[Iterable[float]]) -> None:
     plt.figure(figsize=(6, 6))
     plt.plot(pts[:, 0], pts[:, 1], "o-", markersize=0.01)
     for idx, (x_val, y_val) in enumerate(pts):
-        plt.annotate(str(idx), (x_val, y_val), textcoords="offset points", xytext=(2, 2), fontsize=6)
+        plt.annotate(
+            str(idx),
+            (x_val, y_val),
+            textcoords="offset points",
+            xytext=(2, 2),
+            fontsize=6,
+        )
 
     plt.gca().set_aspect("equal", adjustable="box")
     plt.xlabel("X")
@@ -80,7 +86,9 @@ def plot_path(path: Iterable[Iterable[float]]) -> None:
     plt.show()
 
 
-def centered_differences(path: Iterable[Iterable[float]], dt: float = 0.1) -> np.ndarray:
+def centered_differences(
+    path: Iterable[Iterable[float]], dt: float = 0.1
+) -> np.ndarray:
     """Compute centered finite difference derivative for path samples."""
     path_arr = np.asarray(list(path), dtype=float)
     count, _ = path_arr.shape
@@ -97,5 +105,10 @@ def centered_differences(path: Iterable[Iterable[float]], dt: float = 0.1) -> np
     return diffs
 
 
-__all__ = ["snake_path", "ellipse_path", "round_trip", "plot_path", "centered_differences"]
-
+__all__ = [
+    "snake_path",
+    "ellipse_path",
+    "round_trip",
+    "plot_path",
+    "centered_differences",
+]

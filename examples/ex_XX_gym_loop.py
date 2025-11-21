@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 """
-    How can we describe a cart pole system in as few lines as possible?
+How can we describe a cart pole system in as few lines as possible?
 
-    Follow gym api naming: EnvironmentName-v[VersionNumber]
+Follow gym api naming: EnvironmentName-v[VersionNumber]
 
-    Actually to make this a general purpose library we just need to define a really nice system to compose components together...
+Actually to make this a general purpose library we just need to define a really nice system to compose components together...
 """
 
 # BAM
@@ -24,13 +24,20 @@ Various examples going from simple to more complex with fucntional sytle
 - Good default principles, it works without passing in any configuration
 
 """
+
+
 def generate_system() -> System:
 
     node = Node(name="node")
 
     agent_env = AgentEnv.from_node(node)
-    
-    return System(nodes=[node], components=[agent_env], outputs=[agent_env.out.action, agent_env.out.obs])
+
+    return System(
+        nodes=[node],
+        components=[agent_env],
+        outputs=[agent_env.out.action, agent_env.out.obs],
+    )
+
 
 def generate_system() -> System:
 
@@ -39,19 +46,20 @@ def generate_system() -> System:
 
     agent = Agent.from_node(agent_node)
     env = Env.from_node(env_node)
-    
 
     action = agent(env.obs)
     obs = env(action)
 
-    return System(nodes=[agent_node, env_node], components=[agent, env], outputs=[action, obs])
+    return System(
+        nodes=[agent_node, env_node], components=[agent, env], outputs=[action, obs]
+    )
 
 
 def generate_system() -> System:
 
     # Define nodes
     # Allows components to optionally make a new node from this node, to be in their own process
-    # Otherwise then this becomes a bit more messy... but mabye thats important? 
+    # Otherwise then this becomes a bit more messy... but mabye thats important?
     sensor_node = Node(name="sensors", allow_splitting=True)
     world_model_node = Node(name="world_model")
     actor_node = Node(name="actor")
@@ -69,7 +77,11 @@ def generate_system() -> System:
     action = actor(state)
     feedback = actuators(action)
 
-    return System(nodes=[sensor_node, world_model_node, actor_node, actuators_node], components=[sensors, world_model, actor, actuators], outputs=[sensors.obs, state, action, feedback])
+    return System(
+        nodes=[sensor_node, world_model_node, actor_node, actuators_node],
+        components=[sensors, world_model, actor, actuators],
+        outputs=[sensors.obs, state, action, feedback],
+    )
 
 
 # config has everything we need to remake a class. Apply that recursively You can basically many an aribtuarily sytem with just
@@ -98,20 +110,17 @@ if __name__ == "__main__":
         action = actor(state)
         feedback = actuators(action)
 
-
-
     from .gym_configs.gym1_config import Gym1Config
-    System.from_config(Gym1Config)
 
+    System.from_config(Gym1Config)
 
     # We can do it in a static graph way.
     system = generate_system()
-    system.launch() # this blocks until ctrl+c is pressed
+    system.launch()  # this blocks until ctrl+c is pressed
 
     system.shutdown()
 
     # If you really want it to be static you can liekyl just define everything in a system config... its just like a dora dataflow... all the inputs outputs etc..?
-
 
     # internally env has a
 

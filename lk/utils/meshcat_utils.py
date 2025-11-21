@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Helpers for displaying Open3D geometries inside MeshCat.
+Helpers for displaying Open3D geometries inside MeshCat.
 """
 
 # PYTHON
@@ -69,7 +69,11 @@ def _convert_line_set(line_set: o3d.geometry.LineSet, viz, name: str) -> None:
     line_points = np.array(line_points).T
 
     geometry = g.PointsGeometry(line_points)
-    color_hex = int(avg_color[0] * 255) * 0x10000 + int(avg_color[1] * 255) * 0x100 + int(avg_color[2] * 255)
+    color_hex = (
+        int(avg_color[0] * 255) * 0x10000
+        + int(avg_color[1] * 255) * 0x100
+        + int(avg_color[2] * 255)
+    )
     material = g.LineBasicMaterial(color=color_hex, linewidth=2)
     viz[name].set_object(g.LineSegments(geometry, material))
 
@@ -108,10 +112,16 @@ def draw_waypoint_action_meshcat(
             viz[frame_name].set_transform(transform)
 
     if point_radius > 0.0:
-        color_hex = int(point_color[0] * 255) * 0x10000 + int(point_color[1] * 255) * 0x100 + int(point_color[2] * 255)
+        color_hex = (
+            int(point_color[0] * 255) * 0x10000
+            + int(point_color[1] * 255) * 0x100
+            + int(point_color[2] * 255)
+        )
         for idx, transform in enumerate(waypoint_matrices):
             sphere_name = f"{name_prefix}/points/point_{idx}"
-            viz[sphere_name].set_object(g.Sphere(point_radius), g.MeshLambertMaterial(color=color_hex))
+            viz[sphere_name].set_object(
+                g.Sphere(point_radius), g.MeshLambertMaterial(color=color_hex)
+            )
             viz[sphere_name].set_transform(transform)
 
     if show_lines and len(waypoint_matrices) > 1:
@@ -121,15 +131,20 @@ def draw_waypoint_action_meshcat(
             line_points.append(waypoint_matrices[idx + 1][:3, 3])
         line_points = np.array(line_points).T
         geometry = g.PointsGeometry(line_points)
-        color_hex = int(line_color[0] * 255) * 0x10000 + int(line_color[1] * 255) * 0x100 + int(line_color[2] * 255)
+        color_hex = (
+            int(line_color[0] * 255) * 0x10000
+            + int(line_color[1] * 255) * 0x100
+            + int(line_color[2] * 255)
+        )
         material = g.LineBasicMaterial(color=color_hex, linewidth=2)
         viz[f"{name_prefix}/lines"].set_object(g.LineSegments(geometry, material))
 
     if show_gripper:
         print("[WARNING] Gripper visualization not yet implemented in MeshCat version")
 
-    print(f"[DISPLAYED] WaypointAction with {len(waypoint_matrices)} waypoints in MeshCat")
+    print(
+        f"[DISPLAYED] WaypointAction with {len(waypoint_matrices)} waypoints in MeshCat"
+    )
 
 
 __all__ = ["o3d_to_meshcat", "draw_waypoint_action_meshcat"]
-

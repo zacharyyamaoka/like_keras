@@ -4,7 +4,7 @@ from .actuator.actuator_trajectory import ActuatorTrajectory
 
 
 @dataclass
-class MdpAction:    
+class MdpAction:
 
     traj: ActuatorTrajectory = field(default_factory=ActuatorTrajectory)
 

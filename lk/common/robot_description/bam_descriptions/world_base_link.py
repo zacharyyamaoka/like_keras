@@ -1,21 +1,26 @@
 #!/usr/bin/env python3
 
 """
-    World Base Link Robot Description
+World Base Link Robot Description
 
-    Creates a reusable RobotDescription for mounting robots to the world frame.
-    This acts like a Python xacro macro - generates world_link, base_link, and
-    the joints connecting them to a base_mount link.
+Creates a reusable RobotDescription for mounting robots to the world frame.
+This acts like a Python xacro macro - generates world_link, base_link, and
+the joints connecting them to a base_mount link.
 """
 
 # BAM
 from bam.descriptions import (
-    RobotDescription, Links, Joints,
-    LinkDescription, JointDescription, RobotInfo
+    RobotDescription,
+    Links,
+    Joints,
+    LinkDescription,
+    JointDescription,
+    RobotInfo,
 )
 from bam.msgs.ros_msgs import TransformStamped
 from typing import Optional
 import os
+
 
 class WorldBaseLink(RobotDescription):
     """RobotDescription for world_link, base_link, and connecting joints."""
@@ -28,16 +33,16 @@ class WorldBaseLink(RobotDescription):
         T_base_link_to_base_mount: Optional[TransformStamped] = None,
         prefix: Optional[str] = None,
         robot_info: Optional[RobotInfo] = None,
-    ) -> 'WorldBaseLink':
+    ) -> "WorldBaseLink":
         """Create a WorldBaseLink RobotDescription.
-        
+
         Args:
             base_mount: Name of the base mount link (required, first parameter)
             T_world_to_base_link: Transform from world to base_link (optional, defaults to identity)
             T_base_link_to_base_mount: Transform from base_link to base_mount (optional, defaults to identity)
             prefix: Optional prefix string. If provided and robot_info is None, sets prefix on new RobotInfo.
             robot_info: Optional RobotInfo. If None, creates a new RobotInfo.
-        
+
         Returns:
             WorldBaseLink containing world_link, base_link, and connecting joints
         """
@@ -57,7 +62,7 @@ class WorldBaseLink(RobotDescription):
                 frame_id=world_link.name,
                 child_frame_id=base_link.name,
             )
-        
+
         world_joint = JointDescription(
             name="world_to_base_link",
             type="fixed",
@@ -70,7 +75,7 @@ class WorldBaseLink(RobotDescription):
                 frame_id=base_link.name,
                 child_frame_id=base_mount,
             )
-        
+
         base_link_to_base_mount_joint = JointDescription(
             name="base_link_to_base_mount",
             type="fixed",
@@ -91,7 +96,11 @@ class WorldBaseLink(RobotDescription):
         if prefix is not None:
             robot_info.prefix = prefix
 
-        return cls.from_entities(entities, robot_info=robot_info).set_flags(generate_py_xml=True).init_joint_positions()
+        return (
+            cls.from_entities(entities, robot_info=robot_info)
+            .set_flags(generate_py_xml=True)
+            .init_joint_positions()
+        )
 
 
 if __name__ == "__main__":
@@ -99,4 +108,3 @@ if __name__ == "__main__":
 
     print(world_base_link.to_urdf_xml())
     world_base_link.dump_to_file(verbose=True)
-

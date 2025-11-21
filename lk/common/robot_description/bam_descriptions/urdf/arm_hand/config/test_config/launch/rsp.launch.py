@@ -3,5 +3,7 @@ from moveit_configs_utils.launches import generate_rsp_launch
 
 
 def generate_launch_description():
-    moveit_config = MoveItConfigsBuilder("arm_with_hand", package_name="test_config").to_moveit_configs()
+    moveit_config = MoveItConfigsBuilder(
+        "arm_with_hand", package_name="test_config"
+    ).to_moveit_configs()
     return generate_rsp_launch(moveit_config)

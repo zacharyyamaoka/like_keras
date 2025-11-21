@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Convenience helpers for plotting RGB-D + mask tensors.
+Convenience helpers for plotting RGB-D + mask tensors.
 """
 
 # PYTHON
@@ -56,4 +56,3 @@ def plot_rgbd_mask(color: np.ndarray, depth: np.ndarray, mask: np.ndarray) -> No
 
 
 __all__ = ["plot_rgbd_mask"]
-

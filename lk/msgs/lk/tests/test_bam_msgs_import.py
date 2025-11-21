@@ -1,5 +1,5 @@
 """
-    Validate that all exported bam.msgs namespaces provide usable types.
+Validate that all exported bam.msgs namespaces provide usable types.
 """
 
 # PYTHON
@@ -88,8 +88,6 @@ def test_action_types():
     waypoint_params = WaypointParams()
 
 
-
-
 def test_api_types():
     request_header = RequestHeader.create(client_id="tester", frame_id="world")
     response_header = ResponseHeader.create_success(error_msg="ok")
@@ -114,11 +112,10 @@ def test_description_types():
     assert sphere.radius == 0.5
     # Geometry is a Union type, so we can't instantiate it directly
     assert Geometry is not None
-    
+
     # Link types
     material = Material()
-    collision_properties = CollisionProperties(
-    )
+    collision_properties = CollisionProperties()
     inertia = Inertia()
     assert inertia is not None
     inertial_properties = InertialProperties()
@@ -137,7 +134,7 @@ def test_description_types():
     assert physical_properties is not None
     rgba_color = RGBA.red()
     assert rgba_color is not None
-    
+
     # Joint types - all from joints/__init__.py
     joint_calibration = JointCalibration()
     assert joint_calibration is not None
@@ -153,7 +150,7 @@ def test_description_types():
     assert joint_limits is not None
     joint_physics = PerJointPhysics()
     assert joint_physics is not None
-    
+
     # Robot types
     config_file_info = ConfigFileInfo()
     assert config_file_info is not None
@@ -163,14 +160,12 @@ def test_description_types():
     assert srdf_info is not None
     urdf_info = UrdfInfo()
     assert urdf_info is not None
-    
+
     # Scene types
     drop_point = DropPoint()
     assert drop_point is not None
     point_of_interest = PointOfInterest()
     assert point_of_interest is not None
-
-
 
 
 def test_observation_types():
@@ -194,4 +189,3 @@ def test_msg_type():
 if __name__ == "__main__":
 
     pytest.main([__file__])
-

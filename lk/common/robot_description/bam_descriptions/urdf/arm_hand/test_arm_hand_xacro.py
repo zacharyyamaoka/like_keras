@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 """
-    Smoke test: render arm_hand.urdf.xacro with defaults.
-    Fails fast if xacro processing errors occur.
+Smoke test: render arm_hand.urdf.xacro with defaults.
+Fails fast if xacro processing errors occur.
 """
 
 # PYTHON
@@ -27,18 +27,20 @@ def run() -> int:
     ]
 
     print("Running:", " ".join(cmd))
-    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    proc = subprocess.run(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
     if proc.returncode != 0:
         print(proc.stderr)
         return proc.returncode
 
     # Optionally verify some expected link names appear in output
     out = proc.stdout
-    assert "test_eef_link_1" in out or "test_crab_claw_center" in out, "Expected hand links not found in URDF output"
+    assert (
+        "test_eef_link_1" in out or "test_crab_claw_center" in out
+    ), "Expected hand links not found in URDF output"
     return 0
 
 
 if __name__ == "__main__":
     sys.exit(run())
-
-

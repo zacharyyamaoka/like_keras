@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    OS utilities: process management and file operations.
+OS utilities: process management and file operations.
 """
 
 # PYTHON
@@ -55,13 +55,17 @@ def kill_os_processes(name: str, on_kill: Iterable[str] | None = None) -> None:
             print(f"Failed to kill {pid}: {exc}")
 
 
-def get_latest_file(dir_path: str, key: str = None, file_ending: str = None, verbose=True) -> str | None:
+def get_latest_file(
+    dir_path: str, key: str = None, file_ending: str = None, verbose=True
+) -> str | None:
     """Get the latest file in a directory matching optional key and file ending."""
     if not dir_path or not os.path.isdir(dir_path):
         print(f"Save directory {dir_path} does not exist")
         return None
-    
-    files = [f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))]
+
+    files = [
+        f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))
+    ]
     if verbose:
         print(f"Found {len(files)} files in {dir_path}")
         for file in files:
@@ -69,14 +73,16 @@ def get_latest_file(dir_path: str, key: str = None, file_ending: str = None, ver
 
     if key:
         files = [f for f in files if key in f]
-    
+
     if file_ending:
         files = [f for f in files if f.endswith(file_ending)]
-    
+
     if not files:
-        print(f"No matching files found for key: {key}, file ending: {file_ending} in {dir_path}")
+        print(
+            f"No matching files found for key: {key}, file ending: {file_ending} in {dir_path}"
+        )
         return None
-    
+
     latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(dir_path, f)))
     latest_file_path = os.path.join(dir_path, latest_file)
     print(f"Latest file found: {latest_file_path}")
@@ -100,7 +106,9 @@ def remove_old_files(save_dir: str, days_old: int = 7, verbose=False):
             file_last_modified = os.path.getmtime(file_path)
 
             if verbose:
-                print(f"File {file_path} last modified: {datetime.fromtimestamp(file_last_modified)}")
+                print(
+                    f"File {file_path} last modified: {datetime.fromtimestamp(file_last_modified)}"
+                )
 
             if file_last_modified < cutoff:
                 try:
@@ -206,4 +214,3 @@ __all__ = [
     "find_file",
     "collect_all_test_files",
 ]
-

@@ -28,4 +28,6 @@ robot_model = PinRobotModel.from_urdf(description.URDF_PATH, package_dirs)
 
 srdf_path = os.path.join(os.path.dirname(__file__), "example.srdf")
 
-generate_srdf_from_urdf(description.URDF_PATH, package_dirs, srdf_path, num_samples=1000, verbose=True)
+generate_srdf_from_urdf(
+    description.URDF_PATH, package_dirs, srdf_path, num_samples=1000, verbose=True
+)

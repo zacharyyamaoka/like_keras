@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Lightweight Matplotlib helpers for notebook visualizations.
+Lightweight Matplotlib helpers for notebook visualizations.
 """
 
 # PYTHON
@@ -12,7 +12,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def display_image(img: np.ndarray, scale: float = 2.0, title: str | None = None) -> None:
+def display_image(
+    img: np.ndarray, scale: float = 2.0, title: str | None = None
+) -> None:
     """Display an image using Matplotlib with optional scaling."""
     output = img
     if img.ndim == 3:
@@ -85,4 +87,3 @@ def show_heatmap_grid(
 
 
 __all__ = ["display_image", "show_heatmap", "show_heatmap_grid"]
-

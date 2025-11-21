@@ -30,7 +30,8 @@ except ImportError:
 
 # Create module alias in sys.modules for backward compatibility
 import sys
-sys.modules['bam_logger'] = sys.modules[__name__]
+
+sys.modules["bam_logger"] = sys.modules[__name__]
 
 # Configure global logger with sensible defaults
 # Users can override by calling configure() in their scripts
@@ -38,8 +39,7 @@ import os
 
 configure(
     py=True,
-    py_level=os.environ.get('BAM_LOG_LEVEL', 'INFO'),
-    robot_id=os.environ.get('ROBOT_ID', None),
-    include_call_site=True
+    py_level=os.environ.get("BAM_LOG_LEVEL", "INFO"),
+    robot_id=os.environ.get("ROBOT_ID", None),
+    include_call_site=True,
 )
-

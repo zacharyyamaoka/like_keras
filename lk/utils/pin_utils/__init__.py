@@ -9,7 +9,10 @@
 
 from .pin_robot_model import PinRobotModel
 from .pin_collision import PinCollision
-from .compute_default_collisions import compute_default_collisions, generate_srdf_from_urdf
+from .compute_default_collisions import (
+    compute_default_collisions,
+    generate_srdf_from_urdf,
+)
 from .pin_meshcat import PinMeshcat
 from .frame_transformer import FrameTransformer, MockFrameTransformer
 from .ik_frame_offset import IkFrameOffset, MockIkFrameOffset

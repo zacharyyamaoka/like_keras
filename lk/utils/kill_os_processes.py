@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Process discovery and force-kill helpers.
+Process discovery and force-kill helpers.
 """
 
 # PYTHON
@@ -52,4 +52,3 @@ def kill_os_processes(name: str, on_kill: Iterable[str] | None = None) -> None:
 
 
 __all__ = ["find_os_processes", "kill_process", "kill_os_processes"]
-

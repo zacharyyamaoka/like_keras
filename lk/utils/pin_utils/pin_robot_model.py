@@ -1,5 +1,3 @@
-
-
 # BAM
 
 from ..xacro_utils import xacrodoc_from_file, xml_from_xacro
@@ -30,19 +28,27 @@ The issue is that the pin.Model is not really that pythonic, so this is a wrappe
 Ok This is just a light weight wrapper that provides basic URDF functions...
 """
 
-def transpose_q_by_name(new_name_to_joint_index: dict[str, int], new_q: np.ndarray, name_to_joint_index_old: dict[str, int], old_q: np.ndarray) -> np.ndarray:
+
+def transpose_q_by_name(
+    new_name_to_joint_index: dict[str, int],
+    new_q: np.ndarray,
+    name_to_joint_index_old: dict[str, int],
+    old_q: np.ndarray,
+) -> np.ndarray:
     for name, index in new_name_to_joint_index.items():
         if name in name_to_joint_index_old:
             new_q[index] = old_q[name_to_joint_index_old[name]]
     return new_q
 
 
-class PinRobotModel():
+class PinRobotModel:
 
     # CONSTRUCTORS
 
     @classmethod
-    def from_robot_description(cls, description: 'RobotDescription', mimic=True, verbose=False):
+    def from_robot_description(
+        cls, description: "RobotDescription", mimic=True, verbose=False
+    ):
         rd = description
         # Config file is automatically dumped when needed via get_config_file() in to_urdf_xml()
 
@@ -54,11 +60,13 @@ class PinRobotModel():
         #     print(f"{key}: {value}")
 
         with rd.get_temp_urdf_path() as urdf_path:
-            klass = cls.from_urdf(urdf_path, rd.urdf.abs_package_dirs, mimic=mimic, verbose=verbose)
+            klass = cls.from_urdf(
+                urdf_path, rd.urdf.abs_package_dirs, mimic=mimic, verbose=verbose
+            )
 
         # if rd.lock_joints:
         #     return klass.robot_wrapper.buildReducedRobot(rd.get_lock_joint_names(), np.array(rd.q_locked))
-        
+
         return klass
 
     @classmethod
@@ -68,22 +76,36 @@ class PinRobotModel():
         return cls(robot_wrapper)
 
     @classmethod
-    def from_xacro(cls, xacro_path: str, xacro_args: dict, abs_package_dirs: dict[str, str], mimic=True, resolve_packages=False, verbose=False):
+    def from_xacro(
+        cls,
+        xacro_path: str,
+        xacro_args: dict,
+        abs_package_dirs: dict[str, str],
+        mimic=True,
+        resolve_packages=False,
+        verbose=False,
+    ):
 
-        urdf_xml = xml_from_xacro(xacro_path, xacro_args, resolve_packages, abs_package_dirs)
+        urdf_xml = xml_from_xacro(
+            xacro_path, xacro_args, resolve_packages, abs_package_dirs
+        )
 
         with temp_urdf_file(urdf_xml) as urdf_path:
-            return cls.from_urdf(urdf_path, abs_package_dirs, mimic=mimic, verbose=verbose)
-  
+            return cls.from_urdf(
+                urdf_path, abs_package_dirs, mimic=mimic, verbose=verbose
+            )
 
     @classmethod
-    def from_urdf(cls, urdf_path: str, abs_package_dirs: dict[str, str], mimic=True, verbose=False):
+    def from_urdf(
+        cls, urdf_path: str, abs_package_dirs: dict[str, str], mimic=True, verbose=False
+    ):
 
         package_dirs = list(abs_package_dirs.values())
-        model, collision_model, visual_model = pin.buildModelsFromUrdf(urdf_path, package_dirs, mimic=mimic, verbose=verbose)
+        model, collision_model, visual_model = pin.buildModelsFromUrdf(
+            urdf_path, package_dirs, mimic=mimic, verbose=verbose
+        )
         robot_wrapper = RobotWrapper(model, collision_model, visual_model)
         return cls(robot_wrapper)
-
 
     def __init__(self, robot_wrapper: RobotWrapper):
         self.robot_wrapper = robot_wrapper
@@ -121,7 +143,7 @@ class PinRobotModel():
             if frame.type == pin.FrameType.FIXED_JOINT:
                 fixed_joint_names.append(frame.name)
         return fixed_joint_names
-    
+
     def get_rotating_joint_names(self) -> list[str]:
         """Get list of all rotating joint names (JOINT type - revolute, continuous, prismatic)."""
         rotating_joint_names = []
@@ -129,14 +151,14 @@ class PinRobotModel():
             if frame.type == pin.FrameType.JOINT:
                 rotating_joint_names.append(frame.name)
         return rotating_joint_names
-    
+
     def get_all_joint_names(self) -> list[str]:
         """Get list of all joint names (both rotating and fixed joints)."""
         return self.get_rotating_joint_names() + self.get_fixed_joint_names()
-    
+
     def get_joint_frame_names(self) -> list[str]:
         """Get list of all joint frame names (both JOINT and FIXED_JOINT types).
-        
+
         Alias for get_all_joint_names() for backwards compatibility.
         """
         return self.get_all_joint_names()
@@ -148,10 +170,10 @@ class PinRobotModel():
             if frame.type == pin.FrameType.BODY:
                 link_frames.append(frame.name)
         return link_frames
-    
+
     def get_all_link_names(self) -> list[str]:
         """Get list of all link names (BODY type).
-        
+
         Alias for get_link_frame_names() for consistency with get_all_joint_names().
         """
         return self.get_link_frame_names()
@@ -164,13 +186,12 @@ class PinRobotModel():
                 op_frames.append(frame.name)
         return op_frames
 
-
     # FRAMES
     def frames_exists(self, frame_names: str | list[str]) -> bool:
 
         if isinstance(frame_names, str):
             frame_names = [frame_names]
-        
+
         found_results = []
         for frame_name in frame_names:
             if self.model.existFrame(frame_name):
@@ -180,7 +201,7 @@ class PinRobotModel():
                 found_results.append(False)
 
         return all(found_results)
-    
+
     def update_frames(self, q: np.ndarray) -> None:
         pin.forwardKinematics(self.model, self.data, q)
         pin.updateFramePlacements(self.model, self.data)
@@ -191,36 +212,38 @@ class PinRobotModel():
     def get_rotating_joint_placement(self, joint_name: str) -> np.ndarray:
         """
         Get the static placement transform for a rotating joint.
-        
-        This returns the fixed transform from parent link to child link as defined 
+
+        This returns the fixed transform from parent link to child link as defined
         in the URDF for rotating joints (revolute, continuous, prismatic).
-        
+
         Args:
             joint_name: Name of the rotating joint
-            
+
         Returns:
             4x4 homogeneous transformation matrix for the joint placement
         """
         if not self.model.existJointName(joint_name):
             raise ValueError(f"Joint '{joint_name}' does not exist in the joint model")
-        
+
         joint_id = self.model.getJointId(joint_name)
         return self.model.jointPlacements[joint_id].homogeneous
-    
-    def get_transform_between_frames(self, frame_a: str, frame_b: str, q_update: np.ndarray = None) -> np.ndarray:
+
+    def get_transform_between_frames(
+        self, frame_a: str, frame_b: str, q_update: np.ndarray = None
+    ) -> np.ndarray:
         """
-            Compute transform from frame_a to frame_b.
-            
-            DescriptionArgs:
-                frame_a: Source frame name
-                frame_b: Target frame name  
-                q_update: Optional joint configuration. If provided, updates frames before computing transform.
-                         If None, assumes frames are already updated (use update_frames() separately).
-            
-            Returns:
-                4x4 homogeneous transformation matrix from frame_a to frame_b
+        Compute transform from frame_a to frame_b.
+
+        DescriptionArgs:
+            frame_a: Source frame name
+            frame_b: Target frame name
+            q_update: Optional joint configuration. If provided, updates frames before computing transform.
+                     If None, assumes frames are already updated (use update_frames() separately).
+
+        Returns:
+            4x4 homogeneous transformation matrix from frame_a to frame_b
         """
-        
+
         # Update frames if configuration provided
         if q_update is not None:
             self.update_frames(q_update)
@@ -248,7 +271,6 @@ class PinRobotModel():
 
         return T
 
-
     # JOINTS
     def get_mimic_joint_indicies(self) -> set[int]:
         """Get set of mimic joint indices."""
@@ -257,23 +279,27 @@ class PinRobotModel():
             mimic_joint_indices.add(joint_id)
         return mimic_joint_indices
 
-    def get_name_to_joint_index(self, del_universe=True, actuated=True, verbose=False) -> dict[str, int]:
+    def get_name_to_joint_index(
+        self, del_universe=True, actuated=True, verbose=False
+    ) -> dict[str, int]:
 
         joint_names = [name for name in self.model.names]
-        
+
         # Filter out mimic joints if actuated=True
         if actuated:
             mimic_joint_indices = self.get_mimic_joint_indicies()
-            
-            joint_names = [name for idx, name in enumerate(joint_names) if idx not in mimic_joint_indices]
 
- 
+            joint_names = [
+                name
+                for idx, name in enumerate(joint_names)
+                if idx not in mimic_joint_indices
+            ]
 
-        name_to_joint_index = {name: idx-1 for idx, name in enumerate(joint_names)}
-        
+        name_to_joint_index = {name: idx - 1 for idx, name in enumerate(joint_names)}
+
         if del_universe:
-            name_to_joint_index.pop('universe', None)
-        
+            name_to_joint_index.pop("universe", None)
+
         if verbose:
             for name, index in name_to_joint_index.items():
                 print(f"{name}: {index}")
@@ -281,13 +307,12 @@ class PinRobotModel():
         return name_to_joint_index
 
     def get_joint_names(self, actuated: bool = True) -> list[str]:
-        
+
         return list(self.get_name_to_joint_index(actuated=actuated).keys())
 
     def order_q_by_name(self, joint_names: list[str], q: np.ndarray) -> np.ndarray:
 
         q_ordered = np.full(self.n_dof, np.nan)
-
 
         for i, name in enumerate(joint_names):
 
@@ -298,7 +323,6 @@ class PinRobotModel():
             q_ordered[idx] = q[i]
 
         return q_ordered
-
 
     def get_q_limits(self, margin: float = 1e-3) -> tuple[np.ndarray, np.ndarray]:
 
@@ -322,8 +346,8 @@ class PinRobotModel():
         # q_wrapped = (q + np.pi) % (2 * np.pi) - np.pi # [-pi, pi]
         return q
 
-    def get_q_grid(self, step_size_deg=5.) -> list[np.ndarray]:
-        
+    def get_q_grid(self, step_size_deg=5.0) -> list[np.ndarray]:
+
         lower, upper = self.get_q_limits()
 
         print("Generating q grid")
@@ -335,7 +359,9 @@ class PinRobotModel():
         joint_ranges = []
         for i in range(self.model.nq):
             step_size_rad = np.deg2rad(step_size_deg)
-            joint_ranges.append(np.arange(lower[i], upper[i]+step_size_rad, step_size_rad)) # inclusive of upper limit
+            joint_ranges.append(
+                np.arange(lower[i], upper[i] + step_size_rad, step_size_rad)
+            )  # inclusive of upper limit
             print(f"[{i}] Joint range: {joint_ranges[-1]}")
 
         q_grid = [np.array(combo) for combo in itertools.product(*joint_ranges)]
@@ -346,25 +372,27 @@ class PinRobotModel():
 
     # MISC.
 
-    def bbox_bounds(self, ik_tip:str, n_samples=1000, scale: float = 1.1) -> tuple[np.ndarray, np.ndarray]:
+    def bbox_bounds(
+        self, ik_tip: str, n_samples=1000, scale: float = 1.1
+    ) -> tuple[np.ndarray, np.ndarray]:
         data = self.model.createData()
-        
+
         # Sample 1000 random joint configurations
         positions = []
 
         q_grid = self.get_q_grid(step_size_deg=90.0)
-        
+
         frame_id = self.model.getFrameId(ik_tip)
 
         for q in q_grid:
             pin.forwardKinematics(self.model, data, q)
             pin.updateFramePlacements(self.model, data)
-            
+
             # Collect all frame positions
             positions.append(copy.deepcopy(data.oMf[frame_id].translation))
-        
+
         positions = np.array(positions)
-        
+
         # Find min/max for x, y, z
         x_min, y_min, z_min = positions.min(axis=0)
         x_max, y_max, z_max = positions.max(axis=0)
@@ -372,24 +400,30 @@ class PinRobotModel():
         # print("Positions: ", positions)
         print("Min positions: ", x_min, y_min, z_min)
         print("Max positions: ", x_max, y_max, z_max)
-        
+
         # Calculate center
         x_center = (x_min + x_max) / 2.0
         y_center = (y_min + y_max) / 2.0
         z_center = (z_min + z_max) / 2.0
         center = np.array([x_center, y_center, z_center])
-        
+
         # Calculate extents (half-widths)
         x_extent = (x_max - x_min) * scale
         y_extent = (y_max - y_min) * scale
         z_extent = (z_max - z_min) * scale
         extents = np.array([x_extent, y_extent, z_extent])
-        
+
         return center, extents
 
     # INSPECT
 
-    def inspect(self, print_model=True, print_joints=True, print_frames=True, print_inertias=True):
+    def inspect(
+        self,
+        print_model=True,
+        print_joints=True,
+        print_frames=True,
+        print_inertias=True,
+    ):
         if print_model:
             self.print_model_info()
 
@@ -409,23 +443,32 @@ class PinRobotModel():
         for i, joint in enumerate(model.joints):
             joint_name = model.names[i]
             parent_id = model.parents[i]
-            print(f"  [{i}] {joint_name}, type: {joint.shortname()}, parent id: {parent_id}")
+            print(
+                f"  [{i}] {joint_name}, type: {joint.shortname()}, parent id: {parent_id}"
+            )
 
         data = model.createData()
-        q = pin.neutral(model) 
+        q = pin.neutral(model)
         print("Joint Positions: ", q)
-        pin.forwardKinematics(model, data, q) # set starting position
-        print(("[i] {:<24} :  Position xyz".format( "Joint Name")))
+        pin.forwardKinematics(model, data, q)  # set starting position
+        print(("[i] {:<24} :  Position xyz".format("Joint Name")))
         for i in range(model.njoints):
-            print(("[{}] {:<24} : {: .4f} {: .4f} {: .4f}".format( i, model.names[i], *data.oMi[i].translation.T.flat )))
-
+            print(
+                (
+                    "[{}] {:<24} : {: .4f} {: .4f} {: .4f}".format(
+                        i, model.names[i], *data.oMi[i].translation.T.flat
+                    )
+                )
+            )
 
     def print_frame_info(self):
         model = self.model
         print(f"\nFrames (n = {model.nframes}):")
         for i, frame in enumerate(model.frames):
-            print(f"  Frame {i}: {frame.name}, type: {frame.type}, parent: {frame.parentJoint}")
-            
+            print(
+                f"  Frame {i}: {frame.name}, type: {frame.type}, parent: {frame.parentJoint}"
+            )
+
     def print_interia_info(self):
         model = self.model
         print("\n Joint (Inertias):")
@@ -462,8 +505,8 @@ class PinRobotModel():
         print("Gravity         :", model.gravity.linear)
 
         print("\nWeight (kg):")
-        total_weight_kg = 0 
-        for i in range(0, len(model.inertias)): 
+        total_weight_kg = 0
+        for i in range(0, len(model.inertias)):
             inertia = model.inertias[i]
             body_weight = inertia.mass  # Mass in kg
             total_weight_kg += body_weight  # Sum mass for total weight
@@ -477,6 +520,6 @@ class PinRobotModel():
         print(f"  Frames         : {model.nframes}")
         print(f"  Position (dof) : {model.nq}")
         print(f"  Velocity (dof) : {model.nv}")
-        print(f"  Effort (dof)   : {data.tau.shape[0]}") # access via data as self.tau may not be set yet or have correct dof
-
-
+        print(
+            f"  Effort (dof)   : {data.tau.shape[0]}"
+        )  # access via data as self.tau may not be set yet or have correct dof

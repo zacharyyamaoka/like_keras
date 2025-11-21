@@ -10,11 +10,15 @@ import json
 
 class VisualId(str):
     """Unique identifier string assigned to each visual object."""
+
     pass
+
 
 @dataclass
 class VisualObject:
-    name: str = "" # Unique human readable name with slash notation (ex. /layer1/sublayer1/object)
+    name: str = (
+        ""  # Unique human readable name with slash notation (ex. /layer1/sublayer1/object)
+    )
 
     visible: bool = True
 
@@ -22,7 +26,7 @@ class VisualObject:
 
     @property
     def visual_id(self) -> VisualId:
-        if self.name.startswith('/'):
+        if self.name.startswith("/"):
             return VisualId(self.name)
         return VisualId(f"/{self.name}")
 
@@ -53,7 +57,7 @@ class VisualObject:
         current_file_path = os.path.abspath(__file__)
         dir_path = os.path.dirname(current_file_path)
         base_name = os.path.splitext(os.path.basename(current_file_path))[0]
-        object_name = self.name.replace('/', '_').strip('_') or "visual_object"
+        object_name = self.name.replace("/", "_").strip("_") or "visual_object"
         file_name = f"{object_name}.yaml"
         file_path = os.path.join(dir_path, file_name)
 
@@ -62,6 +66,7 @@ class VisualObject:
 
         print(f"YAML file saved to: {file_path}")
         return yaml_str
+
 
 if __name__ == "__main__":
     visual_object = VisualObject()

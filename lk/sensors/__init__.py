@@ -1,7 +1,3 @@
 """
-    Sensor interfaces and processing
+Sensor interfaces and processing
 """
-
-
-
-

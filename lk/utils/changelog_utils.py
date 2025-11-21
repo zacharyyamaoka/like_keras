@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Utilities for working with changelog and version management.
+Utilities for working with changelog and version management.
 """
 
 # PYTHON
@@ -16,7 +16,7 @@ def get_latest_tag() -> Optional[str]:
             ["git", "describe", "--tags", "--abbrev=0"],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError:
@@ -36,14 +36,13 @@ def parse_version(tag: str) -> tuple[int, int, int]:
 def get_feature_info(commit_msg: str) -> dict[str, str]:
     """Extract feature info from commit message."""
     import re
-    
+
     pattern = r"^(feat|fix|test|refactor)\(([A-Z0-9]+-[A-Z]-S[0-9]+)\):"
     match = re.match(pattern, commit_msg)
-    
+
     if match:
         return {
             "type": match.group(1),
             "feature": match.group(2),
         }
     return {}
-

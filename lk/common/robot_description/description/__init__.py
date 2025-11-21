@@ -1,5 +1,5 @@
 """
-    Dataclasses describing robot components and metadata.
+Dataclasses describing robot components and metadata.
 """
 
 # BAM
@@ -31,4 +31,3 @@ from .links.geometry import (
 )
 from .scene import DropPoint, PointOfInterest
 from .robot import RobotInfo, SrdfInfo, UrdfInfo, ConfigFileInfo
-

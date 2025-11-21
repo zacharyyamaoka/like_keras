@@ -1,5 +1,6 @@
 # https://docs.ros.org/en/rolling/p/vision_msgs/msg/ObjectHypothesis.html
 
+
 class ObjectHypothesis:
     def __init__(self):
         self.class_id: str = ""

@@ -15,11 +15,15 @@ print(doc.dom.toprettyxml(indent="  "))
 
 for package_dir in get_package_dirs(description):
 
-    model, collision_model, visual_model = pin.buildModelsFromUrdf(description.URDF_PATH, package_dir)
+    model, collision_model, visual_model = pin.buildModelsFromUrdf(
+        description.URDF_PATH, package_dir
+    )
 
     try:
 
-        model, collision_model, visual_model = pin.buildModelsFromUrdf(description.URDF_PATH, package_dir)
+        model, collision_model, visual_model = pin.buildModelsFromUrdf(
+            description.URDF_PATH, package_dir
+        )
 
     except Exception as e:
         print("\n")
@@ -31,9 +35,9 @@ for package_dir in get_package_dirs(description):
     break
 
 
-
-model, collision_model, visual_model = pin.buildModelsFromUrdf(description.URDF_PATH, package_dir)
-
+model, collision_model, visual_model = pin.buildModelsFromUrdf(
+    description.URDF_PATH, package_dir
+)
 
 
 # print(os.path.dirname(description.PACKAGE_PATH))
@@ -43,7 +47,7 @@ model, collision_model, visual_model = pin.buildModelsFromUrdf(description.URDF_
 # print(f"{model_full.nq=}")
 # print(f"{model_mimic_from_urdf.nq=}")
 
-# # What should I use here as a base library in case bam.descriptions not installed? 
+# # What should I use here as a base library in case bam.descriptions not installed?
 # # https://github.com/robot-descriptions/robot_descriptions.py
 # # https://github.com/google-deepmind/mujoco_menagerie?tab=readme-ov-file#via-robot-descriptions
 # # Mujoco meagerie reecomdsn uses the robot_descriptions package, thats a great endorsement!

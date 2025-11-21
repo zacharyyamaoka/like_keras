@@ -1,4 +1,3 @@
-
 # Primary API: Lightweight multi-backend logger
 from .logger import (
     Logger,
@@ -6,7 +5,7 @@ from .logger import (
     configure,
     get_root,
     get_logger_registry,
-    set_logger_level
+    set_logger_level,
 )
 
 # Backends (handle their own setup)
@@ -31,8 +30,7 @@ import os
 
 configure(
     py=True,
-    py_level=os.environ.get('BAM_LOG_LEVEL', 'INFO'),
-    robot_id=os.environ.get('ROBOT_ID', None),
-    include_call_site=True
+    py_level=os.environ.get("BAM_LOG_LEVEL", "INFO"),
+    robot_id=os.environ.get("ROBOT_ID", None),
+    include_call_site=True,
 )
-

@@ -1,5 +1,6 @@
 # https://docs.ros.org/en/rolling/p/vision_msgs/msg/Point2D.html
 
+
 class Point2D:
     def __init__(self):
         self.x: float = 0.0
@@ -10,7 +11,7 @@ class Point2D:
             "x": self.x,
             "y": self.y,
         }
-    
+
     @classmethod
     def from_dict(cls, d: dict):
         obj = cls()

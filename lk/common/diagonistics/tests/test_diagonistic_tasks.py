@@ -66,11 +66,11 @@
 
 #     # Add first item
 #     queue.append(1)
-    
+
 #     # Wait a bit, then add second item
 #     time.sleep(2 * TIME_SCALE)  # Wait between items
 #     queue.append(2)
-    
+
 #     # Wait for first item to expire but second to remain
 #     time.sleep(2 * TIME_SCALE)  # Wait for first item to expire
 
@@ -149,4 +149,4 @@
 
 
 # if __name__ == "__main__":
-#     pytest.main([__file__])  
+#     pytest.main([__file__])

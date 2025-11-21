@@ -1,15 +1,28 @@
 #!/usr/bin/env python3
 """
-    Base BAM Five-Bar Arm description class.
-    
-    Contains common functionality and data structures for all BAM five-bar arm variants.
+Base BAM Five-Bar Arm description class.
+
+Contains common functionality and data structures for all BAM five-bar arm variants.
 """
 
 # BAM
-from bam.descriptions import BAM_DESCRIPTIONS_PATH, BAM_CORE_PATH, BAM_MESH_PACKAGE_PATH, ArmArgs
 from bam.descriptions import (
-    JointDescription, RobotInfo, LinkDescription, Inertia, PerJointLimits, UrdfInfo,
-    Joints, Links, RobotDescription, TAGS
+    BAM_DESCRIPTIONS_PATH,
+    BAM_CORE_PATH,
+    BAM_MESH_PACKAGE_PATH,
+    ArmArgs,
+)
+from bam.descriptions import (
+    JointDescription,
+    RobotInfo,
+    LinkDescription,
+    Inertia,
+    PerJointLimits,
+    UrdfInfo,
+    Joints,
+    Links,
+    RobotDescription,
+    TAGS,
 )
 from bam.msgs.ros_msgs import TransformStamped, PoseStamped, Point, Pose
 from ..ur import DHParams, IKSolPreference, URArgs
@@ -23,18 +36,20 @@ import yaml
 import copy
 
 # Helpers to convert to meters in readable way
-INCH = 25.4/1000
-MM = 1/1000
-REV2RAD = 2*np.pi
-GRAMS = 1/1000
+INCH = 25.4 / 1000
+MM = 1 / 1000
+REV2RAD = 2 * np.pi
+GRAMS = 1 / 1000
 
 from enum import Enum
+
 
 class Plugin(Enum):
     REAL = "real"
     MOCK = "mock"
     GAZEBO = "gazebo"
     NONE = "none"
+
 
 def _make_base_limits():
     return PerJointLimits(
@@ -46,88 +61,132 @@ def _make_base_limits():
         min_acceleration=-1.0,
     )
 
+
 @dataclass
 class BamFbJoints(Joints):
-    
-    shoulder_joint: JointDescription = field(default_factory=lambda: JointDescription(
-        transform=TransformStamped.from_frames("arm_base_link", "shoulder_link"),
-        limits=_make_base_limits(),
-    ))
-    
-    l1_joint: JointDescription = field(default_factory=lambda: JointDescription(
-        transform=TransformStamped.from_frames("shoulder_link", "l1_link"),
-        limits=_make_base_limits(),
-    ))
-    
-    l2_joint: JointDescription = field(default_factory=lambda: JointDescription(
-        transform=TransformStamped.from_frames("l1_link", "l2_link"),
-        limits=_make_base_limits(),
-    ))
-    
-    wrist_1_joint: JointDescription = field(default_factory=lambda: JointDescription(
-        transform=TransformStamped.from_frames("l2_link", "wrist_1_link"),
-        limits=_make_base_limits(),
-    ))
-    
-    wrist_2_joint: JointDescription = field(default_factory=lambda: JointDescription(
-        transform=TransformStamped.from_frames("wrist_1_link", "wrist_2_link"),
-        limits=_make_base_limits(),
-    ))
-    
-    wrist_3_joint: JointDescription = field(default_factory=lambda: JointDescription(
-        transform=TransformStamped.from_frames("wrist_2_link", "wrist_3_link"),
-        limits=_make_base_limits(),
-    ))
-    
-    c1_joint: JointDescription = field(default_factory=lambda: JointDescription(
-        transform=TransformStamped.from_frames("shoulder_link", "c1_link"),
-        limits=_make_base_limits(),
-        # Five-bar coupler - follows primary arm kinematics (mimic defined in URDF)
-    ))
 
-    c2_joint: JointDescription = field(default_factory=lambda: JointDescription(
-        transform=TransformStamped.from_frames("c1_link", "c2_link"),
-        limits=_make_base_limits(),
-        # Five-bar coupler - follows primary arm kinematics (mimic defined in URDF)
-    ))
+    shoulder_joint: JointDescription = field(
+        default_factory=lambda: JointDescription(
+            transform=TransformStamped.from_frames("arm_base_link", "shoulder_link"),
+            limits=_make_base_limits(),
+        )
+    )
 
-    c2_tip_joint: JointDescription = field(default_factory=lambda: JointDescription(
-        transform=TransformStamped.from_frames("c2_link", "c2_tip"),
-        type="fixed",
-    ))
+    l1_joint: JointDescription = field(
+        default_factory=lambda: JointDescription(
+            transform=TransformStamped.from_frames("shoulder_link", "l1_link"),
+            limits=_make_base_limits(),
+        )
+    )
 
-    elbow_joint: JointDescription = field(default_factory=lambda: JointDescription(
-        transform=TransformStamped.from_frames("l2_link", "elbow_link"),
-        type="fixed",
-    ))
+    l2_joint: JointDescription = field(
+        default_factory=lambda: JointDescription(
+            transform=TransformStamped.from_frames("l1_link", "l2_link"),
+            limits=_make_base_limits(),
+        )
+    )
 
-    elbow_tip_joint: JointDescription = field(default_factory=lambda: JointDescription(
-        transform=TransformStamped.from_frames("elbow_link", "elbow_tip"),
-        type="fixed",
-    ))
+    wrist_1_joint: JointDescription = field(
+        default_factory=lambda: JointDescription(
+            transform=TransformStamped.from_frames("l2_link", "wrist_1_link"),
+            limits=_make_base_limits(),
+        )
+    )
+
+    wrist_2_joint: JointDescription = field(
+        default_factory=lambda: JointDescription(
+            transform=TransformStamped.from_frames("wrist_1_link", "wrist_2_link"),
+            limits=_make_base_limits(),
+        )
+    )
+
+    wrist_3_joint: JointDescription = field(
+        default_factory=lambda: JointDescription(
+            transform=TransformStamped.from_frames("wrist_2_link", "wrist_3_link"),
+            limits=_make_base_limits(),
+        )
+    )
+
+    c1_joint: JointDescription = field(
+        default_factory=lambda: JointDescription(
+            transform=TransformStamped.from_frames("shoulder_link", "c1_link"),
+            limits=_make_base_limits(),
+            # Five-bar coupler - follows primary arm kinematics (mimic defined in URDF)
+        )
+    )
+
+    c2_joint: JointDescription = field(
+        default_factory=lambda: JointDescription(
+            transform=TransformStamped.from_frames("c1_link", "c2_link"),
+            limits=_make_base_limits(),
+            # Five-bar coupler - follows primary arm kinematics (mimic defined in URDF)
+        )
+    )
+
+    c2_tip_joint: JointDescription = field(
+        default_factory=lambda: JointDescription(
+            transform=TransformStamped.from_frames("c2_link", "c2_tip"),
+            type="fixed",
+        )
+    )
+
+    elbow_joint: JointDescription = field(
+        default_factory=lambda: JointDescription(
+            transform=TransformStamped.from_frames("l2_link", "elbow_link"),
+            type="fixed",
+        )
+    )
+
+    elbow_tip_joint: JointDescription = field(
+        default_factory=lambda: JointDescription(
+            transform=TransformStamped.from_frames("elbow_link", "elbow_tip"),
+            type="fixed",
+        )
+    )
 
 
 @dataclass
 class BamFbLinks(Links):
 
-    arm_base_link: LinkDescription = field(default_factory=lambda: LinkDescription(display=True, tags=[TAGS.base_mount, TAGS.ik_base]))
+    arm_base_link: LinkDescription = field(
+        default_factory=lambda: LinkDescription(
+            display=True, tags=[TAGS.base_mount, TAGS.ik_base]
+        )
+    )
     shoulder_link: LinkDescription = field(default_factory=LinkDescription)
     l1_link: LinkDescription = field(default_factory=LinkDescription)
     l2_link: LinkDescription = field(default_factory=LinkDescription)
     wrist_1_link: LinkDescription = field(default_factory=LinkDescription)
     wrist_2_link: LinkDescription = field(default_factory=LinkDescription)
-    wrist_3_link: LinkDescription = field(default_factory=lambda: LinkDescription(is_frame=True, display=True))
+    wrist_3_link: LinkDescription = field(
+        default_factory=lambda: LinkDescription(is_frame=True, display=True)
+    )
     c1_link: LinkDescription = field(default_factory=LinkDescription)
     c2_link: LinkDescription = field(default_factory=LinkDescription)
     elbow_link: LinkDescription = field(default_factory=LinkDescription)
-    elbow_tip: LinkDescription = field(default_factory=lambda: LinkDescription(is_frame=True))
-    c2_tip: LinkDescription = field(default_factory=lambda: LinkDescription(is_frame=True))
-    tool0: LinkDescription = field(default_factory=lambda: LinkDescription(is_frame=True, display=True, tags=[TAGS.ik_tip, TAGS.arm_to_hand_mount]))
-    tool0_flip: LinkDescription = field(default_factory=lambda: LinkDescription(is_frame=True, display=True, tags=[TAGS.ik_tip_flip]))
-    ee_link: LinkDescription = field(default_factory=lambda: LinkDescription(is_frame=True))
+    elbow_tip: LinkDescription = field(
+        default_factory=lambda: LinkDescription(is_frame=True)
+    )
+    c2_tip: LinkDescription = field(
+        default_factory=lambda: LinkDescription(is_frame=True)
+    )
+    tool0: LinkDescription = field(
+        default_factory=lambda: LinkDescription(
+            is_frame=True, display=True, tags=[TAGS.ik_tip, TAGS.arm_to_hand_mount]
+        )
+    )
+    tool0_flip: LinkDescription = field(
+        default_factory=lambda: LinkDescription(
+            is_frame=True, display=True, tags=[TAGS.ik_tip_flip]
+        )
+    )
+    ee_link: LinkDescription = field(
+        default_factory=lambda: LinkDescription(is_frame=True)
+    )
+
 
 @dataclass
-class FiveBarParams():
+class FiveBarParams:
 
     L_l1: float = 0.0
     L_l2: float = 0.0
@@ -177,12 +236,11 @@ class BamFbCadKinParams:
     c1_to_c2_y: float = None
     c2_to_c2_tip_y: float = None
     c2_to_c2_tip_z: float = None
-    
-    def __post_init__(self):
-        ...
+
+    def __post_init__(self): ...
 
     def mm_to_m(self):
- 
+
         for attr, value in self.__dict__.items():
             if "theta" in attr:
                 continue
@@ -198,20 +256,28 @@ class BamFbCadKinParams:
             L_c1=self.c1_to_c2_y,
             L_c2=self.c2_to_c2_tip_y,
             L_shoulder=self.shoulder_to_l1_y,
-            L_elbow=self.l2_to_elbow_tip_y, 
-            theta_elbow_offset=self.l2_to_elbow_tip_theta)
+            L_elbow=self.l2_to_elbow_tip_y,
+            theta_elbow_offset=self.l2_to_elbow_tip_theta,
+        )
 
     # Look at the dh image and also the rviz model to help with this!
     def to_dh_params(self) -> DHParams:
         return DHParams(
             d1=self.base_to_shoulder_z + self.shoulder_to_l1_z,
-            a2=-1*self.l1_to_l2_y,
-            a3=-1*self.l2_to_wrist_1_y,
+            a2=-1 * self.l1_to_l2_y,
+            a3=-1 * self.l2_to_wrist_1_y,
             # I need to get base_to_wrist_2_y, I could read the transform just just add...
-            # Careful with the directions.... 
-            d4=-1*(self.shoulder_to_l1_y + self.l1_to_l2_z - self.l2_to_wrist_1_z - self.wrist_1_to_wrist_2_z), 
+            # Careful with the directions....
+            d4=-1
+            * (
+                self.shoulder_to_l1_y
+                + self.l1_to_l2_z
+                - self.l2_to_wrist_1_z
+                - self.wrist_1_to_wrist_2_z
+            ),
             d5=self.wrist_1_to_wrist_2_y + self.wrist_2_to_wrist_3_z,
-            d6=self.wrist_2_to_wrist_3_y)
+            d6=self.wrist_2_to_wrist_3_y,
+        )
 
     def to_xacro_args(self) -> dict[str, str]:
         return RobotDescription.to_xacro_args(self)
@@ -242,7 +308,7 @@ class BamFbUrdfParams:
     # LINKAGE CONFIG
     five_bar_offset: float = 20 * MM
     link_density: float = 2700.0
-    link_wall_thickness: float = (1.0/16) * INCH
+    link_wall_thickness: float = (1.0 / 16) * INCH
 
     C1_length: float = 120 * MM
     C1_width: float = 45 * MM
@@ -295,17 +361,21 @@ class BamFbArgs(URArgs):
     collision_mode: str = "simple"  # "simple" or "mesh"
 
     # IO
-    transport_path: str = field(default_factory=lambda: os.getenv("TRANSPORT_PATH") or "")
+    transport_path: str = field(
+        default_factory=lambda: os.getenv("TRANSPORT_PATH") or ""
+    )
     watchdog_timeout: float = 0.01
 
     params: BamFbUrdfParams = field(default_factory=BamFbUrdfParams)
 
     five_bar: FiveBarParams = field(default_factory=FiveBarParams)
 
-    ik_sol_preference: list[dict] = field(default_factory=lambda: [
-        {"Shoulder": "Left", "Elbow": "Down", "Wrist": "Down"},  # 1
-        {"Shoulder": "Left", "Elbow": "Down", "Wrist": "Up"},    # 2
-    ])
+    ik_sol_preference: list[dict] = field(
+        default_factory=lambda: [
+            {"Shoulder": "Left", "Elbow": "Down", "Wrist": "Down"},  # 1
+            {"Shoulder": "Left", "Elbow": "Down", "Wrist": "Up"},  # 2
+        ]
+    )
 
     parametric: bool = False
 
@@ -322,11 +392,18 @@ class BamFbArgs(URArgs):
 
 @dataclass
 class BamFbUrdfInfo(UrdfInfo):
-    macro_path: str = os.path.join(BAM_DESCRIPTIONS_PATH, "urdf/bam_fb/bam_fb_macro.xacro")
-    xacro_path: str = os.path.join(BAM_DESCRIPTIONS_PATH, "urdf/bam_fb/bam_fb_config.urdf.xacro")
-    abs_package_dirs: dict[str, str] = field(default_factory=lambda: {
-        "descriptions": BAM_MESH_PACKAGE_PATH,
-    })
+    macro_path: str = os.path.join(
+        BAM_DESCRIPTIONS_PATH, "urdf/bam_fb/bam_fb_macro.xacro"
+    )
+    xacro_path: str = os.path.join(
+        BAM_DESCRIPTIONS_PATH, "urdf/bam_fb/bam_fb_config.urdf.xacro"
+    )
+    abs_package_dirs: dict[str, str] = field(
+        default_factory=lambda: {
+            "descriptions": BAM_MESH_PACKAGE_PATH,
+        }
+    )
+
 
 @dataclass
 class BamFbInfo(RobotInfo):
@@ -335,7 +412,11 @@ class BamFbInfo(RobotInfo):
     type: str = "bam_fb"
     sku: str = ""
     version: str = "0.0.0"
-    save_dir: str = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(os.path.basename(__file__))[0]}_configs")
+    save_dir: str = os.path.join(
+        os.path.dirname(__file__),
+        f"{os.path.splitext(os.path.basename(__file__))[0]}_configs",
+    )
+
 
 @dataclass
 class BamFb(RobotDescription):
@@ -344,16 +425,15 @@ class BamFb(RobotDescription):
     joints: BamFbJoints = field(default_factory=BamFbJoints)
     links: BamFbLinks = field(default_factory=BamFbLinks)
 
-     
     urdf: BamFbUrdfInfo = field(default_factory=lambda: BamFbUrdfInfo())
     info: BamFbInfo = field(default_factory=lambda: BamFbInfo())
-    
+
     args: BamFbArgs = field(default_factory=BamFbArgs)
 
     def __post_init__(self):
         super().__post_init__()
 
-    def set_six_dof_mode(self) -> 'BamFb':
+    def set_six_dof_mode(self) -> "BamFb":
         self.args.disable_L1 = False
         self.args.disable_L2 = False
         self.args.disable_C1 = True
@@ -362,7 +442,7 @@ class BamFb(RobotDescription):
         # self.args.disable_sticker = True
         return self
 
-    def set_shoulder_mode(self) -> 'BamFb':
+    def set_shoulder_mode(self) -> "BamFb":
         self.args.disable_L1 = True
         self.args.disable_L2 = True
         self.args.disable_C1 = True
@@ -371,43 +451,52 @@ class BamFb(RobotDescription):
         self.args.disable_sticker = True
         return self
 
-    def disable_wrist(self) -> 'BamFb':
+    def disable_wrist(self) -> "BamFb":
         self.args.disable_wrist = True
         return self
 
-    def disable_sticker(self) -> 'BamFb':
+    def disable_sticker(self) -> "BamFb":
         self.args.disable_sticker = True
         return self
 
-    def set_parametric_urdf(self) -> 'BamFb':
-        self.urdf.macro_path = BAM_DESCRIPTIONS_PATH + "/urdf/dummy_bam_fb/dummy_bam_fb_macro.xacro"
-        self.urdf.xacro_path = BAM_DESCRIPTIONS_PATH + "/urdf/dummy_bam_fb/dummy_bam_fb_config.urdf.xacro"
+    def set_parametric_urdf(self) -> "BamFb":
+        self.urdf.macro_path = (
+            BAM_DESCRIPTIONS_PATH + "/urdf/dummy_bam_fb/dummy_bam_fb_macro.xacro"
+        )
+        self.urdf.xacro_path = (
+            BAM_DESCRIPTIONS_PATH + "/urdf/dummy_bam_fb/dummy_bam_fb_config.urdf.xacro"
+        )
         return self
 
-    def set_cad_kin_urdf(self) -> 'BamFb':
-        self.urdf.macro_path = BAM_DESCRIPTIONS_PATH + "/urdf/bam_fb/bam_fb_cad_kin_macro.xacro"
-        self.urdf.xacro_path = BAM_DESCRIPTIONS_PATH + "/urdf/bam_fb/bam_fb_cad_kin_config.urdf.xacro"
+    def set_cad_kin_urdf(self) -> "BamFb":
+        self.urdf.macro_path = (
+            BAM_DESCRIPTIONS_PATH + "/urdf/bam_fb/bam_fb_cad_kin_macro.xacro"
+        )
+        self.urdf.xacro_path = (
+            BAM_DESCRIPTIONS_PATH + "/urdf/bam_fb/bam_fb_cad_kin_config.urdf.xacro"
+        )
 
         return self
 
     def reflect_joints(self, q: np.ndarray) -> np.ndarray:
         # account for reflection.
-        
+
         offsets = {
-            "l1_joint": np.pi/2,
-            "c2_joint": np.pi/2,
+            "l1_joint": np.pi / 2,
+            "c2_joint": np.pi / 2,
         }
         if self.args.reflect == -1:
-            # Update 
+            # Update
             name_to_joint_index = self.joint_positions.get_name_to_joint_index()
             for name, offset in offsets.items():
                 q[name_to_joint_index[name]] += offset
 
-
         return q
 
     @classmethod
-    def make_dev(cls, reflect: int = 1, **kwargs) -> 'BamFb':
+    def make_dev(cls, reflect: int = 1, **kwargs) -> "BamFb":
         from .bam_fb_dev import BamFbDev, BamFbDevArgs
-        return BamFbDev(args=BamFbDevArgs(reflect=reflect), **kwargs).init_joint_positions()
 
+        return BamFbDev(
+            args=BamFbDevArgs(reflect=reflect), **kwargs
+        ).init_joint_positions()

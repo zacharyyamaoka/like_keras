@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 """
-    Example: Resolving Package Paths in Xacro Files
+Example: Resolving Package Paths in Xacro Files
 
-    Demonstrates how to use resolve_package_paths to convert package:// URIs
-    to file:// URIs using a custom package path dictionary.
+Demonstrates how to use resolve_package_paths to convert package:// URIs
+to file:// URIs using a custom package path dictionary.
 """
 
 # BAM
@@ -54,4 +54,3 @@ if __name__ == "__main__":
     # # Print the modified URDF
     print("Modified URDF:")
     print(dom.toprettyxml(indent="  "))
-

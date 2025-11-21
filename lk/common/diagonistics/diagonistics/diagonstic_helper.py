@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from .common_tasks import DiagnosticValue
 
 
-
 def diagnostic_level_name(level: int) -> str:
     """Return the string name associated with a DiagnosticStatus level."""
     if level == DiagnosticStatus.OK:
@@ -26,7 +25,11 @@ def diagnostic_level_name(level: int) -> str:
     else:
         return f"UNKNOWN({level})"
 
-def summarise_diagnostic_list(stat_list: List[DiagnosticStatusWrapper], inital_summary: Optional[DiagnosticStatusWrapper] = None) -> DiagnosticStatusWrapper:
+
+def summarise_diagnostic_list(
+    stat_list: List[DiagnosticStatusWrapper],
+    inital_summary: Optional[DiagnosticStatusWrapper] = None,
+) -> DiagnosticStatusWrapper:
     """Combine multiple diagnostic statuses into a single summary
     https://github.com/ros/diagnostics/blob/ros2/diagnostic_updater/diagnostic_updater/_diagnostic_updater.py#L131
     """
@@ -41,7 +44,10 @@ def summarise_diagnostic_list(stat_list: List[DiagnosticStatusWrapper], inital_s
 
     return combined_summary
 
-def check_thresholds(threshold: 'DiagnosticValue', value: float, stat_name: str, upper_bound: bool) -> DiagnosticStatusWrapper:
+
+def check_thresholds(
+    threshold: "DiagnosticValue", value: float, stat_name: str, upper_bound: bool
+) -> DiagnosticStatusWrapper:
     """
     Check if the value exceeds the threshold and return a DiagnosticStatusWrapper.
     """
@@ -54,16 +60,28 @@ def check_thresholds(threshold: 'DiagnosticValue', value: float, stat_name: str,
 
     if upper_bound:
         if value > threshold.error:
-            stat.summary(DiagnosticStatus.ERROR, f"{stat_name} exceeds error threshold: {value} > {threshold.error}")
+            stat.summary(
+                DiagnosticStatus.ERROR,
+                f"{stat_name} exceeds error threshold: {value} > {threshold.error}",
+            )
         elif value > threshold.warn:
-            stat.summary(DiagnosticStatus.WARN, f"{stat_name} exceeds warning threshold: {value} > {threshold.warn}")
+            stat.summary(
+                DiagnosticStatus.WARN,
+                f"{stat_name} exceeds warning threshold: {value} > {threshold.warn}",
+            )
         else:
             stat.summary(DiagnosticStatus.OK, f"OK")
     else:
         if value < threshold.error:
-            stat.summary(DiagnosticStatus.ERROR, f"{stat_name} below error threshold: {value} < {threshold.error}")
+            stat.summary(
+                DiagnosticStatus.ERROR,
+                f"{stat_name} below error threshold: {value} < {threshold.error}",
+            )
         elif value < threshold.warn:
-            stat.summary(DiagnosticStatus.WARN, f"{stat_name} below warning threshold: {value} < {threshold.warn}")
+            stat.summary(
+                DiagnosticStatus.WARN,
+                f"{stat_name} below warning threshold: {value} < {threshold.warn}",
+            )
         else:
             stat.summary(DiagnosticStatus.OK, f"OK")
     return stat
@@ -78,10 +96,12 @@ def make_queue(length: int | float, type: str):
     else:
         return deque(maxlen=int(length))
 
+
 class TimedQueue[T]:
     """
     A queue that automatically prunes items that are older than a certain age.
     """
+
     def __init__(self, max_age_seconds: float):
         self.max_age = max_age_seconds
         self._queue: deque[tuple[T, float]] = deque()
