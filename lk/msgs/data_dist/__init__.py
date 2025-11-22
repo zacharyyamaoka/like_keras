@@ -1,5 +1,4 @@
 # Base types
-from .data_dist import DataDist as RandomType
 from .random_float import RandomFloat
 from .random_int import RandomInt
 

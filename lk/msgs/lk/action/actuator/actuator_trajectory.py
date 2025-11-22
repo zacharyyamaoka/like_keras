@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from bam.msgs.ros_msgs import JointTrajectory
+from lk.msgs.ros import JointTrajectory
 
 """
 We will borrow the ROS msg abstractions.

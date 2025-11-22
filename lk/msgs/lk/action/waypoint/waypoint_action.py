@@ -1,13 +1,11 @@
-from bam.msgs.ros_msgs import JointState
-from bam.msgs.ros_msgs import PoseStamped
-from .waypoint_params import WaypointParams
-from .waypoint_context import WaypointContext
+from dataclasses import dataclass, field
+
+from lk.msgs.ros import JointState, PoseStamped
+
 from ..joint_limits import JointLimits
 from ..mdp_action import MdpAction
-import numpy as np
-
-from dataclasses import dataclass, field
-from typing import Optional
+from .waypoint_context import WaypointContext
+from .waypoint_params import WaypointParams
 
 """
 Q: Should the waypoints have the current pose? 
@@ -44,7 +42,6 @@ I like how I can collect all the information in this one data struct, the cartes
 
 @dataclass
 class WaypointAction(MdpAction):
-
     start_state: JointState = field(
         default_factory=JointState
     )  # Optional - add more information regarding starting state

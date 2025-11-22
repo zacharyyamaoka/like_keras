@@ -6,29 +6,27 @@ optional per-waypoint kinematic limits that override global context limits.
 """
 
 # BAM
-from bam.msgs.ros_msgs import Vector3
-from bam.msgs.msg_utils import lerp_list, lerp_value
+import copy
+import random
+
+# PYTHON
+from dataclasses import dataclass, field
+
+from lk.msgs.msg_utils import lerp_list
+from lk.msgs.ros import Vector3
+
 from ..joint_impedance import JointImpedance
 from ..joint_limits import JointLimits
 from ..path_params import PathParams
 from ..path_tolerance import PathTolerance
 
-# PYTHON
-from dataclasses import dataclass, field
-
-import copy
-import random
-
 
 @dataclass
 class ArmParams:
-
     call_function: str = (
         ""  # close_hand, open_hand, will call getattr(self, run_action)
     )
-    function_blocking_sec: float = (
-        0.0  # by default 0 and non blocking, if not zero, then will block until timeout or action complete.
-    )
+    function_blocking_sec: float = 0.0  # by default 0 and non blocking, if not zero, then will block until timeout or action complete.
     # TODO make it a list so you potetailly call multiple functions...
     # TODO potetially add sync_vector and velocity?
     sleep_sec: float = 0.0  # sleep for this many seconds after the waypoint is reached.
@@ -53,9 +51,7 @@ class ArmParams:
     vel_scale: float = 0.0
     accel_scale: float = 0.0
 
-    vertical_angle_scale: float = (
-        0.0  # 0 (Approach/Retreat completely along grasp z_axis) to 1 (Approach/Retreat offsets should be completely vertical to gravity/table surface)
-    )
+    vertical_angle_scale: float = 0.0  # 0 (Approach/Retreat completely along grasp z_axis) to 1 (Approach/Retreat offsets should be completely vertical to gravity/table surface)
     duration: float = 0.0  # seconds
 
     # MOVEIT
@@ -77,7 +73,6 @@ class ArmParams:
     planner: str = ""  # avaliable are "ptp", "lin"
 
     def lerp(self, target: "ArmParams", fraction: float) -> "ArmParams":
-
         new_params = copy.deepcopy(self)
 
         # Interpolate kp_scale and kd_scale per joint using lerp_list helper

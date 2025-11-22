@@ -15,7 +15,6 @@ This example demonstrates how to:
 # from lk.common.robot_description import RobotDescription
 
 # PYTHON
-from pathlib import Path
 
 
 def example_urdf_import():

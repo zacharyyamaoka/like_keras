@@ -8,20 +8,20 @@ builds the connection graph, and manages execution.
 """
 
 # BAM
+import time
+from dataclasses import dataclass
+
+# PYTHON
+from typing import Any, Optional
+
 from lk.common.component import (
     Component,
-    LifecycleComponent,
     ComponentLifecycleMixin,
     LifecycleState,
 )
-from lk.common.node import Node, NodeConfig
-from lk.common.graph import ConnectionGraph, Connection
-from lk.common.port import Port, InputPort, OutputPort
-
-# PYTHON
-from typing import List, Optional, Dict, Any
-from dataclasses import dataclass, field
-import time
+from lk.common.graph import Connection, ConnectionGraph
+from lk.common.node import Node
+from lk.common.port import InputPort, OutputPort, Port
 
 
 class System:
@@ -46,10 +46,8 @@ class System:
         """
 
         name: str = "system"
-        rate_hz: Optional[float] = None  # Target execution rate
-        max_iterations: Optional[int] = (
-            None  # Stop after N iterations (None = infinite)
-        )
+        rate_hz: float | None = None  # Target execution rate
+        max_iterations: int | None = None  # Stop after N iterations (None = infinite)
 
         # Debug options
         verbose: bool = False
@@ -57,11 +55,11 @@ class System:
 
     def __init__(
         self,
-        nodes: Optional[List[Node]] = None,
-        components: Optional[List[Component]] = None,
-        inputs: Optional[List[Port]] = None,
-        outputs: Optional[List[Port]] = None,
-        subsystems: Optional[List["System"]] = None,
+        nodes: list[Node] | None = None,
+        components: list[Component] | None = None,
+        inputs: list[Port] | None = None,
+        outputs: list[Port] | None = None,
+        subsystems: list["System"] | None = None,
         config: Optional["System.Config"] = None,
     ):
         """
@@ -78,13 +76,13 @@ class System:
         self.config = config or System.Config()
 
         # Collections (will be discovered + manually added)
-        self._nodes: List[Node] = nodes or []
-        self._components: List[Component] = components or []
-        self._subsystems: List[System] = subsystems or []
+        self._nodes: list[Node] = nodes or []
+        self._components: list[Component] = components or []
+        self._subsystems: list[System] = subsystems or []
 
         # Public API ports
-        self._inputs: List[Port] = inputs or []
-        self._outputs: List[Port] = outputs or []
+        self._inputs: list[Port] = inputs or []
+        self._outputs: list[Port] = outputs or []
 
         # Connection graph
         self.graph = ConnectionGraph()
@@ -103,6 +101,8 @@ class System:
 
         This enables the class-based API where users define components
         as self.agent, self.env, etc.
+        
+        Also auto-discovers nodes from components' node assignments.
         """
         for attr_name in dir(self):
             if attr_name.startswith("_"):
@@ -125,6 +125,49 @@ class System:
 
             except AttributeError:
                 continue
+        
+        # Auto-discover nodes from component assignments
+        self._discover_nodes_from_components()
+    
+    def _discover_nodes_from_components(self):
+        """
+        Auto-discover nodes from components' node assignments.
+        
+        Collects unique nodes that components are assigned to.
+        """
+        discovered_nodes = {}
+        
+        # Collect from components
+        for component in self._components:
+            if component.node is not None:
+                if component.node.name not in discovered_nodes:
+                    discovered_nodes[component.node.name] = component.node
+        
+        # Collect from subsystems
+        for subsystem in self._subsystems:
+            for node in subsystem.nodes:
+                if node.name not in discovered_nodes:
+                    discovered_nodes[node.name] = node
+        
+        # Add discovered nodes to our list if not already present
+        for node in discovered_nodes.values():
+            if node not in self._nodes:
+                self._nodes.append(node)
+    
+    def get_node(self, name: str) -> Optional[Node]:
+        """
+        Get a node by name.
+        
+        Args:
+            name: Node name
+            
+        Returns:
+            Node if found, None otherwise
+        """
+        for node in self._nodes:
+            if node.name == name:
+                return node
+        return None
 
     def add_node(self, node: Node):
         """Add a node to the system."""
@@ -185,7 +228,7 @@ class System:
                     print(f"  {issue}")
 
     def add_web_server(
-        self, web_server: Optional[Any] = None, auto_connect: bool = True
+        self, web_server: Any | None = None, auto_connect: bool = True
     ) -> Any:
         """
         Add web server component for monitoring.
@@ -340,7 +383,7 @@ class System:
 
         self._iteration += 1
 
-    def run(self, iterations: Optional[int] = None):
+    def run(self, iterations: int | None = None):
         """
         Run the system for N iterations.
 
@@ -376,13 +419,25 @@ class System:
         finally:
             self.deactivate()
 
-    def launch(self, iterations: Optional[int] = None):
+<<<<<<< Current (Your changes)
+    def launch(self, iterations: int | None = None, transport: str | None = None):
         """
         Launch the system (configure, activate, run).
 
+        Can launch using different transports:
+        - None/"native": Run in same process (default)
+        - "dora": Compile to Dora dataflow and launch with Dora transport
+        - "ros2": Compile to ROS2 launch file and use ROS2/DDS transport
+
         Args:
             iterations: Number of iterations to run
+            transport: Transport to use ("native", "dora", "ros2", or None for native)
         """
+        if transport and transport != "native":
+            # Use transport compilation
+            return self._launch_with_transport(transport)
+
+        # Native launch (same process)
         try:
             self.configure()
             self.activate()
@@ -392,30 +447,200 @@ class System:
             raise
         finally:
             self.shutdown()
+=======
+    def launch(self, iterations: Optional[int] = None, engine: Optional[str] = None):
+        """
+        Launch the system (compile if needed, then execute).
+        
+        This method will:
+        1. Determine the execution engine from nodes
+        2. Get the engine instance
+        3. Compile the system for that engine (if applicable)
+        4. Execute the system
+        
+        Args:
+            iterations: Number of iterations to run
+            engine: Force specific engine (overrides node configs)
+        """
+        from lk.engines import get_engine
+        
+        # Determine which engine to use
+        engine_name = engine or self._determine_engine()
+        
+        # Get engine instance
+        engine_instance = get_engine(engine_name)
+        
+        # Compile system
+        config_path = engine_instance.compile(self)
+        
+        # Launch via engine
+        engine_instance.launch(self, config_path, iterations=iterations)
+    
+    def _determine_engine(self) -> str:
+        """
+        Determine which execution engine to use.
+        
+        Examines node configurations to determine engine.
+        All nodes must use the same engine (heterogeneous not supported yet).
+        
+        Returns:
+            Engine name ('native', 'dora', 'ros2', etc.)
+        """
+        if not self._nodes:
+            # No explicit nodes, use native
+            return 'native'
+        
+        # Collect unique engines
+        engines = set()
+        for node in self._nodes:
+            engines.add(node.engine)
+        
+        if len(engines) == 0:
+            return 'native'
+        elif len(engines) == 1:
+            return list(engines)[0]
+        else:
+            raise ValueError(
+                f"Heterogeneous engines not supported yet. "
+                f"Found engines: {engines}. All nodes must use the same engine."
+            )
+    
+    def get_components_by_node(self) -> Dict[str, List[Component]]:
+        """
+        Group components by their assigned nodes.
+        
+        Returns:
+            Dictionary mapping node names to lists of components
+        """
+        node_components = {}
+        
+        for component in self._components:
+            if component.node is None:
+                # Component not assigned to node, use default
+                node_name = 'default'
+            else:
+                node_name = component.node.name
+            
+            if node_name not in node_components:
+                node_components[node_name] = []
+            node_components[node_name].append(component)
+        
+        return node_components
+>>>>>>> Incoming (Background Agent changes)
+
+    def _launch_with_transport(self, transport_name: str):
+        """
+        Launch system using a transport (Dora, ROS2, etc.).
+
+        Args:
+            transport_name: Name of transport to use
+        """
+        from lk.common.transport import TransportConfig, TransportType, create_transport
+
+        # Map string names to TransportType
+        transport_map = {
+            "dora": TransportType.DORA_RS,
+            "dora_rs": TransportType.DORA_RS,
+            "ros2": TransportType.ROS2,
+        }
+
+        if transport_name not in transport_map:
+            raise ValueError(
+                f"Unknown transport '{transport_name}'. "
+                f"Available: {list(transport_map.keys())}"
+            )
+
+        transport_type = transport_map[transport_name]
+
+        # Create transport config
+        config = TransportConfig(
+            transport_type=transport_type,
+            verbose=self.config.verbose,
+        )
+
+        # Create transport and compile+launch
+        transport = create_transport(transport_type, config)
+
+        if self.config.verbose:
+            print(f"Using {transport_name} transport for message passing")
+
+        # Compile and launch
+        process = transport.compile_and_launch(self)
+
+        if process:
+            try:
+                # Wait for process to complete (or Ctrl+C)
+                process.wait()
+            except KeyboardInterrupt:
+                if self.config.verbose:
+                    print("\nShutting down...")
+                transport.shutdown(process)
+
+    def compile_to_transport(
+        self, transport: str, output_path: str | None = None
+    ) -> Path:
+        """
+        Compile system to transport format without launching.
+
+        Useful for:
+        - Generating Dora dataflow.yml for inspection
+        - Generating ROS2 launch.py for customization
+        - CI/CD pipelines
+
+        Args:
+            transport: Transport to compile to ("dora", "ros2")
+            output_path: Where to save compiled file
+
+        Returns:
+            Path to compiled file
+
+        Example:
+            system.compile_to_transport("dora", "my_dataflow.yml")
+        """
+        from lk.common.transport import TransportConfig, TransportType, create_transport
+
+        transport_map = {
+            "dora": TransportType.DORA_RS,
+            "ros2": TransportType.ROS2,
+        }
+
+        if transport not in transport_map:
+            raise ValueError(f"Unknown transport '{transport}'")
+
+        transport_type = transport_map[transport]
+        config = TransportConfig(
+            transport_type=transport_type,
+            output_file=output_path,
+            verbose=self.config.verbose,
+            auto_launch=False,
+        )
+
+        transport_instance = create_transport(transport_type, config)
+        return transport_instance.compile(self)
 
     @property
-    def nodes(self) -> List[Node]:
+    def nodes(self) -> list[Node]:
         """Get all nodes in the system."""
         return self._nodes.copy()
 
     @property
-    def components(self) -> List[Component]:
+    def components(self) -> list[Component]:
         """Get all components in the system."""
         return self._components.copy()
 
     @property
-    def inputs(self) -> List[Port]:
+    def inputs(self) -> list[Port]:
         """Get public input ports."""
         return self._inputs.copy()
 
     @property
-    def outputs(self) -> List[Port]:
+    def outputs(self) -> list[Port]:
         """Get public output ports."""
         return self._outputs.copy()
 
     def plot_graph(
-        self, to_file: Optional[str] = None, show: bool = False, rankdir: str = "LR"
-    ) -> Optional[str]:
+        self, to_file: str | None = None, show: bool = False, rankdir: str = "LR"
+    ) -> str | None:
         """
         Visualize the system graph using Mermaid.js.
 

@@ -6,12 +6,12 @@ Matches ROS sensor_msgs structure for compatibility.
 """
 
 # BAM
-from .mdp_observation import MdpObservation
-from bam.msgs.ros_msgs.std_msgs import Header
-from bam.msgs.ros_msgs.sensor_msgs import CameraInfo, Image
-
 # PYTHON
 from dataclasses import dataclass, field
+
+from lk.msgs.ros import CameraInfo, Header, Image
+
+from .mdp_observation import MdpObservation
 
 
 @dataclass

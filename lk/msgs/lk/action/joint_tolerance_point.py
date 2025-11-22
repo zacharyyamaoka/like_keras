@@ -1,4 +1,4 @@
-from bam.msgs.ros_msgs import Time
+from lk.msgs.ros import Time
 
 
 # https://docs.ros.org/en/rolling/p/control_msgs/msg/JointTolerance.html

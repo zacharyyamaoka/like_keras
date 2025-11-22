@@ -11,32 +11,29 @@ Provides functionality to:
 """
 
 # BAM
-from .description_types import (
-    JointDescription,
-    LinkDescription,
-    PerJointLimits,
-    PerJointPhysics,
-    InertialProperties,
-    Inertia,
-    VisualProperties,
-    CollisionProperties,
-    Geometry,
-    Box,
-    Cylinder,
-    Sphere,
-    Mesh,
-    Material,
-    RGBA,
-    RobotInfo,
-    UrdfInfo,
-)
-from bam.msgs.ros_msgs import TransformStamped, Vector3, Quaternion, Pose
+from pathlib import Path
 
 # PYTHON
-import numpy as np
-from typing import Optional
-from pathlib import Path
-import xml.etree.ElementTree as ET
+from bam.msgs.ros_msgs import Pose, TransformStamped, Vector3
+
+from .description_types import (
+    RGBA,
+    Box,
+    CollisionProperties,
+    Cylinder,
+    Geometry,
+    Inertia,
+    InertialProperties,
+    JointDescription,
+    LinkDescription,
+    Material,
+    Mesh,
+    PerJointLimits,
+    PerJointPhysics,
+    RobotInfo,
+    Sphere,
+    VisualProperties,
+)
 
 try:
     import yourdfpy
@@ -308,7 +305,7 @@ def parse_joint_from_yourdfpy(joint) -> JointDescription:
 
 
 def from_yourdfpy_urdf(
-    urdf: "yourdfpy.URDF", robot_name: Optional[str] = None
+    urdf: "yourdfpy.URDF", robot_name: str | None = None
 ) -> tuple[list[LinkDescription], list[JointDescription], RobotInfo]:
     """Convert yourdfpy URDF to RobotDescription components.
 
@@ -346,7 +343,7 @@ def from_yourdfpy_urdf(
 
 
 def from_urdf_string(
-    urdf_string: str, robot_name: Optional[str] = None
+    urdf_string: str, robot_name: str | None = None
 ) -> tuple[list[LinkDescription], list[JointDescription], RobotInfo]:
     """Parse URDF string into RobotDescription components.
 
@@ -366,7 +363,7 @@ def from_urdf_string(
 
 
 def from_urdf_file(
-    urdf_path: str | Path, robot_name: Optional[str] = None
+    urdf_path: str | Path, robot_name: str | None = None
 ) -> tuple[list[LinkDescription], list[JointDescription], RobotInfo]:
     """Parse URDF file into RobotDescription components.
 

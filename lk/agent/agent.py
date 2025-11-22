@@ -20,14 +20,63 @@ from abc import abstractmethod
 
 class Agent(LifecycleComponent):
     """
-    Base class for agents.
+        Base class for agents.
 
-    Agents have:
-    - Input: observation
-    - Output: action
+        Agents have:
+        - Input: observation
+        - Output: action
 
-    Subclasses should implement the forward() or __call__() method.
+        Subclasses should implement the forward() or __call__() method.
     """
+
+    # Registry for agent factories
+    _registry: dict[str, tuple[type, dict]] = {}
+
+    @classmethod
+    def register(cls, agent_id: str, agent_class: type["Agent"], **default_kwargs):
+        """
+            Register an agent class with an ID.
+
+            Args:
+                agent_id: Unique identifier for the agent
+                agent_class: Agent class to register
+                **default_kwargs: Default kwargs for agent creation
+        """
+        cls._registry[agent_id] = (agent_class, default_kwargs)
+
+    @classmethod
+    def from_id(cls, agent_id: str, **kwargs) -> "Agent":
+        """
+            Create agent from registered ID.
+
+            This provides a top-level factory similar to Env.from_id().
+
+            Args:
+                agent_id: Registered agent ID
+                **kwargs: Override default kwargs for agent creation
+
+            Returns:
+                Agent instance
+
+            Example:
+                agent = Agent.from_id("RandomAgent-v1", action_space=space)
+        """
+        if agent_id not in cls._registry:
+            raise ValueError(
+                f"Agent '{agent_id}' not registered. "
+                f"Available: {list(cls._registry.keys())}"
+            )
+
+        agent_class, default_kwargs = cls._registry[agent_id]
+        # Merge default kwargs with provided kwargs
+        final_kwargs = {**default_kwargs, **kwargs}
+
+        # Call the specific agent class's from_id if it exists,
+        # otherwise create directly
+        if hasattr(agent_class, 'from_id') and agent_class != cls:
+            return agent_class.from_id(agent_id, **final_kwargs)
+        else:
+            return agent_class(**final_kwargs)
 
     @dataclass
     class Config:
@@ -105,21 +154,30 @@ class Agent(LifecycleComponent):
 
     def __call__(self, obs_port: Optional[InputPort] = None) -> OutputPort[Action]:
         """
-        PyTorch-like callable interface.
+            PyTorch/Keras-like callable interface.
 
-        Enables syntax like: action_port = agent(env.obs)
+            Enables syntax like:
+                action_port = agent(env.obs)  # Using port
+                action = agent.forward(obs)    # Using value
 
-        Args:
-            obs_port: Optional observation port to connect to
+            Args:
+                obs_port: Optional observation port to connect to and read from
 
-        Returns:
-            Action output port
+            Returns:
+                Action output port
         """
-        # If an observation port is provided, connect it
+        # If an observation port is provided, connect it and process
         if obs_port is not None:
             from lk.common.graph import Connection
 
+            # Connect the ports
             Connection(source=obs_port, target=self.obs)
+
+            # Read the observation and compute action
+            obs_value = obs_port.value
+            if obs_value is not None:
+                action = self.forward(obs_value)
+                self.action.write(action)
 
         return self.action
 

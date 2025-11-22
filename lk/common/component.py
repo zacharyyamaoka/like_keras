@@ -30,21 +30,40 @@ class LifecycleState(Enum):
 
 class Component(ABC):
     """
-    Base component without lifecycle management.
-
-    Simple stateless components can inherit from this.
+    Atomic computational unit (no sub-components).
+    
+    Components are leaf nodes in the computation graph. They contain
+    normal Python code internally - use any libraries, classes, or functions
+    you want. The framework only manages ports at the boundary.
+    
     For stateful components with setup/teardown, use LifecycleComponent.
-
+    
     Each Component subclass can define its own Config class:
-
-    class MyComponent(Component):
-        @dataclass
-        class Config:
-            param1: int = 10
-            param2: str = "default"
-
-        def __init__(self, config: Optional[Config] = None, **kwargs):
-            super().__init__(config=config, **kwargs)
+    
+    Example:
+        class VisionPipeline(Component):
+            @dataclass
+            class Config:
+                model_path: str = "model.pth"
+                
+            def __init__(self, node=None, config=None, **kwargs):
+                super().__init__('vision', node=node, config=config)
+                
+                # Use normal Python inside!
+                self.camera = Camera()
+                self.detector = YOLOv8()
+                self.tracker = ByteTrack()
+                self.model = torch.load(self.config.model_path)
+            
+            def forward(self, image):
+                # Normal Python calls (fast, in-process)
+                detections = self.detector(image)
+                tracked = self.tracker(detections)
+                return tracked
+    
+    Note:
+        If you need to distribute internal computation across multiple processes,
+        split into separate Components and compose them in a System.
     """
 
     @dataclass
@@ -67,8 +86,8 @@ class Component(ABC):
         Initialize component.
 
         Args:
-            name: Component identifier
-            node: Node this component belongs to
+            name: Component identifier (defaults to class name)
+            node: Deployment node (where this component will run)
             config: Component configuration
         """
         self.name = name or self.__class__.__name__

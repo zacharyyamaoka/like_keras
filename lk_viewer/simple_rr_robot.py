@@ -6,12 +6,10 @@ Minimal example for testing lk_viewer reactive visualization.
 """
 
 # BAM
-from lk.msgs import Pose, Point
-from lk.common.robot_description import RobotDescription
-
 # PYTHON
-from dataclasses import dataclass, field
-import numpy as np
+from dataclasses import dataclass
+
+from lk.common.robot_description import RobotDescription
 
 
 @dataclass

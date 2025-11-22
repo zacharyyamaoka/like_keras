@@ -8,8 +8,8 @@ Usage:
 """
 
 # PYTHON
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -25,9 +25,9 @@ def main():
         print(f"❌ Error: Robot file not found: {robot_path}")
         sys.exit(1)
 
-    print(f"🚀 Starting LK Viewer...")
+    print("🚀 Starting LK Viewer...")
     print(f"📍 Watching: {robot_path}")
-    print(f"🌐 Open: http://localhost:8000")
+    print("🌐 Open: http://localhost:8000")
     print(f"✏️  Edit {robot_path.name} to see live updates!")
     print()
 

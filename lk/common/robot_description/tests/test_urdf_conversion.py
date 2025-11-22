@@ -10,26 +10,24 @@ Tests the ability to:
 """
 
 # BAM
-from lk.common.robot_description import RobotDescription
-from lk.common.robot_description.description_types import (
-    LinkDescription,
-    JointDescription,
-    Box,
-    Cylinder,
-    Sphere,
-    Mesh,
-    VisualProperties,
-    CollisionProperties,
-    InertialProperties,
-    Inertia,
-    PerJointLimits,
-)
-from bam.msgs.ros_msgs import TransformStamped, Vector3
+import tempfile
+from pathlib import Path
 
 # PYTHON
 import pytest
-import tempfile
-from pathlib import Path
+from bam.msgs.ros_msgs import TransformStamped, Vector3
+
+from lk.common.robot_description import RobotDescription
+from lk.common.robot_description.description_types import (
+    Box,
+    Cylinder,
+    Inertia,
+    InertialProperties,
+    JointDescription,
+    LinkDescription,
+    PerJointLimits,
+    Sphere,
+)
 
 try:
     import yourdfpy

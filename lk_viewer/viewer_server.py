@@ -12,20 +12,19 @@ Simple FastAPI server that:
 # (minimal dependencies for now)
 
 # PYTHON
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
 import asyncio
-import json
-from pathlib import Path
-from typing import Any, List, Dict
 import importlib.util
+import json
 import sys
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from pathlib import Path
+from typing import Any
 
+import uvicorn
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 app = FastAPI()
 
@@ -34,7 +33,7 @@ active_connections: list[WebSocket] = []
 node_connections: list[WebSocket] = []
 
 # Store node state in memory
-nodes_state: List[Dict[str, Any]] = []
+nodes_state: list[dict[str, Any]] = []
 
 # Add CORS middleware
 app.add_middleware(
@@ -176,7 +175,7 @@ async def get_nodes():
 
 
 @app.post("/api/nodes")
-async def update_nodes(nodes: List[Dict[str, Any]]):
+async def update_nodes(nodes: list[dict[str, Any]]):
     """Update node state."""
     global nodes_state
     nodes_state = nodes

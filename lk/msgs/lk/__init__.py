@@ -19,7 +19,6 @@ from .action import (
     WaypointContext,
     WaypointParams,
 )
-
 from .api import (
     ClientResponse,
     ErrorCode,
@@ -29,36 +28,35 @@ from .api import (
 
 # Description types moved to bam.descriptions.descriptions.description_types
 # But we keep them available via bam.msgs for backward compatibility
-from bam.descriptions.types import (
-    Box,
-    CollisionProperties,
-    ConfigFileInfo,
-    Cylinder,
-    DropPoint,
-    Geometry,
-    Inertia,
-    InertialProperties,
-    JointCalibration,
-    JointDescription,
-    JointIO,
-    JointMimic,
-    LinkDescription,
-    Material,
-    Mesh,
-    PerJointLimits,
-    PerJointPhysics,
-    PerJointState,
-    PhysicalProperties,
-    PointOfInterest,
-    RGBA,
-    RobotInfo,
-    Sphere,
-    SrdfInfo,
-    UrdfInfo,
-    VisualProperties,
-)
-
+# NOTE: These are commented out for now as they depend on external 'bam' package
+# from bam.descriptions.types import (
+#     Box,
+#     CollisionProperties,
+#     ConfigFileInfo,
+#     Cylinder,
+#     DropPoint,
+#     Geometry,
+#     Inertia,
+#     InertialProperties,
+#     JointCalibration,
+#     JointDescription,
+#     JointIO,
+#     JointMimic,
+#     LinkDescription,
+#     Material,
+#     Mesh,
+#     PerJointLimits,
+#     PerJointPhysics,
+#     PerJointState,
+#     PhysicalProperties,
+#     PointOfInterest,
+#     RGBA,
+#     RobotInfo,
+#     Sphere,
+#     SrdfInfo,
+#     UrdfInfo,
+#     VisualProperties,
+# )
 from .msg import Msg
-
+from .observation import MdpObservation, RgbdObservation, RgbObservation
 from .state import MdpState
-from .observation import MdpObservation, RgbObservation, RgbdObservation

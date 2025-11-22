@@ -8,7 +8,6 @@ Run this script to see URDF conversion in action without pytest.
 
 # PYTHON
 import sys
-from pathlib import Path
 
 try:
     import yourdfpy
@@ -94,10 +93,10 @@ print("   ✓ Handle multiple visual/collision elements")
 print("   ✓ Round-trip conversion capability")
 
 print("\n4. Files created:")
-print(f"   - urdf_converter.py: Core conversion logic")
-print(f"   - robot_description.py: Added from_urdf_xml(), from_urdf_file() methods")
-print(f"   - test_urdf_conversion.py: Unit tests")
-print(f"   - test_urdf_roundtrip.py: Integration tests with robot_descriptions package")
+print("   - urdf_converter.py: Core conversion logic")
+print("   - robot_description.py: Added from_urdf_xml(), from_urdf_file() methods")
+print("   - test_urdf_conversion.py: Unit tests")
+print("   - test_urdf_roundtrip.py: Integration tests with robot_descriptions package")
 
 print("\n5. Testing round-trip conversion:")
 print("   The converter can parse real robot URDFs from robot_descriptions package:")

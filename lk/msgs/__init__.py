@@ -12,100 +12,102 @@ from .lk import (
     ArmParams,
     CartesianImpedance,
     CartesianLimits,
+    # API
+    ClientResponse,
+    ErrorCode,
     HandParams,
     JointImpedance,
     JointLimits,
     JointTolerancePoint,
     MdpAction,
+    MdpObservation,
+    MdpState,
+    # Core
+    Msg,
     MultiWaypointAction,
     NumpyTrajectory,
     PathParams,
     PathTolerance,
+    RequestHeader,
+    ResponseHeader,
+    RgbdObservation,
+    RgbObservation,
     WaypointAction,
     WaypointContext,
     WaypointParams,
-    # API
-    ClientResponse,
-    ErrorCode,
-    RequestHeader,
-    ResponseHeader,
-    # Description - all description types
-    Box,
-    CollisionProperties,
-    ConfigFileInfo,
-    Cylinder,
-    DropPoint,
-    Geometry,
-    Inertia,
-    InertialProperties,
-    JointCalibration,
-    JointDescription,
-    JointIO,
-    JointMimic,
-    LinkDescription,
-    Material,
-    Mesh,
-    PerJointLimits,
-    PerJointPhysics,
-    PerJointState,
-    PhysicalProperties,
-    PointOfInterest,
-    RGBA,
-    RobotInfo,
-    Sphere,
-    SrdfInfo,
-    UrdfInfo,
-    VisualProperties,
-    # Core
-    Msg,
-    MdpObservation,
-    MdpState,
-    RgbObservation,
-    RgbdObservation,
 )
 
-# Random Messages
-from .random_msgs import (
+# Description types that depend on 'bam' package - commented out for standalone use
+# from .lk import (
+#     RGBA,
+#     Box,
+#     CollisionProperties,
+#     ConfigFileInfo,
+#     Cylinder,
+#     DropPoint,
+#     Geometry,
+#     Inertia,
+#     InertialProperties,
+#     JointCalibration,
+#     JointDescription,
+#     JointIO,
+#     JointMimic,
+#     LinkDescription,
+#     Material,
+#     Mesh,
+#     PerJointLimits,
+#     PerJointPhysics,
+#     PerJointState,
+#     PhysicalProperties,
+#     PointOfInterest,
+#     RobotInfo,
+#     Sphere,
+#     SrdfInfo,
+#     UrdfInfo,
+#     VisualProperties,
+# )
+
+# Data Distributions
+from .data_dist import (
     RandomFloat,
     RandomInt,
-    RandomType,
 )
 
 # ROS
 from .ros import (
-    # Builtin Interfaces
-    Duration,
-    Time,
-    # Geometry
-    Point,
-    Polygon,
-    Pose,
-    PoseStamped,
-    PoseWithCovariance,
-    Quaternion,
-    Transform,
-    TransformStamped,
-    Vector3,
-    # Core
-    RosMsg,
-    Header,
-    PoseType,
+    # Vision
+    BoundingBox2D,
     # Sensor
     CameraInfo,
     CompressedImage,
+    Detection2D,
+    # Builtin Interfaces
+    Duration,
+    Header,
     Image,
     JointState,
-    RegionOfInterest,
     # Trajectory
     JointTrajectory,
     JointTrajectoryPoint,
-    # Vision
-    BoundingBox2D,
-    Detection2D,
     ObjectHypothesis,
     ObjectHypothesisWithPose,
+    # Geometry
+    Point,
     Point2D,
+    Polygon,
+    Pose,
     Pose2D,
+    PoseStamped,
+    PoseType,
+    PoseWithCovariance,
+    Quaternion,
+    RegionOfInterest,
+    # Core
+    RosMsg,
+    Time,
+    Transform,
+    TransformStamped,
+    Vector3,
 )
 
 # Visual Objects

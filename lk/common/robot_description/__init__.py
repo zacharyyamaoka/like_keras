@@ -3,43 +3,41 @@ Core description building blocks and utilities.
 """
 
 # BAM
+# URDF conversion functionality
+from . import urdf_converter
 from .description_types import (
+    RGBA,
+    # Geometry
+    Box,
+    # Links
+    CollisionProperties,
+    ConfigFileInfo,
+    Cylinder,
+    # Scene
+    DropPoint,
+    Geometry,
+    Inertia,
+    InertialProperties,
     # Joints
     JointCalibration,
     JointDescription,
     JointIO,
     JointMimic,
-    PerJointState,
-    PerJointLimits,
-    PerJointPhysics,
-    # Links
-    CollisionProperties,
-    Inertia,
-    InertialProperties,
     LinkDescription,
     Material,
-    PhysicalProperties,
-    RGBA,
-    VisualProperties,
-    # Geometry
-    Box,
-    Cylinder,
-    Geometry,
     Mesh,
-    Sphere,
-    # Scene
-    DropPoint,
+    PerJointLimits,
+    PerJointPhysics,
+    PerJointState,
+    PhysicalProperties,
     PointOfInterest,
     # Robot
     RobotInfo,
+    Sphere,
     SrdfInfo,
     UrdfInfo,
-    ConfigFileInfo,
+    VisualProperties,
 )
-
 from .robot_description import RobotDescription
-
-# URDF conversion functionality
-from . import urdf_converter
 
 # PYTHON

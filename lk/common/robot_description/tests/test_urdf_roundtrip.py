@@ -8,15 +8,15 @@ Validates that parsing and re-exporting produces equivalent URDF structures.
 """
 
 # BAM
-from lk.common.robot_description import RobotDescription
 
 # PYTHON
 import pytest
-from pathlib import Path
+
+from lk.common.robot_description import RobotDescription
 
 try:
-    import yourdfpy
     import robot_descriptions
+    import yourdfpy
 except ImportError:
     pytest.skip("yourdfpy or robot_descriptions not installed", allow_module_level=True)
 
@@ -135,25 +135,25 @@ def test_round_trip_real_robots(robot_name, urdf_path):
         )
 
     # Compare structure
-    assert len(original_urdf.link_map) == len(
-        exported_urdf.link_map
-    ), f"Link count mismatch: original={len(original_urdf.link_map)}, exported={len(exported_urdf.link_map)}"
+    assert len(original_urdf.link_map) == len(exported_urdf.link_map), (
+        f"Link count mismatch: original={len(original_urdf.link_map)}, exported={len(exported_urdf.link_map)}"
+    )
 
-    assert len(original_urdf.joint_map) == len(
-        exported_urdf.joint_map
-    ), f"Joint count mismatch: original={len(original_urdf.joint_map)}, exported={len(exported_urdf.joint_map)}"
+    assert len(original_urdf.joint_map) == len(exported_urdf.joint_map), (
+        f"Joint count mismatch: original={len(original_urdf.joint_map)}, exported={len(exported_urdf.joint_map)}"
+    )
 
     # Check all links are present
     for link_name in original_urdf.link_map:
-        assert (
-            link_name in exported_urdf.link_map
-        ), f"Link {link_name} missing in exported URDF"
+        assert link_name in exported_urdf.link_map, (
+            f"Link {link_name} missing in exported URDF"
+        )
 
     # Check all joints are present
     for joint_name in original_urdf.joint_map:
-        assert (
-            joint_name in exported_urdf.joint_map
-        ), f"Joint {joint_name} missing in exported URDF"
+        assert joint_name in exported_urdf.joint_map, (
+            f"Joint {joint_name} missing in exported URDF"
+        )
 
     # Compare joint properties
     for joint_name in original_urdf.joint_map:
@@ -161,17 +161,17 @@ def test_round_trip_real_robots(robot_name, urdf_path):
         exp_joint = exported_urdf.joint_map[joint_name]
 
         # Joint type
-        assert (
-            orig_joint.type == exp_joint.type
-        ), f"Joint {joint_name} type mismatch: {orig_joint.type} != {exp_joint.type}"
+        assert orig_joint.type == exp_joint.type, (
+            f"Joint {joint_name} type mismatch: {orig_joint.type} != {exp_joint.type}"
+        )
 
         # Parent/child links
-        assert (
-            orig_joint.parent == exp_joint.parent
-        ), f"Joint {joint_name} parent mismatch: {orig_joint.parent} != {exp_joint.parent}"
-        assert (
-            orig_joint.child == exp_joint.child
-        ), f"Joint {joint_name} child mismatch: {orig_joint.child} != {exp_joint.child}"
+        assert orig_joint.parent == exp_joint.parent, (
+            f"Joint {joint_name} parent mismatch: {orig_joint.parent} != {exp_joint.parent}"
+        )
+        assert orig_joint.child == exp_joint.child, (
+            f"Joint {joint_name} child mismatch: {orig_joint.child} != {exp_joint.child}"
+        )
 
     print(f"  ✓ Round-trip successful for {robot_name}")
 

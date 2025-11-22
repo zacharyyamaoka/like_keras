@@ -12,10 +12,17 @@ I like having the light weight datasets (synthetic essentially beacuse we can ea
 
 This is a good place to start beacuse the simplest possible system would have just two components.
 
+I am finding perhaps just the hardest thing here now is to quickly set oup the constraints and objective function..
+
 """
 
+# Good defaults?
 agent = Agent()
 env = Env()
+
+# If we use factory methods than no type hinting... so lets just Agent Class Directly.
+agent.config.type = "random_agent"
+agent.config. = "gym_env"
 
 action = agent(env.obs)
 obs = env(action)

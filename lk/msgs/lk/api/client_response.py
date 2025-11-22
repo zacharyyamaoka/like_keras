@@ -28,11 +28,13 @@ if not response:
 """
 
 # BAM
+# PYTHON
+import warnings
+from collections.abc import Iterator
+from typing import Generic, TypeVar
+
 from .error_code import ErrorCode
 from .response_header import ResponseHeader
-
-# PYTHON
-from typing import TypeVar, Generic, Optional, Iterator
 
 T = TypeVar("T")
 
@@ -49,8 +51,8 @@ class ClientResponse(Generic[T]):
     def __init__(
         self,
         header: ResponseHeader,
-        data: Optional[T] = None,
-        info: Optional[dict] = None,
+        data: T | None = None,
+        info: dict | None = None,
     ):
         """Create a ClientResponse.
 
@@ -63,9 +65,12 @@ class ClientResponse(Generic[T]):
         self.header = header
         self.info = info if info is not None else {}
 
+        # Check for namespace conflicts between ClientResponse and data attributes
+        self._check_namespace_conflicts()
+
     @classmethod
     def success(
-        cls, error_msg: str = "", data: Optional[T] = None, info: Optional[dict] = None
+        cls, error_msg: str = "", data: T | None = None, info: dict | None = None
     ) -> "ClientResponse[T]":
         """Create a successful response."""
         header = ResponseHeader.create_success(error_msg=error_msg)
@@ -76,8 +81,8 @@ class ClientResponse(Generic[T]):
         cls,
         error_msg: str = "",
         fix_msg: str = "",
-        data: Optional[T] = None,
-        info: Optional[dict] = None,
+        data: T | None = None,
+        info: dict | None = None,
     ) -> "ClientResponse[T]":
         """Create a failure response."""
         header = ResponseHeader.create_failure(error_msg=error_msg, fix_msg=fix_msg)
@@ -89,8 +94,8 @@ class ClientResponse(Generic[T]):
         error_code: ErrorCode,
         error_msg: str = "",
         fix_msg: str = "",
-        data: Optional[T] = None,
-        info: Optional[dict] = None,
+        data: T | None = None,
+        info: dict | None = None,
     ) -> "ClientResponse[T]":
         """Create a response with custom error code."""
         header = ResponseHeader.create_custom(
@@ -104,8 +109,8 @@ class ClientResponse(Generic[T]):
         error_code: ErrorCode,
         error_msg: str = "",
         fix_msg: str = "",
-        data: Optional[T] = None,
-        info: Optional[dict] = None,
+        data: T | None = None,
+        info: dict | None = None,
     ) -> "ClientResponse[T]":
         """Create a response from an error code."""
         header = ResponseHeader.create_custom(
@@ -128,6 +133,49 @@ class ClientResponse(Generic[T]):
 
         return responses[0].header
 
+    def _check_namespace_conflicts(self) -> None:
+        """Check for namespace conflicts between ClientResponse and data attributes.
+
+        Warns if wrapped data has attributes that conflict with ClientResponse's own
+        attributes. In case of conflicts, users can always access data attributes via
+        .data to disambiguate.
+        """
+        if self.data is None:
+            return
+
+        # Automatically get ClientResponse's reserved attributes by introspection
+        # Include: instance attributes, properties, and public methods
+        reserved_attrs = set()
+
+        # Get all attributes from ClientResponse class (not instance)
+        for attr_name in dir(ClientResponse):
+            if not attr_name.startswith("_"):  # Only public attributes
+                reserved_attrs.add(attr_name)
+
+        # Also add instance attributes that get set in __init__
+        reserved_attrs.update(["data", "header", "info"])
+
+        # Get data's public attributes (excluding private/magic methods)
+        try:
+            data_attrs = {attr for attr in dir(self.data) if not attr.startswith("_")}
+        except Exception:
+            # If dir() fails, skip the check
+            return
+
+        # Find conflicts
+        conflicts = reserved_attrs & data_attrs
+
+        if conflicts:
+            data_type_name = type(self.data).__name__
+            conflicts_str = ", ".join(sorted(conflicts))
+            warnings.warn(
+                f"Namespace conflict detected: {data_type_name} has attributes that "
+                f"conflict with ClientResponse: {conflicts_str}. "
+                f"Use .data.{list(conflicts)[0]} to explicitly access data attributes.",
+                UserWarning,
+                stacklevel=4,  # Point to the actual user code, not this method
+            )
+
     @property
     def code(self) -> ErrorCode:
         """Get the error code."""
@@ -145,6 +193,58 @@ class ClientResponse(Generic[T]):
     def __iter__(self) -> Iterator:
         """Allow tuple unpacking: response, data = some_call()"""
         return iter((self, self.data))
+
+    def __getattr__(self, name: str):
+        """Transparently delegate attribute access to wrapped data.
+
+        This allows direct access to data attributes without .data prefix:
+            response.reward  # Instead of response.data.reward
+
+        Note: IDE autocomplete may not show delegated attributes.
+        Use response.data.attr for full type checking support if needed.
+
+        Args:
+            name: Attribute name to access
+
+        Returns:
+            Attribute value from wrapped data
+
+        Raises:
+            AttributeError: If neither ClientResponse nor data has the attribute
+        """
+        # Avoid infinite recursion for core attributes
+        if name in ["data", "header", "info", "is_success"]:
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'"
+            )
+
+        # Delegate to data if it exists
+        if self.data is not None:
+            try:
+                return getattr(self.data, name)
+            except AttributeError:
+                raise AttributeError(
+                    f"Neither ClientResponse nor its data have attribute '{name}'"
+                )
+
+        raise AttributeError(f"'{type(self).__name__}' has no data to delegate to")
+
+    def as_type(self) -> T:
+        """Return self cast as T for IDE autocomplete support.
+
+        This is purely for type checking - at runtime it returns self,
+        which transparently delegates to .data via __getattr__.
+
+        Usage:
+            response: ClientResponse[Observation] = env.step(action)
+            obs = response.as_type()  # IDE now sees: Observation
+            print(obs.reward)  # Full autocomplete!
+            print(obs.header.process_duration)  # Still works at runtime!
+
+        Returns:
+            Self, but type-cast as T for the type checker
+        """
+        return self  # type: ignore
 
     def __str__(self) -> str:
         """Readable string representation."""

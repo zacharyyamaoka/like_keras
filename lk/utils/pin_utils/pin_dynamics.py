@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 
 # BAM
-from bam.utils.pin_utils.pin_robot_model import PinRobotModel
+from typing import TYPE_CHECKING
+
+import numpy as np
 
 # PYTHON
 import pinocchio as pin
-import numpy as np
-from typing import TYPE_CHECKING
+
+from lk.utils.pin_utils.pin_robot_model import PinRobotModel
 
 if TYPE_CHECKING:
-    from bam.descriptions import RobotDescription
+    from lk.descriptions import RobotDescription
 
 
 class PinDynamics:
-
     @classmethod
     def from_robot_description(
         cls, robot_description: "RobotDescription", gravity=[0, 0.0, -9.81]
@@ -60,7 +61,6 @@ class PinDynamics:
         return self.tau
 
     def rnea(self, q: np.ndarray, qd: np.ndarray, qdd: np.ndarray) -> np.ndarray:
-
         q = self.preprocess(q)
         qd = self.preprocess(qd)
         qdd = self.preprocess(qdd)
@@ -68,7 +68,6 @@ class PinDynamics:
         tau = np.zeros(q.shape)
 
         for i in range(q.shape[0]):
-
             q_i = q[i, :]
             qd_i = qd[i, :]
             qdd_i = qdd[i, :]

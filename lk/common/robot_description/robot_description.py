@@ -2,50 +2,37 @@
 
 
 # BAM
+# PYTHON
+import hashlib
+import json
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+import numpy as np
+from bam.msgs.ros_msgs import TransformStamped
 from bam.utils import (
-    combine_dataclass_instances,
-    generate_srdf_from_urdf,
     ConfigMixin,
-    temp_urdf_file,
+    generate_srdf_from_urdf,
     temp_srdf_file,
-    xml_from_xacro,
-    xml_body_from_macro_xml,
+    temp_urdf_file,
 )
 
-from bam.msgs.ros_msgs import TransformStamped
+from .composite_description_helper import generate_composite_xml_body
 from .description_types import (
     JointDescription,
     LinkDescription,
-    RobotInfo,
     PointOfInterest,
-    UrdfInfo,
+    RobotInfo,
     SrdfInfo,
+    UrdfInfo,
 )
-
 from .joint_positions import JointPositions
-from .composite_description_helper import generate_composite_xml_body
-
-# PYTHON
-import copy
-import hashlib
-import json
-import os
-import tempfile
-from contextlib import contextmanager
-from dataclasses import dataclass, field, asdict, fields as dataclass_fields
-from enum import Enum
-from pathlib import Path
-from typing import Any, ClassVar, Iterator, Literal, Optional, Union, TypeVar, Type
-
-import numpy as np
 
 # from pin import inspect
-from xacrodoc import XacroDoc
 
 
 @dataclass
 class DescriptionArgs:
-
     reflect: int = 1
     plugin: str = "none"
     world_xyz: tuple[float, float, float] = (0, 0, 0)
@@ -65,14 +52,12 @@ DescriptionEntity = JointDescription | LinkDescription
 
 @dataclass
 class NamedEntities:
-
     entities: dict[str, DescriptionEntity] = field(default_factory=dict)
 
     # Subclasses must set this as a class variable (not a dataclass field)
     def __post_init__(self) -> None:
         # If you added any fields
         for field_name, field_value in self.__dict__.items():
-
             if hasattr(field_value, "name") and hasattr(field_value, "unprefixed_name"):
                 field_value.unprefixed_name = field_name
                 field_value.name = field_name
@@ -124,7 +109,6 @@ class NamedEntities:
         return NamedEntities.combine(self, *named_entities)
 
     def add(self, entity: DescriptionEntity) -> None:
-
         if entity.name in self.entities:
             raise ValueError(f"Entity name {entity.name} already exists")
         self.entities[entity.name] = entity
@@ -132,7 +116,6 @@ class NamedEntities:
 
 @dataclass
 class DescriptionTags:
-
     # Generic
     root_link: str = "root_link"
     base_link: str = "base_link"
@@ -148,12 +131,8 @@ class DescriptionTags:
     tcp_tool: str = (
         "tcp_tool"  # similar to tool0 frame, in that Z pointing away from palm
     )
-    tcp_world: str = (
-        "tcp_world"  # Z pointing upwards, into palm. Matches orientation of object you want to pick up
-    )
-    tcp_world_floating: str = (
-        "tcp_world_floating"  # Optional frame that moves with opening of hand, in case you want to change arm alignment
-    )
+    tcp_world: str = "tcp_world"  # Z pointing upwards, into palm. Matches orientation of object you want to pick up
+    tcp_world_floating: str = "tcp_world_floating"  # Optional frame that moves with opening of hand, in case you want to change arm alignment
     hand_to_arm_mount: str = "hand_to_arm_mount"
 
 
@@ -252,7 +231,6 @@ class Joints(NamedEntities):
 
 
 def xacro_template(name: str, body: str) -> str:
-
     return f"""
     <robot name="{name}">
         {body}
@@ -262,7 +240,6 @@ def xacro_template(name: str, body: str) -> str:
 
 @dataclass
 class RobotDescription(ConfigMixin):
-
     info: RobotInfo = field(default_factory=RobotInfo)
 
     joints: Joints = field(default_factory=Joints)
@@ -295,9 +272,8 @@ class RobotDescription(ConfigMixin):
     def from_entities(
         cls,
         entities: list[LinkDescription | JointDescription],
-        robot_info: Optional[RobotInfo] = None,
+        robot_info: RobotInfo | None = None,
     ) -> "RobotDescription":
-
         links = Links()
         joints = Joints()
 
@@ -321,7 +297,7 @@ class RobotDescription(ConfigMixin):
 
     @classmethod
     def from_urdf_xml(
-        cls, urdf_xml: str, robot_name: Optional[str] = None
+        cls, urdf_xml: str, robot_name: str | None = None
     ) -> "RobotDescription":
         """Create RobotDescription from URDF XML string.
 
@@ -354,7 +330,7 @@ class RobotDescription(ConfigMixin):
 
     @classmethod
     def from_urdf_file(
-        cls, urdf_path: str | Path, robot_name: Optional[str] = None
+        cls, urdf_path: str | Path, robot_name: str | None = None
     ) -> "RobotDescription":
         """Create RobotDescription from URDF file.
 
@@ -388,8 +364,8 @@ class RobotDescription(ConfigMixin):
     @staticmethod
     def combine(
         descriptions: list["RobotDescription"],
-        entities_to_add: Optional[list[LinkDescription | JointDescription]] = None,
-        robot_info: Optional[RobotInfo] = None,
+        entities_to_add: list[LinkDescription | JointDescription] | None = None,
+        robot_info: RobotInfo | None = None,
     ) -> "RobotDescription":
         """Combine multiple RobotDescriptions into one.
 
@@ -439,8 +415,8 @@ class RobotDescription(ConfigMixin):
     def extend(
         self,
         descriptions: list["RobotDescription"],
-        entities_to_add: Optional[list[LinkDescription | JointDescription]] = None,
-        robot_info: Optional[RobotInfo] = None,
+        entities_to_add: list[LinkDescription | JointDescription] | None = None,
+        robot_info: RobotInfo | None = None,
     ) -> "RobotDescription":
         """Extend this RobotDescription with additional descriptions."""
         return RobotDescription.combine(
@@ -490,7 +466,7 @@ class RobotDescription(ConfigMixin):
                 print(f"{indent_str}    [{i}]")
                 child.inspect(indent=indent + 2)
 
-    def set_flags(self, generate_py_xml: Optional[bool] = None) -> "RobotDescription":
+    def set_flags(self, generate_py_xml: bool | None = None) -> "RobotDescription":
         """Set flags on the robot description.
 
         Args:
@@ -780,7 +756,6 @@ class RobotDescription(ConfigMixin):
         return Path(self.info.get_file_path(".srdf", subdir="srdf_cache"))
 
     def load_srdf_path_from_cache(self) -> bool:
-
         cached_path = self.get_srdf_cache_path()
 
         if cached_path.exists():
@@ -792,9 +767,7 @@ class RobotDescription(ConfigMixin):
         return False
 
     # Reduce from 100,000 to 10,000 for dev so faster, but in reality likey want to use more!
-    def generate_new_srdf(
-        self, num_samples: Optional[int] = None, verbose: bool = True
-    ):
+    def generate_new_srdf(self, num_samples: int | None = None, verbose: bool = True):
         """Generate new SRDF file from URDF.
 
         Note: Config file is automatically dumped via get_config_file() when needed.

@@ -52,16 +52,8 @@ print(f"✓ Parsed URDF with {len(urdf.link_map)} links and {len(urdf.joint_map)
 try:
     # Import just what we need from robot_description without loading the whole lk package
     print("\nImporting robot description types...")
-    from lk.common.robot_description.description_types import (
-        LinkDescription,
-        JointDescription,
-        InertialProperties,
-        Inertia,
-    )
 
     print("✓ Imported description types")
-
-    from bam.msgs.ros import TransformStamped, Vector3
 
     print("✓ Imported ROS message types")
 
@@ -92,9 +84,9 @@ try:
     print("All converter tests passed!")
     print("=" * 60)
 
-except Exception as e:
+except Exception:
     import traceback
 
-    print(f"\n✗ Error during testing:")
+    print("\n✗ Error during testing:")
     traceback.print_exc()
     sys.exit(1)

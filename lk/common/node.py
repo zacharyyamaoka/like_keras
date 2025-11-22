@@ -29,9 +29,14 @@ class ExecutionMode(Enum):
 @dataclass
 class NodeConfig:
     """
-    Configuration for node execution.
+    Configuration for node deployment and execution.
     """
 
+    # Deployment configuration
+    machine: str = "local"  # Machine ID or hostname
+    engine: str = "native"  # Execution engine: 'dora', 'ros2', 'native'
+    
+    # Execution configuration
     execution_mode: ExecutionMode = ExecutionMode.SEQUENTIAL
     thread_priority: int = 0
     cpu_affinity: Optional[List[int]] = None
@@ -46,25 +51,36 @@ class NodeConfig:
 
 class Node:
     """
-    Execution context for components.
-
-    Nodes manage component execution - single-threaded loops,
-    multi-threaded message passing, etc.
-
-    Can optionally store component configurations for convenient setup:
-
-    node = Node(
-        name="my_node",
-        component_configs={
-            "agent": Agent.Config(...),
-            "env": Env.Config(...)
-        }
-    )
+    Deployment node for components.
+    
+    Nodes represent where components will run - which machine, which engine,
+    and how they execute. Components are assigned to nodes at creation time.
+    
+    Example:
+        # Define deployment nodes
+        jetson = Node('jetson', machine='192.168.1.10', engine='dora')
+        nuc = Node('nuc', machine='192.168.1.11', engine='dora')
+        
+        # Assign components to nodes
+        camera = CameraComponent(node=jetson)
+        planner = PlannerComponent(node=nuc)
+    
+    Can also store component configurations for convenient setup:
+        node = Node(
+            name="my_node",
+            component_configs={
+                "agent": Agent.Config(...),
+                "env": Env.Config(...)
+            }
+        )
     """
 
     def __init__(
         self,
         name: str,
+        machine: str = "local",
+        engine: str = "native",
+        execution_mode: ExecutionMode = ExecutionMode.SEQUENTIAL,
         config: Optional[NodeConfig] = None,
         component_configs: Optional[Dict[str, Any]] = None,
     ):
@@ -73,11 +89,25 @@ class Node:
 
         Args:
             name: Node identifier
-            config: Node configuration
+            machine: Machine ID or hostname where node will run
+            engine: Execution engine ('dora', 'ros2', 'native')
+            execution_mode: How to execute (sequential, threaded, async)
+            config: Full NodeConfig (overrides other parameters if provided)
             component_configs: Dict mapping component IDs to their configs
         """
         self.name = name
-        self.config = config or NodeConfig(name=name)
+        
+        # Create config from parameters or use provided
+        if config is not None:
+            self.config = config
+        else:
+            self.config = NodeConfig(
+                name=name,
+                machine=machine,
+                engine=engine,
+                execution_mode=execution_mode
+            )
+        
         self.component_configs = component_configs or {}
         self._components: List[Component] = []
 
@@ -87,6 +117,16 @@ class Node:
         self._message_queue: queue.Queue = queue.Queue(
             maxsize=self.config.max_queue_size
         )
+    
+    @property
+    def machine(self) -> str:
+        """Get machine where this node will run."""
+        return self.config.machine
+    
+    @property
+    def engine(self) -> str:
+        """Get execution engine for this node."""
+        return self.config.engine
 
     def get_component_config(self, component_id: str) -> Optional[Any]:
         """

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,10 +11,12 @@
             overflow: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+
         #canvas-container {
             width: 100vw;
             height: 100vh;
         }
+
         #info {
             position: absolute;
             top: 10px;
@@ -25,6 +28,7 @@
             font-size: 14px;
             max-width: 300px;
         }
+
         #status {
             position: absolute;
             top: 10px;
@@ -35,21 +39,26 @@
             border-radius: 5px;
             font-size: 12px;
         }
+
         #status.disconnected {
             background: rgba(200, 0, 0, 0.8);
         }
+
         .joint-slider {
             margin: 10px 0;
         }
+
         .joint-slider label {
             display: block;
             margin-bottom: 5px;
         }
+
         h3 {
             margin-top: 0;
         }
     </style>
 </head>
+
 <body>
     <div id="canvas-container"></div>
     <div id="info">
@@ -62,91 +71,91 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    
+
     <script>
         // Three.js setup
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x1a1a2e);
-        
+
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1000);
         camera.position.set(1.5, 1.5, 1.5);
         camera.lookAt(0, 0, 0);
-        
+
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
-        
+
         // Controls
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        
+
         // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
-        
+
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(5, 10, 5);
         directionalLight.castShadow = true;
         scene.add(directionalLight);
-        
+
         // Grid
         const gridHelper = new THREE.GridHelper(2, 20, 0x444444, 0x222222);
         scene.add(gridHelper);
-        
+
         // Axes helper
         const axesHelper = new THREE.AxesHelper(0.5);
         scene.add(axesHelper);
-        
+
         // Store robot meshes
         let robotGroup = new THREE.Group();
         scene.add(robotGroup);
-        
+
         // WebSocket connection
         const ws = new WebSocket(`ws://${window.location.host}/ws`);
         const statusEl = document.getElementById('status');
-        
+
         ws.onopen = () => {
             console.log('🔌 Connected to server');
             statusEl.textContent = 'Connected ✅';
             statusEl.className = '';
         };
-        
+
         ws.onclose = () => {
             console.log('❌ Disconnected from server');
             statusEl.textContent = 'Disconnected ❌';
             statusEl.className = 'disconnected';
         };
-        
+
         ws.onmessage = (event) => {
             const message = JSON.parse(event.data);
             console.log('📨 Received:', message);
-            
+
             if (message.type === 'init' || message.type === 'update') {
                 updateRobot(message.data);
             }
         };
-        
+
         function updateRobot(data) {
             console.log('🔄 Updating robot:', data);
-            
+
             // Update robot name
             document.getElementById('robot-name').textContent = data.name || 'Unknown';
-            
+
             // Clear previous robot
             while (robotGroup.children.length > 0) {
                 robotGroup.remove(robotGroup.children[0]);
             }
-            
+
             // Build robot from description
             if (data.links && data.joints) {
                 buildRobot(data);
             }
         }
-        
+
         function buildRobot(data) {
             const linkObjects = {};
-            
+
             // Create links
             data.links.forEach(link => {
                 const geometry = createGeometry(link.geometry);
@@ -154,24 +163,24 @@
                     color: link.color || '#888888',
                     shininess: 30,
                 });
-                
+
                 const mesh = new THREE.Mesh(geometry, material);
                 mesh.castShadow = true;
                 mesh.receiveShadow = true;
-                
+
                 // Apply position
                 if (link.position) {
                     mesh.position.set(...link.position);
                 }
-                
+
                 linkObjects[link.name] = mesh;
             });
-            
+
             // Create joint hierarchy
             const jointObjects = {};
             data.joints.forEach(joint => {
                 const jointGroup = new THREE.Group();
-                
+
                 if (joint.origin) {
                     if (joint.origin.position) {
                         jointGroup.position.set(...joint.origin.position);
@@ -180,41 +189,41 @@
                         jointGroup.rotation.set(...joint.origin.rotation);
                     }
                 }
-                
+
                 // Apply joint angle
                 if (joint.angle !== undefined && joint.axis) {
                     const axis = new THREE.Vector3(...joint.axis).normalize();
                     jointGroup.rotateOnAxis(axis, joint.angle);
                 }
-                
+
                 jointObjects[joint.name] = jointGroup;
-                
+
                 // Attach child link to joint
                 const childLink = linkObjects[joint.child];
                 if (childLink) {
                     jointGroup.add(childLink);
                 }
             });
-            
+
             // Build hierarchy
             data.joints.forEach(joint => {
                 const jointGroup = jointObjects[joint.name];
                 const parentLink = linkObjects[joint.parent];
-                
+
                 if (parentLink) {
                     parentLink.add(jointGroup);
                 } else {
                     robotGroup.add(jointGroup);
                 }
             });
-            
+
             // Add base link to scene
             const baseLink = linkObjects['base_link'];
             if (baseLink) {
                 robotGroup.add(baseLink);
             }
         }
-        
+
         function createGeometry(geomData) {
             switch (geomData.type) {
                 case 'cylinder':
@@ -236,7 +245,7 @@
                     return new THREE.BoxGeometry(0.1, 0.1, 0.1);
             }
         }
-        
+
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
@@ -244,7 +253,7 @@
             renderer.render(scene, camera);
         }
         animate();
-        
+
         // Handle window resize
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -253,7 +262,5 @@
         });
     </script>
 </body>
+
 </html>
-
-
-

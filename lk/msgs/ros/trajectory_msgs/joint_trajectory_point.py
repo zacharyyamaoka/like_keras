@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 
+from lk.utils.lerp import lerp_list
+
 from ..builtin_interfaces import Duration
 from ..ros_msg import RosMsg
-
-from bam.msgs.msg_utils import lerp_list
 
 # https://docs.ros2.org/foxy/api/trajectory_msgs/msg/JointTrajectoryPoint.html
 
@@ -19,7 +19,6 @@ class JointTrajectoryPoint(RosMsg):
     def lerp(
         self, target: "JointTrajectoryPoint", fraction: float
     ) -> "JointTrajectoryPoint":
-
         new_point = JointTrajectoryPoint()
 
         new_point.positions = lerp_list(self.positions, target.positions, fraction)

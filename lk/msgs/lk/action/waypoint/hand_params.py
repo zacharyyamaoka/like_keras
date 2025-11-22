@@ -6,18 +6,19 @@ optional per-waypoint kinematic limits that override global context limits.
 """
 
 # BAM
-from bam.msgs.msg_utils import lerp_value
-from ..joint_limits import JointLimits
+import copy
+import random
 
 # PYTHON
 from dataclasses import dataclass, field
-import copy
-import random
+
+from lk.msgs.msg_utils import lerp_value
+
+from ..joint_limits import JointLimits
 
 
 @dataclass
 class HandParams:
-
     width: float = 0.0
     joint_angles: list[float] = field(
         default_factory=list
@@ -37,7 +38,6 @@ class HandParams:
     joint_limits: JointLimits = field(default_factory=JointLimits)
 
     def lerp(self, target: "HandParams", fraction: float) -> "HandParams":
-
         new_params = copy.deepcopy(self)
         new_params.width = lerp_value(self.width, target.width, fraction)
         new_params.max_effort = lerp_value(self.max_effort, target.max_effort, fraction)
