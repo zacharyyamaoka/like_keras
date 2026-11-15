@@ -54,7 +54,7 @@ class Queue:
     consumer). WHY `arriving` under lockstep: a message sent at t must not push out one the reader stepping at t
     is still due; it joins the queue only once a step strictly after t could see it."""
 
-    __slots__ = ("ready", "arriving", "drops", "wake", "lockstep")
+    __slots__ = ("arriving", "drops", "lockstep", "ready", "wake")
 
     def __init__(self, size: int, lockstep: bool, wake=None) -> None:
         self.ready, self.arriving = collections.deque(maxlen=size), collections.deque()
@@ -183,7 +183,7 @@ class Group:
     def loop(self) -> None:
         """Real time. hz: absolute deadlines from the deployment's start; an overrun skips the missed ticks, counted,
         never caught up with a burst (§5.2). Rate-less: steps while queued messages let a component step."""
-        run, tick = self.run, 0
+        run, tick, not_before = self.run, 0, -math.inf
         while not self.dead:
             if self.hz is None:
                 if run.stopping.is_set():
@@ -194,22 +194,34 @@ class Group:
                     pass
                 continue
             deadline = run.mono0 + tick / self.hz
-            if run.stopping.wait(max(0.0, deadline - time.monotonic())):
+            if not _sleep_until(max(deadline, not_before), run.stopping):
                 return
             started = time.monotonic()
             for box in self.boxes:
                 box.state.period_errors.append(started - deadline)
             self.step(run.epoch0 + tick / self.hz)
-            # WHY two skips: past deadlines are missed ticks, and a step whose forward began more than half a period
-            # late also gives up the next tick, so no two forwards ever start closer than half a period (§5.2: never
-            # a burst). WHY the forward's start, not the wake-up: a thread preempted between waking and forward
-            # (8.7 ms at 100 Hz, rack powered) stepped again 0.61 ms later (tests/test_inproc_ticks.py).
-            began = started if self.entered is None else self.entered
-            began_tick, ended_tick = (began - run.mono0) * self.hz, (time.monotonic() - run.mono0) * self.hz
-            following = max(tick + 1, math.floor(began_tick + 0.5) + 1, math.floor(ended_tick) + 1)
+            # WHY skip only past deadlines: §5.2 skips and counts the MISSED ticks. Round 1 also gave up the next tick
+            # after a forward that began over half a period late, and counted it, though its deadline had not passed:
+            # Overrun in 23 of 30 health periods at 50 Hz on the loaded host (verifier, M1 fix round 2).
+            ended_tick = (time.monotonic() - run.mono0) * self.hz
+            following = max(tick + 1, math.floor(ended_tick) + 1)
             for box in self.boxes:
                 box.state.overruns += following - tick - 1
             tick = following
+            # WHY never a burst by delay: the next forward waits for its deadline AND half a period after this one's
+            # forward began. WHY the forward's start, not the wake-up: a thread preempted between waking and forward
+            # (8.7 ms at 100 Hz, rack powered) stepped again 0.61 ms later (tests/test_inproc_ticks.py).
+            began = started if self.entered is None else self.entered
+            not_before = began + 0.5 / self.hz
+
+
+def _sleep_until(moment: float, stopping: threading.Event) -> bool:
+    """Wait until time.monotonic() reaches `moment`; False when the run is stopping. WHY a loop: a timed wait that
+    returns a hair early would start a step before its deadline, or within half a period of the last (§5.2)."""
+    while (remaining := moment - time.monotonic()) > 0:
+        if stopping.wait(remaining):
+            return False
+    return not stopping.is_set()
 
 
 def _deactivate(box: Box) -> None:
