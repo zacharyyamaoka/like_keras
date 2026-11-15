@@ -18,7 +18,7 @@ From lane CORE, M1. `kpi/` was not touched; the ruler lane owns any fix.
   - keep "never a burst" by waiting until the later of the next deadline and half a period after this forward began.
 - **Measured, rack powered, cores 22-23, not the timing tier.** An interleaved A/B, 16 runs each, load average 22-30. The probe timed every subject step and checked each skipped tick against its deadline.
 
-  | | Before (`1fe63be`) | After |
+  | | Before (`1fe63be`) | After (`acb9495`) |
   |---|---|---|
   | Ticks skipped | 191 | 15 |
   | ...deadline not yet passed when the step ended | 145 | 0 |
