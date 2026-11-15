@@ -23,15 +23,22 @@ REPO = Path(__file__).resolve().parents[1]
 
 def run_fresh(script: str) -> str:
     environment = dict(os.environ, PYTHONPATH=str(REPO / "src"))
-    result = subprocess.run([sys.executable, "-c", textwrap.dedent(script)], cwd=REPO, env=environment,
-                            capture_output=True, text=True, timeout=120)
+    result = subprocess.run(
+        [sys.executable, "-c", textwrap.dedent(script)],
+        cwd=REPO,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
     assert result.returncode == 0, result.stderr[-3000:]
     return result.stdout.strip()
 
 
 def test_a_blocked_backend_is_refused_at_the_from_import():
     """Every backend on disk not yet loaded, blocked in sys.meta_path: the from-import raises and nothing runs."""
-    output = run_fresh('''
+    output = run_fresh("""
         import importlib.abc, pkgutil, sys
         import like_keras.backends as backends
         unloaded = sorted(module.name for module in pkgutil.iter_modules(backends.__path__)
@@ -55,13 +62,13 @@ def test_a_blocked_backend_is_refused_at_the_from_import():
             assert f"like_keras.backends.{backend}" not in sys.modules, f"blocked {backend} was registered anyway"
             assert backend not in vars(backends), f"blocked {backend} was bound on the package anyway"
         print("refused", unloaded)
-    ''')
+    """)
     assert output.startswith("refused")
 
 
 def test_a_backend_supplied_through_meta_path_resolves_and_stays_lazy():
     """A finder in sys.meta_path can supply a backend; its body runs at first attribute access, not at the import."""
-    output = run_fresh('''
+    output = run_fresh("""
         import importlib.abc, importlib.machinery, sys
         executed = []
 
@@ -86,12 +93,12 @@ def test_a_backend_supplied_through_meta_path_resolves_and_stays_lazy():
         import like_keras.backends as backends
         assert backends.probe is probe is sys.modules["like_keras.backends.probe"]
         print("ok")
-    ''')
+    """)
     assert output == "ok"
 
 
 def test_an_unknown_backend_is_an_attribute_error_naming_it():
-    output = run_fresh('''
+    output = run_fresh("""
         import like_keras.backends as backends
         try:
             backends.no_such_backend
@@ -106,13 +113,13 @@ def test_an_unknown_backend_is_an_attribute_error_naming_it():
         else:
             raise AssertionError("an unknown backend imported")
         print("ok")
-    ''')
+    """)
     assert output == "ok"
 
 
 def test_a_backend_already_imported_is_the_same_module_object():
     """import_module first, then the lazy lookup: one module, never a second copy of a backend's state."""
-    output = run_fresh('''
+    output = run_fresh("""
         import importlib, pkgutil, sys
         import like_keras.backends as backends
         unloaded = sorted(module.name for module in pkgutil.iter_modules(backends.__path__)
@@ -122,5 +129,5 @@ def test_a_backend_already_imported_is_the_same_module_object():
             vars(backends).pop(backend, None)  # as if only sys.modules knew it
             assert getattr(backends, backend) is imported
         print("ok")
-    ''')
+    """)
     assert output == "ok"

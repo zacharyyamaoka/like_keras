@@ -112,6 +112,7 @@ class Box:
                     state.stale.add(name)
             inputs[name] = value
         state.now = now
+        self.entered = time.monotonic()  # when forward really began: Group.loop's burst rule reads it (§5.2)
         started = time.perf_counter()
         result = self.component.forward(**inputs)
         state.durations.append(time.perf_counter() - started)
@@ -159,6 +160,7 @@ class Group:
     def step(self, now: float) -> bool:
         """One step of the group; True when a component stepped on a queued message."""
         stepped, triggered, box = set(), False, None
+        self.entered = None  # when the step's first forward began (monotonic), None when nothing stepped
         try:
             for box in self.boxes:
                 if box.queues:
@@ -169,6 +171,8 @@ class Group:
                     continue
                 box.step(now)
                 stepped.add(id(box))
+                if self.entered is None:
+                    self.entered = box.entered
         except Exception as error:  # §5.7: the group stops; health says why; the process keeps serving
             box.state.error = f"{type(error).__name__}: {error}"
             box.component.log.error("forward raised; its group stops: %s", error, exc_info=error)
@@ -196,10 +200,13 @@ class Group:
             for box in self.boxes:
                 box.state.period_errors.append(started - deadline)
             self.step(run.epoch0 + tick / self.hz)
-            # WHY two skips: past deadlines are missed ticks, and a step that woke more than half a period late also
-            # gives up the next tick, so no two steps ever start closer than half a period (§5.2: never a burst).
-            woke, ended = (started - run.mono0) * self.hz, (time.monotonic() - run.mono0) * self.hz
-            following = max(tick + 1, math.floor(woke + 0.5) + 1, math.floor(ended) + 1)
+            # WHY two skips: past deadlines are missed ticks, and a step whose forward began more than half a period
+            # late also gives up the next tick, so no two forwards ever start closer than half a period (§5.2: never
+            # a burst). WHY the forward's start, not the wake-up: a thread preempted between waking and forward
+            # (8.7 ms at 100 Hz, rack powered) stepped again 0.61 ms later (tests/test_inproc_ticks.py).
+            began = started if self.entered is None else self.entered
+            began_tick, ended_tick = (began - run.mono0) * self.hz, (time.monotonic() - run.mono0) * self.hz
+            following = max(tick + 1, math.floor(began_tick + 0.5) + 1, math.floor(ended_tick) + 1)
             for box in self.boxes:
                 box.state.overruns += following - tick - 1
             tick = following
