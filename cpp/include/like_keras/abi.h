@@ -1,5 +1,5 @@
 /* like_keras/abi.h: the C ABI every component .so carries (CONTRACT §6.3, LK_ABI_VERSION 1). For hosts, not for
- * component authors: lk-dora-host, the inproc backend (ctypes), kpi's probes. Not public (CONTRACT §3).
+ * component authors: the transport backends' native hosts (cpp/hosts), inproc (ctypes), kpi's probes. Not public (§3).
  *
  * Port indices: `in_port` / `out_port` is the position of an exposed port among those of its direction, in the order
  * of lk_describe()'s "ports". The out ports after the exposed ones are the box's facilities, in this order: log
@@ -44,7 +44,7 @@ typedef struct {
   const int* cpus; /* the RT thread's affinity; NULL or ncpus 0: the process's */
   int ncpus;
   int fifo;        /* SCHED_FIFO priority 1-99, 0: none; refused by the kernel -> SCHED_OTHER, logged at warning */
-  int lock_memory; /* mlockall: only a dedicated controller process (lk-dora-host) sets it */
+  int lock_memory; /* mlockall: only a dedicated controller process (a native host in cpp/hosts) sets it */
   int stepped;     /* lockstep: no RT thread; the host calls lk_step */
 } lk_place;
 
