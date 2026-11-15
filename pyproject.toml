@@ -23,12 +23,28 @@ dora = ["dora-rs==0.5.0", "pyarrow"]
 # are criterion 3's and criteria 5 and 7's tools, locked here so the scoreboard never fetches them at run time.
 test = ["pytest>=8", "pyperf>=2.6", "pyarrow", "dora-rs==0.5.0", "dora-rs-cli==0.5.0", "import-linter>=2.1", "ruff>=0.8"]
 
+# CORE: like_keras is a package (src layout); `uv sync` installs it editable into /home/bam/like_keras/.venv.
+# [project.scripts] gains `lk = "like_keras.cli:main"` with the CLI (lane dora, CONTRACT §9.3), not before: an `lk`
+# on PATH that cannot import would shadow `python -m like_keras.cli` in kpi/support/lk.py.
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/like_keras"]
+
 [tool.uv]
-# CORE: flip to a package (add [build-system]) when src/like_keras exists. Until then kpi/ imports it from src/.
-package = false
+package = true
 
 [tool.uv.sources]
-robot-msgs = { path = "/home/bam/robot_msgs", editable = true }
+# WHY a path source, as /home/bam/robot_controllers does: robot_msgs changes land on its main (the facility types
+# and `adopt`, CONTRACT §2.3) before each release, and like_keras must see the same types the rig code uses.
+robot-msgs = { path = "../robot_msgs", editable = true }
+
+[tool.ruff]
+# The width kpi/surface.py formats with before it counts SLOC (criterion 7).
+line-length = 120
+target-version = "py311"
 
 # RULER: how kpi/ runs. `src` makes `import like_keras` resolve before the package is installed; `.` makes `kpi`
 # an importable package, so components defined in kpi/ can be rebuilt in another process as module:qualname.
