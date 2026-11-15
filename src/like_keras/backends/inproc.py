@@ -8,17 +8,21 @@ between processes is one edit of `process=` or of `backend=`, never both.
 from __future__ import annotations
 
 import collections
+import functools
 import heapq
 import itertools
 import json
+import logging
 import math
+import struct
 import sys
 import threading
 import time
+import types
 from typing import Any
 
 from like_keras.backends import address  # noqa: F401  (part of the backend's surface: describe() prints it)
-from like_keras.component import message_type, path
+from like_keras.component import FACILITY_PORTS, message_type, path
 
 NAME = "inproc"
 VERSION = "0.1.0"
@@ -235,40 +239,347 @@ def _deactivate(box: Box) -> None:
 
 
 class NativeGroup:
-    """A native .so's own RT thread, driven through its C ABI (CONTRACT §6.3, §9.1). This is the seam: the .so is
-    created through ctypes here, so its parameter errors surface at start(); the data path (lk_push/lk_take over
-    Arrow C Data structs, lk_step under lockstep) lands with the C++ runtime (CONTRACT §12, M2)."""
+    """A native .so's System on its own RT thread inside this process, driven through its C ABI (CONTRACT §6.3, §9.1).
+    Python never runs on that thread and that thread never takes the GIL: Python reaches the box only through
+    lk_push and lk_take (lk_step under lockstep), which never block, and a pump thread hands its outputs to readers."""
 
     def __init__(self, run: Run, placed, index: int) -> None:
         import ctypes
 
         (self.component,) = placed.order
-        self.index, self.hz, self.dead, self.wake, self.placed = index, placed.hz, False, threading.Event(), placed
-        library = type(self.component)._lk_impl
-        self.calls = ctypes.CDLL(library)  # lk_create, lk_start, lk_wait, lk_stop: may block, so the GIL is released
+        self.run, self.index, self.hz, self.placed, self.dead = run, index, placed.hz, placed, False
+        self.wake, self.box, self.refusals = threading.Event(), None, 0
+        ports, cls = type(self.component)._lk_description["ports"], type(self.component)
+        self.ins = [name for name, spec in ports.items() if spec["dir"] == "in"]
+        self.queued = {name for name in self.ins if ports[name]["queue"]}
+        self.outs = [name for name, spec in ports.items() if spec["dir"] == "out"] + list(FACILITY_PORTS)
+        self.types = [message_type(cls._lk_ports[name].type) for name in self.outs]
+        self.sinks = {name: [] for name in self.outs}
+        self.waiting: dict[str, list] = {name: [] for name in self.ins}  # lockstep: (sent, value) not yet visible
+        self.calls = ctypes.CDLL(cls._lk_impl)  # lk_create, lk_start, lk_wait, lk_stop: they block, the GIL is released
         # WHY PyDLL for push/take/step: they never block, and CDLL's release and re-take of the GIL could wait a
         # whole 5 ms switch interval behind a spinning Python thread (CONTRACT §6.3).
-        self.hot = ctypes.PyDLL(library)
-        self.calls.lk_create.restype = ctypes.c_void_p
-        self.calls.lk_create.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_size_t]
-        self.calls.lk_destroy.argtypes = [ctypes.c_void_p]
+        self.hot = ctypes.PyDLL(cls._lk_impl)
+        pointer, text = ctypes.c_void_p, ctypes.c_char_p
+        for function, argtypes, restype in (
+            (self.calls.lk_create, [text, text, ctypes.c_size_t], pointer),
+            (self.calls.lk_start, [pointer, pointer, text, ctypes.c_size_t], ctypes.c_int),
+            (self.calls.lk_wait, [pointer, ctypes.c_int], ctypes.c_int),
+            (self.calls.lk_stop, [pointer], None),
+            (self.calls.lk_destroy, [pointer], None),
+            (self.hot.lk_step, [pointer, ctypes.c_double], ctypes.c_int),
+            (self.hot.lk_push, [pointer, ctypes.c_uint32, pointer], ctypes.c_int),
+            (self.hot.lk_take, [pointer, ctypes.c_uint32, pointer], ctypes.c_int),
+        ):
+            function.argtypes, function.restype = argtypes, restype
+        self.taken = _arrow().Array()  # where lk_take moves each output (it is copied out and released at once)
 
     def activate(self, now: float) -> None:
         import ctypes
 
         error = ctypes.create_string_buffer(1024)
-        params = json.dumps(self.component._lk_params()).encode()
-        box = self.calls.lk_create(params, error, len(error))
+        box = self.calls.lk_create(json.dumps(self.component._lk_params()).encode(), error, len(error))
         if not box:
             raise RuntimeError(f"{path(self.component)}: lk_create refused: {error.value.decode(errors='replace')}")
-        self.calls.lk_destroy(box)
-        raise NotImplementedError(
-            f"{path(self.component)}: running a native .so in-process lands with the C++ "
-            "runtime (CONTRACT §12, M2); describe() and the checks already cover it"
+        cpus = list(self.placed.cpus or [])
+        place = _arrow().Place(
+            self.hz or 0.0,
+            (ctypes.c_int * len(cpus))(*cpus) if cpus else None,
+            len(cpus),
+            self.placed.fifo or 0,
+            0,
+            int(self.run.lockstep),
         )
+        if self.calls.lk_start(box, ctypes.byref(place), error, len(error)) != 0:
+            self.calls.lk_destroy(box)
+            raise RuntimeError(f"{path(self.component)}: {error.value.decode(errors='replace')} (CONTRACT §5.7)")
+        self.box = box
 
     def deactivate(self) -> None:
-        pass
+        box, self.box = self.box, None
+        if box:
+            self.calls.lk_stop(box)  # the RT thread joined, the components deactivated in reverse order
+            self.calls.lk_destroy(box)
+
+    def receive(self, name: str):
+        """The writer of one exposed input: under lockstep held until a step strictly after its send time (a
+        rate-less group's queue: at it), in real time pushed at once from the writer's thread."""
+        port, queued = self.ins.index(name), name in self.queued
+
+        def write(value, sent: float) -> None:
+            if self.run.lockstep:
+                self.waiting[name].append((sent, value))
+                if queued and self.hz is None:
+                    heapq.heappush(self.run.heap, (sent, 1, next(self.run.sequence), self.index, 0))
+            elif self.box is not None:
+                self._push(port, value)
+
+        return write
+
+    def _push(self, port: int, value) -> None:
+        root = 0 if value is None else _export(value)  # None: retracted (CONTRACT §5.4)
+        if self.hot.lk_push(self.box, port, root) < 0 and not self.refusals:
+            self.refusals += 1
+            self.component.log.error(
+                "%s refused a %s on %s", path(self.component), type(value).__name__, self.ins[port]
+            )
+
+    def step(self, now: float) -> bool:
+        """Lockstep: deliver what is due, one step through lk_step on this thread, hand on what it sent at `now`."""
+        if self.dead or self.box is None:
+            return False
+        for port, name in enumerate(self.ins):
+            waiting, strict = self.waiting[name], not (name in self.queued and self.hz is None)
+            due = 0
+            while due < len(waiting) and (waiting[due][0] < now or not strict and waiting[due][0] == now):
+                due += 1
+            for _, value in waiting[:due] if name in self.queued else waiting[due - 1 : due]:
+                self._push(port, value)
+            del waiting[:due]
+        if self.hot.lk_step(self.box, now) != 0:
+            self.dead = True  # §5.7: the box deactivated itself; its health says why
+        self._drain(now, len(self.outs) - len(FACILITY_PORTS))
+        return False
+
+    def loop(self) -> None:
+        """Real time: the box steps on its own RT thread; this thread waits on its wake and hands outputs on."""
+        run = self.run
+        while not run.stopping.is_set() and self.box is not None:
+            if self.calls.lk_wait(self.box, 100) > 0:
+                self._drain(run.epoch0 + time.monotonic() - run.mono0, len(self.outs) - len(FACILITY_PORTS))
+
+    def publish(self, now: float) -> None:
+        """The facilities thread (CONTRACT §8): the box's log, health and metrics records, under this path."""
+        if self.box is not None:
+            self._drain(now, len(self.outs), len(self.outs) - len(FACILITY_PORTS))
+
+    def _drain(self, sent: float, end: int, begin: int = 0) -> None:
+        import ctypes
+
+        taken, facility = ctypes.addressof(self.taken), len(self.outs) - len(FACILITY_PORTS)
+        for port in range(begin, end):
+            name = self.outs[port]
+            if port >= facility and name != "log" and not self.sinks[name]:
+                continue  # nobody reads it: the box need not build the records
+            while self.hot.lk_take(self.box, port, taken) == 1:
+                try:
+                    value = _import(taken, self.types[port], keep=bool(self.sinks[name]) or name == "log")
+                except ValueError as refused:  # robot_msgs refused what the box sent: drop it, say so once
+                    if not self.refusals:
+                        self.component.log.error(
+                            "%s sent an invalid %s on %s: %s",
+                            path(self.component),
+                            self.types[port].type_name,
+                            name,
+                            refused,
+                        )
+                    self.refusals += 1
+                    continue
+                if value is None:
+                    continue
+                if port >= facility:  # the box names its components; the records carry the full path
+                    value = value.replace(path=".".join(filter(None, (path(self.component), value.path))))
+                if name == "log" and value.level >= logging.WARNING:  # as a Python component's (component._Log)
+                    logging.getLogger("like_keras").log(value.level, "%s: %s", value.path, value.message)
+                for sink in self.sinks[name]:
+                    sink(value, sent)
+
+
+@functools.cache
+def _arrow():
+    """The two C structs of CONTRACT §6.3 through ctypes, and the release an exported message carries."""
+    import ctypes
+
+    class Array(ctypes.Structure):  # the Arrow C Data Interface's ArrowArray
+        _fields_ = [(name, ctypes.c_int64) for name in ("length", "null_count", "offset", "n_buffers", "n_children")]
+        _fields_ += [
+            (name, ctypes.c_void_p) for name in ("buffers", "children", "dictionary", "release", "private_data")
+        ]
+
+    class Place(ctypes.Structure):  # lk_place
+        _fields_ = [
+            ("hz", ctypes.c_double),
+            ("cpus", ctypes.POINTER(ctypes.c_int)),
+            ("ncpus", ctypes.c_int),
+            ("fifo", ctypes.c_int),
+            ("lock_memory", ctypes.c_int),
+            ("stepped", ctypes.c_int),
+        ]
+
+    alive: dict[int, list] = {}
+
+    @ctypes.CFUNCTYPE(None, ctypes.c_void_p)
+    def release(root):
+        # WHY here and never on the RT thread: the box hands a consumed message back to a host thread (lk_push,
+        # lk_take, lk_step or lk_destroy), and only there does this drop the references that kept its buffers alive.
+        words = (ctypes.c_int64 * 10).from_address(root)
+        alive.pop(words[9], None)
+        words[8] = 0
+
+    caller = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
+    return types.SimpleNamespace(
+        Array=Array,
+        Place=Place,
+        alive=alive,
+        release=release,
+        keys=itertools.count(1),
+        release_address=ctypes.cast(release, ctypes.c_void_p).value,
+        caller=caller,
+    )
+
+
+def _export(value) -> int:
+    """`value` as an Arrow C Data struct array of length 1 (CONTRACT §7.1) whose array buffers ARE its frozen numpy
+    arrays (no copy, §6.3); the address of its root, which lk_push moves into the box."""
+    import ctypes
+
+    import numpy as np
+
+    from like_keras import codec
+
+    nodes: list = []
+    _nodes(codec.Node("", "+s", children=codec.schema(type(value)), message=type(value)), [value], nodes, codec, np)
+    # WHY one block for the small buffers (validity, offsets, scalars, strings) and one int64 buffer for the three
+    # tables, filled from one list: a numpy write per field cost ~160 us per plan on the planner's thread (rack
+    # powered, cores 22-23), and A2 allows 0.1 ms for the whole push.
+    block, arrays = bytearray(), []
+    for _, _, buffers, _ in nodes:
+        for at, buffer in enumerate(buffers):
+            if isinstance(buffer, np.ndarray):
+                arrays.append(buffer)
+                buffers[at] = buffer.__array_interface__["data"][0] if buffer.nbytes else 0
+            elif buffer:
+                buffers[at] = -1 - len(block)  # a spot in the block, resolved once the block has an address
+                block += buffer + bytes(-len(buffer) % 8)  # 8-byte aligned, as Arrow buffers are
+            else:
+                buffers[at] = 0
+    held = ctypes.create_string_buffer(bytes(block), max(8, len(block)))
+    small = ctypes.addressof(held)
+    count, buffer_count = len(nodes), sum(len(node[2]) for node in nodes)
+    words = (ctypes.c_int64 * (10 * count + buffer_count + sum(len(node[3]) for node in nodes)))()
+    base = ctypes.addressof(words)
+    pointer_base, release = base + 80 * count, _arrow().release_address
+    child_base = pointer_base + 8 * buffer_count
+    table, pointers, children = [], [], []
+    for length, nulls, buffers, kids in nodes:
+        table += (
+            length,
+            nulls,
+            0,
+            len(buffers),
+            len(kids),
+            pointer_base + 8 * len(pointers),
+            child_base + 8 * len(children) if kids else 0,
+            0,
+            release,
+            0,
+        )
+        pointers += [small - 1 - spot if spot < 0 else spot for spot in buffers]
+        children += [base + 80 * kid for kid in kids]
+    arrow = _arrow()
+    key = next(arrow.keys)
+    table[9] = key  # the root's private_data: what its release drops
+    words[:] = table + pointers + children
+    arrow.alive[key] = (words, held, arrays)
+    return base
+
+
+def _nodes(node, values: list, nodes: list, codec, np) -> int:
+    """codec's layout (its _encode, field for field) as Arrow nodes over the values' own buffers: (length,
+    null count, buffers, child indices), depth first. A buffer is bytes, or a numpy array sent as it is."""
+    index = len(nodes)
+    entry = (len(values), sum(value is None for value in values), [codec._validity(values)], [])
+    nodes.append(entry)
+    kind, buffers, kids = node.format, entry[2], entry[3]
+    if kind in codec.NUMBER:  # struct packs a float's bits as they are: a NaN keeps its payload
+        buffers.append(
+            struct.pack(
+                f"<{len(values)}{'d' if kind == 'g' else 'q'}", *(0 if value is None else value for value in values)
+            )
+        )
+    elif kind == "b":
+        buffers.append(np.packbits(np.array([bool(value) for value in values]), bitorder="little").tobytes())
+    elif kind == "u":
+        encoded = [b"" if value is None else value.encode() for value in values]
+        buffers += [codec._offsets(map(len, encoded)), b"".join(encoded)]
+    elif kind == "+l":
+        item, rows = node.children[0], [() if value is None else value for value in values]
+        if item.format in codec.NUMBER:  # WHY ascontiguousarray: a frozen C-order array comes back as itself
+            arrays = [np.ascontiguousarray(row, codec.NUMBER[item.format]).ravel() for row in rows]
+            buffers.append(codec._offsets(map(len, arrays)))
+            data = arrays[0] if len(arrays) == 1 else np.concatenate([np.empty(0, codec.NUMBER[item.format]), *arrays])
+            kids.append(len(nodes))
+            nodes.append((len(data), 0, [None, data], []))
+        else:
+            buffers.append(codec._offsets(map(len, rows)))
+            kids.append(_nodes(item, [element for row in rows for element in row], nodes, codec, np))
+    elif kind == "+s":
+        for child in node.children:
+            column = [
+                getattr(value, child.name) if value is not None else None if child.nullable else codec._zero(child)
+                for value in values
+            ]
+            kids.append(_nodes(child, column, nodes, codec, np))
+    elif kind == "+m":
+        rows = [list(value.items()) if value is not None else [] for value in values]
+        buffers.append(codec._offsets(map(len, rows)))
+        pairs = [pair for row in rows for pair in row]
+        key, item = node.children[0].children
+        kids.append(len(nodes))
+        entries = (len(pairs), 0, [None], [])
+        nodes.append(entries)
+        entries[3].extend(
+            (
+                _nodes(key, [name for name, _ in pairs], nodes, codec, np),
+                _nodes(item, [element for _, element in pairs], nodes, codec, np),
+            )
+        )
+    return index
+
+
+def _import(root_at: int, cls, keep: bool = True):
+    """The message lk_take moved to `root_at`, copied out (a per-joint message is small) and released at once."""
+    import ctypes
+
+    from like_keras import codec
+
+    arrow = _arrow()
+    root = arrow.Array.from_address(root_at)
+    try:
+        if not keep:
+            return None
+        parts: list[bytes] = []
+        node = codec.Node("", "+s", children=codec.schema(cls), message=cls)
+        _parts(node, root, parts, arrow, ctypes)
+        return codec._decode(node, root.length, iter(parts))[0]
+    finally:
+        if root.release:
+            arrow.caller(root.release)(root_at)
+
+
+def _parts(node, array, parts: list, arrow, ctypes) -> None:
+    """The array's buffers, depth first, each its exact size, in the order codec._decode reads an LKF frame."""
+    length, buffers = array.length, (ctypes.c_void_p * array.n_buffers).from_address(array.buffers)
+    if array.offset:
+        raise ValueError("an Arrow array with an offset: the box's encoder never writes one")
+
+    def read(at: int, size: int) -> bytes:
+        return ctypes.string_at(buffers[at], size) if size and buffers[at] else b""
+
+    parts.append(read(0, (length + 7) // 8) if array.null_count else b"")
+    kind = node.format
+    if kind in ("g", "l"):
+        parts.append(read(1, 8 * length))
+    elif kind == "b":
+        parts.append(read(1, (length + 7) // 8))
+    elif kind == "u":
+        offsets = read(1, 4 * (length + 1))
+        parts += [offsets, read(2, int.from_bytes(offsets[-4:], "little", signed=True))]
+    elif kind in ("+l", "+m"):
+        parts.append(read(1, 4 * (length + 1)))
+    children = (ctypes.c_void_p * array.n_children).from_address(array.children) if array.n_children else ()
+    for child, child_address in zip(node.children, children, strict=True):
+        _parts(child, arrow.Array.from_address(child_address), parts, arrow, ctypes)
 
 
 class Run:
@@ -295,6 +606,7 @@ class Run:
         group_of = {
             id(leaf): group for group, placed in zip(self.groups, plan.groups, strict=True) for leaf in placed.order
         }
+        self.natives = {id(group.component): group for group in self.groups if isinstance(group, NativeGroup)}
         for edge in plan.graph.edges:
             self._connect(edge, group_of[id(edge.src)], group_of[id(edge.dst)])
         self.inputs = {
@@ -316,13 +628,16 @@ class Run:
         for box in self.boxes.values():
             box.state.log_sinks = tuple(box.sinks["log"])
 
-    def _box(self, leaf) -> Box:
-        if id(leaf) not in self.boxes:
-            raise NotImplementedError(f"{path(leaf)}: a native component's data path lands with the C++ runtime (M2)")
-        return self.boxes[id(leaf)]
+    def _box(self, leaf) -> Box | NativeGroup:
+        """Where a leaf's outputs go: its Box, or for a native .so its group (`sinks` by port either way)."""
+        return self.boxes[id(leaf)] if id(leaf) in self.boxes else self.natives[id(leaf)]
 
     def _slot(self, leaf, name: str, consumer, producer):
-        """The slot an input reads: latest or queue(n); strict (sent < now) unless written earlier in this step."""
+        """The slot an input reads: latest or queue(n); strict (sent < now) unless written earlier in this step. A
+        native box keeps its own slots (CONTRACT §5.1): its input is a push through the C ABI."""
+        if id(leaf) in self.natives:
+            write = self.natives[id(leaf)].receive(name)
+            return types.SimpleNamespace(write=write, push=write)
         box, port = self._box(leaf), type(leaf)._lk_ports[name]
         same = consumer is producer
         if port.queue:
@@ -361,7 +676,7 @@ class Run:
         attach = sys.modules.get("like_keras.attach")  # the attach socket, when its module is installed (§9.3)
         if attach is not None and (self.inputs or self.outputs):
             self.server = attach.serve(self)
-        workers = [*(group.loop for group in self.groups if isinstance(group, Group)), self._facilities]
+        workers = [*(group.loop for group in self.groups), self._facilities]
         for index, target in enumerate(workers):
             self.threads.append(
                 threading.Thread(target=target, name=f"lk-{path(self.plan.system)}-{index}", daemon=True)
@@ -413,6 +728,8 @@ class Run:
                 record = self._metrics(box, now, durations, lateness)
                 for sink in box.sinks["metrics"]:
                     sink(record, now)
+        for native in self.natives.values():
+            native.publish(now)
         for recorder in self.recorders:
             recorder.flush()
 

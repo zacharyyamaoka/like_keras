@@ -1,0 +1,226 @@
+// One created .so instance (the C ABI's lk_box): the System, its derived order, the slots between the RT thread and
+// the host's threads, and the facilities' counters (CONTRACT §5, §6, §8). Internal to cpp/src: rt.cpp steps it,
+// abi.cpp carries it across the C ABI. A component never includes this.
+#pragma once
+
+#include <like_keras/abi.h>
+
+#include <array>
+#include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <deque>
+#include <like_keras/lk.hpp>
+#include <memory>
+#include <string>
+#include <thread>
+#include <vector>
+
+namespace lk::detail {
+
+// ---------------------------------------------------------------- the wire (abi.cpp)
+
+struct Arena {  // where an exposed Out's strings are copied on the RT thread, so the view outlives its sources
+  char* data;
+  std::size_t size, used = 0;
+};
+
+struct Wire {  // one v0 message type across the C ABI (CONTRACT §7.1)
+  std::uint64_t hash;
+  bool (*decode)(const ArrowArray& array, void* view);  // views into the array's buffers; false: refused
+  void (*encode)(const void* view, ArrowArray* out);    // a fresh array the caller releases; nullptr: In only
+  bool (*pin)(void* view, Arena& arena);                // strings into the arena; false: it did not fit
+};
+const Wire* find_wire(std::uint64_t hash);
+void release(ArrowArray& array);  // its release callback, on this (never the RT) thread; then marked released
+std::int64_t mono_ns();
+double epoch_s();
+
+// ---------------------------------------------------------------- lock-free slots (CONTRACT §5.1)
+
+// WHY lifted from the controller lane's handoff.hpp (moteus_controller_node, credit): the RT thread never waits on
+// a host thread, and nothing here allocates after construction. Single producer, single consumer, fixed capacity.
+template <class T, std::size_t Capacity>
+class Spsc {
+  static_assert((Capacity & (Capacity - 1)) == 0, "capacity must be a power of two");
+
+ public:
+  bool push(const T& value) {
+    const std::uint64_t head = head_.load(std::memory_order_relaxed);
+    if (head - tail_.load(std::memory_order_acquire) >= Capacity) return false;
+    slots_[head & (Capacity - 1)] = value;
+    head_.store(head + 1, std::memory_order_release);
+    return true;
+  }
+  bool pop(T& value) {
+    const std::uint64_t tail = tail_.load(std::memory_order_relaxed);
+    if (tail == head_.load(std::memory_order_acquire)) return false;
+    value = slots_[tail & (Capacity - 1)];
+    tail_.store(tail + 1, std::memory_order_release);
+    return true;
+  }
+
+ private:
+  std::array<T, Capacity> slots_{};
+  alignas(64) std::atomic<std::uint64_t> head_{0};
+  alignas(64) std::atomic<std::uint64_t> tail_{0};
+};
+
+// The index half of handoff.hpp's triple buffer: the writer owns `back`, the reader `front`, and `middle` is
+// swapped atomically with a fresh bit. One exchange per side, no lock, no wait (latest, CONTRACT §5.4).
+struct Triple {
+  std::atomic<std::uint8_t> middle{2};
+  std::uint8_t back = 0, front = 1;
+  void publish() { back = middle.exchange(static_cast<std::uint8_t>(back | 4), std::memory_order_acq_rel) & 3; }
+  bool fresh() {
+    if (!(middle.load(std::memory_order_relaxed) & 4)) return false;
+    front = middle.exchange(front, std::memory_order_acq_rel) & 3;
+    return true;
+  }
+};
+
+struct Slot {  // one message: its view's bytes and the array it views into (released on a host thread)
+  std::vector<std::byte> value;
+  ArrowArray owner{};
+  double stamp = 0.0;
+  bool empty = true;
+  std::vector<char> arena;  // an exposed Out's strings
+};
+
+struct Box;
+
+// A queue input (CONTRACT §5.4): bounded SPSC; the reader trims to n (drop-oldest, counted) and empties it on a
+// retraction; a full ring refuses the newest (counted too) so the writer never waits.
+struct Ring {
+  Ring(std::size_t n, std::size_t bytes);
+  Slot* claim();  // writer: the next free slot, or nullptr
+  void commit();  // writer
+  bool ready(Box& box);
+  void pop(Box& box, Port& port);
+  std::size_t n, mask;
+  std::vector<Slot> slots;
+  Slot current;  // the message this step's forward reads
+  alignas(64) std::atomic<std::uint64_t> head{0};
+  alignas(64) std::atomic<std::uint64_t> tail{0};
+  std::atomic<std::uint64_t> retract_to{0}, drops{0};
+};
+
+struct Inlet {  // an exposed In: the host pushes (any thread, one at a time), the RT thread reads
+  Port* port;
+  const Wire* wire;
+  Ring* ring = nullptr;  // queue inputs; latest ones use the triple buffer
+  std::array<Slot, 3> slots;
+  Triple triple;
+};
+
+struct Outlet {  // an exposed Out: the RT thread publishes a copy, a host thread takes it as a fresh Arrow array
+  Port* port;
+  const Wire* wire;
+  std::array<Slot, 3> slots;
+  Triple triple;
+  std::atomic<std::uint64_t> drops{0};
+};
+
+struct Plumbing {  // where a published Out also goes beyond its in-box readers
+  std::vector<Ring*> rings;
+  std::vector<Outlet*> outlets;
+};
+
+struct Lag {  // a lagged input whose writer steps BEFORE it: it reads a copy made at the end of the step
+  Port* src;
+  Port* dst;
+  std::vector<std::byte> value;
+  std::uint64_t seq = 0;
+};
+
+// Fixed bins, 8 per octave of nanoseconds; one writer (relaxed stores), the facilities thread reads.
+struct Histogram {
+  static constexpr std::size_t kBins = 512;
+  void add(std::int64_t ns);
+  std::array<std::atomic<std::uint32_t>, kBins> bins{};
+  std::atomic<std::int64_t> max_ns{0};
+};
+
+enum Mode : int { kInitialization = 0, kOperational = 1, kOffline = 2 };
+
+struct Child {  // one leaf of the box's System
+  Component* component;
+  std::vector<Port*> ins, outs, queued;  // queued: its queue inputs, in declaration order
+  std::vector<std::size_t> upstream;     // in-box writers over non-lagged wires (a rate-less box's trigger)
+  Histogram step;
+  std::atomic<std::uint64_t> steps{0};
+  std::array<std::atomic<const char*>, 32> metric_names{};
+  std::array<std::atomic<double>, 32> metric_values{};
+  std::atomic<int> metric_count{0};
+  std::atomic<int> mode{kInitialization};
+  std::atomic<double> activated{0.0};
+  bool stepped = false;  // this step (rate-less trigger)
+  // the facilities thread's side
+  std::array<std::uint32_t, Histogram::kBins> step_seen{};
+  std::string warning, error;
+};
+
+struct LogEntry {
+  std::uint32_t child;
+  std::int32_t level;
+  const char* fmt;
+  double a, b, wall;
+  std::int64_t tick;
+};
+
+struct Box {
+  explicit Box(System built);
+  ~Box();
+  // stepping (rt.cpp)
+  void step(double at);  // one step on the calling thread: the RT thread, or lk_step's caller
+  void run();            // the RT thread
+  bool start(const lk_place& placed, std::string& error);
+  void stop();
+  bool send(Port& out, double at);
+  void retire(ArrowArray& owner);  // RT: hand a consumed input to a host thread
+  void bury();                     // host: release what the RT thread retired
+  void fail(Child& child, const char* what);
+  void deactivate_all();
+  void write_log(const Component& component, int level, const char* fmt, double a = 0, double b = 0);
+  double clock() const;  // epoch seconds on the box's clock (arrival stamps)
+  // the host side (abi.cpp, rt.cpp)
+  int push(std::uint32_t port, ArrowArray* msg);
+  int take(std::uint32_t port, ArrowArray* out);
+  void facilities(int which);  // one round of log (0), health (1) or metrics (2) records into `pending`
+
+  System system;
+  std::deque<Child> children;  // the derived order (CONTRACT §5.3)
+  std::vector<std::unique_ptr<Inlet>> ins;
+  std::vector<std::unique_ptr<Outlet>> outs;
+  std::vector<std::unique_ptr<Ring>> rings;
+  std::deque<Plumbing> plumbing;
+  std::vector<Lag> lags;
+  std::atomic<double> now{0.0};
+  Histogram period_error;
+  std::array<std::uint32_t, Histogram::kBins> period_seen{};
+  std::atomic<std::uint64_t> overruns{0}, unreleased{0}, logs_dropped{0};
+  std::uint64_t overruns_seen = 0;
+  Spsc<ArrowArray, 4096> graveyard;
+  std::atomic_flag burying;
+  Spsc<LogEntry, 1024> logs;
+  int wake_fd = -1;
+  std::thread rt;
+  std::atomic<bool> running{false};
+  std::atomic<std::uint32_t> arrivals{0};
+  lk_place place{};
+  std::vector<int> cpus;
+  double epoch0 = 0.0;
+  std::int64_t mono0 = 0;
+  std::atomic<bool> failed{false};
+  bool started = false;
+  std::array<std::deque<ArrowArray>, 3> pending;  // facility records not taken yet, per facility
+  std::array<bool, 3> round_open{};
+  std::deque<LogEntry> backlog;  // drained from `logs`, not yet taken as LogRecords
+  std::string sheet() const;     // lk_describe()'s JSON (abi.cpp)
+};
+
+}  // namespace lk::detail
+
+struct lk_box : lk::detail::Box {
+  using Box::Box;
+};
