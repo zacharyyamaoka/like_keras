@@ -31,3 +31,16 @@ An independent verifier ran M1 (`84c1e21`) and found these. Lane core re-measure
 - **Choose one:**
   - amend §12 so M1 lands a capability-only stub;
   - have the ruler lane move those imports inside the functions that use them, as `kpi/tasks/relay/solution/relay.py` does, and core deletes the stand-in.
+
+## Fix round 2 (2026-11-15): the verifier confirmed items 1-3; all three still wait on the dispatcher
+
+- **Item 1, criterion 3.** It is 0 at M1, and core cannot raise it:
+  - `ArmControllerPy` fails at `kpi/tasks/arm_cell/cell.py:15`, where the step's own Blocker stops `from like_keras.backends import dora`;
+  - `Jtc`, `MoteusBus` and `Guard` need the M2 `.so`.
+
+  Green now: the 13 Python blocked-step rows, the static scan and import-linter. **Recommendation:** amend M1's exit to "criterion 3: the 13 Python blocked-step rows, the static scan, import-linter", and keep the full criterion at M2. Either way, the ruler moves `cell.py`'s dora import into the function that builds the dora deployment.
+- **Item 2, facilities.** `test_introspection[python-inproc]` fails with "No module named like_keras.cli" (lane dora, M3). **Recommendation:** "facilities on python-inproc except introspection's `lk ls` step" at M1, and that step at M3.
+- **Item 3, the dora stand-in** (`src/like_keras/backends/dora/__init__.py`, lane dora's path).
+  - **Recommendation:** ratify the capability-only stub at M1. That is one file lane dora replaces whole.
+  - **Cleaner alternative:** the ruler moves the module-level imports into functions: `cell.py:15`, the eight `swaps/*/*/deploy.py:4`. Then core deletes the stub. `kpi/validgraphs/test_validgraphs.py:124` and `:148` already import inside their graph functions, but the tests call those, so they need the module either way.
+- **View size (§7.4, not blocking).** See contract-003 item 4. The frozen ruler's C++ pins the layout, so the bound is the part to amend.

@@ -34,13 +34,20 @@ From lane CORE while building M1 (`src/like_keras/{__init__,component,system,dep
 
    Sixteen 16-byte `std::string_view` names come to 256 B, and every optional array costs 136 B.
    - **Amend:** "about 1 KiB", or names as `const char*` (8 B).
+   - **Fix round 2 (verifier confirmed the sizes):** core cannot change the layout alone. The frozen ruler's C++ pins it:
+     - `kpi/tasks/arm_cell/jtc_core.hpp:106` copies `command.name[joint] = state.name[joint]`;
+     - `kpi/tasks/arm_cell/fake_bus.hpp:155` and `:181` assign a `std::string` into `name[joint]`;
+     - contract-002 item 1 spells the member `std::array<std::string_view, lk::kMaxJoints> name`.
+
+     A `const char*` array, or a span over names held outside the value, breaks those lines. No ruler test measures the bound. **Recommendation:** amend §7.4 to "about 1.1 KiB at `kMaxJoints = 16` (`ServoState` 1104 B, `ServoCommand` 1128 B)". If the bound must hold, the ruler changes those three lines, and core then makes the generator emit `std::span<const std::string_view> name`. That is 16 B, so `ServoState` becomes 864 B and `ServoCommand` 888 B.
 
 5. **The process-name rule is generalised so the core never names dora (criterion 6).** §4.3 refuses a process "equal to `dora`". The core instead refuses a process named after *any* module in `like_keras.backends`, found by `pkgutil`, without importing it.
 
 ## Readings unlikely to be contested (pinned in the code)
 
 - **Lockstep visibility.** A queue input of a rate-less group sees messages sent at or before its step time (its trigger at t). Its latest inputs see only what was sent strictly before t, which is what `kpi/support/arm_cell_oracle.py` encodes. A lagged same-group input reads the strict view: the writer's previous step.
-- **Never a burst (§5.2) is measured at the start of the step's first forward, not at the thread's wake-up** (fix round 1, `92cb227`). A step whose forward began more than half a period late gives up the next tick. The input reads in between (in lane dora's Python host, decoding) count as lateness.
+- **Never a burst (§5.2) is measured at the start of the step's first forward, not at the thread's wake-up** (fix round 1, `92cb227`). The input reads in between (in lane dora's Python host, decoding) count as lateness.
+  - **Fix round 2 (`acb9495`):** a tick is skipped, and counted in `overruns`, only when its deadline had passed as the step before it ended. A forward that began more than half a period late *delays* the next step to half a period after it. Round 1 *gave that tick up* and counted it, which over-reported `Overrun` (ruler-003).
 - **A queue under lockstep holds a message in `arriving` until a step strictly after its send time.** Otherwise a message sent at t would evict one that the reader stepping at t is still due (`test_queue_drop_oldest` expects 8, 18, 28, ...).
 - **Recording topics:**
   - **Explicit ports:** the name the user wired, e.g. `pick_cell.arm.command`.
