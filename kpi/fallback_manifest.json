@@ -1,0 +1,9 @@
+{
+ "recorded": "2026-11-15, bam_ws main @ db570ecac (M0 of the like_keras v0 build)",
+ "root": "/home/bam/bam_ws/src/dev/bam_rack_twin",
+ "files": {
+  "bam_rack_twin/hardware/arm_hold.py": "7a7207333d2f7696d495c510b48ce28f9f621b4406769e74306103f7207929eb",
+  "bam_rack_twin/hardware/pick_loop_v1.py": "7cff2d1a3c0f3b00a3451642b4eda42ffa421c130acc47d484ca3ad887d0c4b6",
+  "bam_rack_twin/hardware/fivebar_run.py": "0a1b69868a02b7ef858997cb80380f3fe084eafd967ea9ff1e7dbaa45ae06575"
+ }
+}

@@ -1,0 +1,43 @@
+# like_keras: the communication API (docs/CONTRACT.md).
+#
+# Ownership (CONTRACT §1): this file was started by lane RULER at M0 with only what kpi/ needs to RUN.
+# - RULER owns: the `test` extra, [tool.pytest.ini_options], and nothing else here. Builders may ADD to this
+#   file (the core lane turns the project into a package: [build-system], the `lk` script), but must keep the
+#   ruler's sections as they are, because kpi/ runs through them.
+# - CORE owns: [project] metadata, `dependencies` (the lean-core gate allows `robot-msgs` and nothing else),
+#   the `dora` extra (CONTRACT §2.2), [build-system] and [project.scripts] once src/like_keras exists.
+
+[project]
+name = "like_keras"
+version = "0.1.0"
+description = "The communication API for BAM robots: black-box components, wired from outside, placed by a deployment."
+requires-python = ">=3.11"
+# WHY one dependency: the lean-core gate (CONTRACT §2.1, kpi/deps.py) allows robot_msgs and nothing else.
+dependencies = ["robot-msgs"]
+
+[project.optional-dependencies]
+# CONTRACT §2.2: backends/dora only.
+dora = ["dora-rs==0.5.0", "pyarrow"]
+# RULER: kpi/ only. pyarrow is the independent Arrow oracle in kpi/golden; dora-rs and dora-rs-cli 0.5.0 are the
+# raw-dora baselines of criterion 2 and the private coordinator/daemon the dora suites start; import-linter and ruff
+# are criterion 3's and criteria 5 and 7's tools, locked here so the scoreboard never fetches them at run time.
+test = ["pytest>=8", "pyperf>=2.6", "pyarrow", "dora-rs==0.5.0", "dora-rs-cli==0.5.0", "import-linter>=2.1", "ruff>=0.8"]
+
+[tool.uv]
+# CORE: flip to a package (add [build-system]) when src/like_keras exists. Until then kpi/ imports it from src/.
+package = false
+
+[tool.uv.sources]
+robot-msgs = { path = "/home/bam/robot_msgs", editable = true }
+
+# RULER: how kpi/ runs. `src` makes `import like_keras` resolve before the package is installed; `.` makes `kpi`
+# an importable package, so components defined in kpi/ can be rebuilt in another process as module:qualname.
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["kpi"]
+addopts = "-p no:cacheprovider"
+markers = [
+    "timing: asserts a latency or jitter limit; runs only when KPI_TIER=timing (rack unpowered or the fixed cloud VM)",
+    "dora: needs the dora 0.5.0 CLI and a private coordinator/daemon (kpi/support/dora_private.py)",
+    "native: needs a C++ .so built by cmake under build/",
+]

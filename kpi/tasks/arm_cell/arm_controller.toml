@@ -1,0 +1,16 @@
+# The reference controller's config (CONTRACT §6.2 ArmConfig): the fake (twin) bus and the guard.
+# lk.native passes it to LK_PARAMS as JSON; ArmControllerPy reads it with tomllib. Tests override board_file and
+# lock_path per test (kpi/support/cells.py), and exchange_s = 0 under lockstep.
+[bus]
+adapter = "0607623A"
+twin = true
+watchdog_s = 0.25
+exchange_s = 0.0035
+joints = 7
+board_file = "/run/user/1000/like_keras-kpi-arm_cell.boards"
+lock_path = "/run/user/1000/like_keras-kpi-arm_cell.lock"
+
+[guard]
+runaway_rad = 0.5
+max_velocity_rad_s = 10.0
+max_effort_nm = 2.0

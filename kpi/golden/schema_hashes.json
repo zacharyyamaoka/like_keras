@@ -1,0 +1,38 @@
+{
+ "control/ServoCommand": {
+  "hash": "21b4d0bdb87f3450",
+  "preimage": "control/ServoCommand|name:+l:0;item:u:0;position:+l:0;item:g:0;velocity:+l:1;item:g:0;feedforward_effort:+l:1;item:g:0;stiffness:+l:1;item:g:0;damping:+l:1;item:g:0;max_effort:+l:1;item:g:0;state_stamp:g:1;state_seq:l:1;header:+s:0;stamp:g:0;frame_id:u:0;meta:+m:0;entries:+s:0;key:u:0;value:u:0;"
+ },
+ "control/ServoState": {
+  "hash": "1a2bee80ea55ba97",
+  "preimage": "control/ServoState|name:+l:0;item:u:0;position:+l:0;item:g:0;velocity:+l:1;item:g:0;effort:+l:1;item:g:0;temperature:+l:1;item:g:0;voltage:+l:1;item:g:0;fault:+l:1;item:l:0;seq:l:0;header:+s:0;stamp:g:0;frame_id:u:0;meta:+m:0;entries:+s:0;key:u:0;value:u:0;"
+ },
+ "sensor/JointState": {
+  "hash": "8daad56c4aea01db",
+  "preimage": "sensor/JointState|name:+l:0;item:u:0;position:+l:0;item:g:0;velocity:+l:1;item:g:0;effort:+l:1;item:g:0;header:+s:0;stamp:g:0;frame_id:u:0;meta:+m:0;entries:+s:0;key:u:0;value:u:0;"
+ },
+ "std/DiagnosticRecord": {
+  "hash": "3dfbb01818f1f02c",
+  "preimage": "std/DiagnosticRecord|header:+s:0;stamp:g:0;frame_id:u:0;meta:+m:0;entries:+s:0;key:u:0;value:u:0;path:u:0;level:u:0;code:u:0;message:u:0;mode:u:0;expected_period_s:g:0;uptime_s:g:0;stale_inputs:+l:0;item:u:0;"
+ },
+ "std/Header": {
+  "hash": "13ff7523070e04dd",
+  "preimage": "std/Header|stamp:g:0;frame_id:u:0;meta:+m:0;entries:+s:0;key:u:0;value:u:0;"
+ },
+ "std/LogRecord": {
+  "hash": "d71a341a91d2d12a",
+  "preimage": "std/LogRecord|header:+s:0;stamp:g:0;frame_id:u:0;meta:+m:0;entries:+s:0;key:u:0;value:u:0;path:u:0;tick:l:0;level:l:0;message:u:0;"
+ },
+ "std/Metrics": {
+  "hash": "3601d149e9c96583",
+  "preimage": "std/Metrics|header:+s:0;stamp:g:0;frame_id:u:0;meta:+m:0;entries:+s:0;key:u:0;value:u:0;path:u:0;names:+l:0;item:u:0;values:+l:0;item:g:0;"
+ },
+ "trajectory/JointLimits": {
+  "hash": "42fa032edb55e31f",
+  "preimage": "trajectory/JointLimits|joint_names:+l:0;item:u:0;min_position:+l:1;item:g:0;max_position:+l:1;item:g:0;max_velocity:+l:1;item:g:0;max_acceleration:+l:1;item:g:0;max_jerk:+l:1;item:g:0;max_effort:+l:1;item:g:0;position_kind:+l:1;item:u:1;"
+ },
+ "trajectory/JointTrajectory": {
+  "hash": "4a673fc3008dfa24",
+  "preimage": "trajectory/JointTrajectory|t:+l:0;item:g:0;channels:+m:0;entries:+s:0;key:u:0;value:+l:0;item:g:0;header:+s:0;stamp:g:0;frame_id:u:0;meta:+m:0;entries:+s:0;key:u:0;value:u:0;joint_names:+l:0;item:u:0;positions:+l:0;item:g:0;velocities:+l:1;item:g:0;accelerations:+l:1;item:g:0;effort:+l:1;item:g:0;limits:+s:1;joint_names:+l:0;item:u:0;min_position:+l:1;item:g:0;max_position:+l:1;item:g:0;max_velocity:+l:1;item:g:0;max_acceleration:+l:1;item:g:0;max_jerk:+l:1;item:g:0;max_effort:+l:1;item:g:0;position_kind:+l:1;item:u:1;"
+ }
+}

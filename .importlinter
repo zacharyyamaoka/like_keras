@@ -1,0 +1,47 @@
+; Criterion 3 (black box) and the lean-core gate, as import contracts (lane RULER; frozen after M0).
+;   uvx --from import-linter lint-imports --config /home/bam/like_keras/.importlinter
+; Run with PYTHONPATH=/home/bam/like_keras/src:/home/bam/like_keras (kpi/score.py does).
+
+[importlinter]
+root_packages =
+    kpi
+    like_keras
+include_external_packages = True
+
+[importlinter:contract:components-black-box]
+name = Reference components import no transport and no backend (CONTRACT §6.1 rules, criterion 3)
+type = forbidden
+source_modules =
+    kpi.tasks.arm_cell.plan
+    kpi.tasks.arm_cell.planner
+    kpi.tasks.arm_cell.targets
+    kpi.tasks.arm_cell.arm_controller_py
+    kpi.tasks.arm_cell.jtc_law
+    kpi.tasks.arm_cell.guard_law
+    kpi.tasks.arm_cell.fake_bus
+    kpi.tasks.empty.empty
+forbidden_modules =
+    like_keras.backends
+    dora
+    pyarrow
+    zmq
+    socket
+allow_indirect_imports = True
+
+[importlinter:contract:core-without-transport]
+name = Only like_keras.backends.dora imports dora or pyarrow; nothing imports yaml (CONTRACT §2)
+type = forbidden
+source_modules =
+    like_keras
+forbidden_modules =
+    dora
+    pyarrow
+    yaml
+ignore_imports =
+    like_keras.backends.dora -> dora
+    like_keras.backends.dora -> pyarrow
+    like_keras.backends.dora.* -> dora
+    like_keras.backends.dora.* -> pyarrow
+; the backend may be a module or a package: an ignore that matches nothing is not an error
+unmatched_ignore_imports_alerting = none
+allow_indirect_imports = True

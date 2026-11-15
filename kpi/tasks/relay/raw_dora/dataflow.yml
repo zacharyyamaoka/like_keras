@@ -1,0 +1,18 @@
+nodes:
+  - id: count
+    path: count.py
+    inputs:
+      tick: dora/timer/millis/100
+    outputs:
+      - value
+  - id: double
+    path: double.py
+    inputs:
+      value: count/value
+    outputs:
+      - doubled
+  - id: save
+    path: save.py
+    args: relay.txt
+    inputs:
+      value: double/doubled
