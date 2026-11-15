@@ -5,11 +5,12 @@ From lane CORE at M1, measured against the frozen ruler at `b76d5b2`. `kpi/` was
 ## 1. `kpi/twin`: the ≥ 10× real-time assertion runs on the wall clock in the default tier (criterion 10)
 
 - `test_ten_runs_hash_identical_at_10x` times `dep.start(until=4.0)` with `time.perf_counter()`. The test is not marked `timing`, so it runs in the default tier. There, the lane rules pin every process to `nice -n 19 ionice -c3 taskset -c 22-23`, on a host at load average 30.
-- **Measured, rack powered, cores 22-23, not the timing tier:**
-  - all ten runs hash-identical (that part passes);
-  - wall clock 1.4× real time, so the test fails;
-  - the same runs on CPU time (`time.process_time()`): 0.11-0.18 s per 4 s of logical time, 22-35× real time.
-- What the test measures here is the scheduler's starvation of a niced process, not like_keras. Criterion 10 then scores 3/4 for a twin that runs above 20× on CPU.
+- **Measured at `84c1e21`, rack powered, cores 22-23, not the timing tier:**
+  - all ten runs are hash-identical (that part always passes);
+  - in a direct pytest run: wall clock 1.4× real time, so the test failed;
+  - in `kpi/score.py`'s run 30 minutes later: it passed, so criterion 10 scored 1.0;
+  - on CPU time (`time.process_time()`): 0.11-0.18 s per 4 s of logical time, 22-35× real time.
+- So the test is flaky by environment: it measures the scheduler's starvation of a niced process, not like_keras, and criterion 10 can swing by 1/4 between two runs of the same commit.
 - **Suggested fix:** mark the speed half `timing`, or measure `time.process_time()` in the default tier. A second id for the speed half would also stop it hiding the determinism half.
 
 ## 2. `kpi/blackbox`: the `arm_cell.ArmControllerPy` step imports the module it blocks (criterion 3)
