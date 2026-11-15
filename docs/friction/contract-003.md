@@ -40,6 +40,7 @@ From lane CORE while building M1 (`src/like_keras/{__init__,component,system,dep
 ## Readings unlikely to be contested (pinned in the code)
 
 - **Lockstep visibility.** A queue input of a rate-less group sees messages sent at or before its step time (its trigger at t). Its latest inputs see only what was sent strictly before t, which is what `kpi/support/arm_cell_oracle.py` encodes. A lagged same-group input reads the strict view: the writer's previous step.
+- **Never a burst (§5.2) is measured at the start of the step's first forward, not at the thread's wake-up** (fix round 1, `92cb227`). A step whose forward began more than half a period late gives up the next tick. The input reads in between (in lane dora's Python host, decoding) count as lateness.
 - **A queue under lockstep holds a message in `arriving` until a step strictly after its send time.** Otherwise a message sent at t would evict one that the reader stepping at t is still due (`test_queue_drop_oldest` expects 8, 18, 28, ...).
 - **Recording topics:**
   - **Explicit ports:** the name the user wired, e.g. `pick_cell.arm.command`.

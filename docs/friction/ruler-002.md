@@ -11,6 +11,7 @@ From lane CORE at M1, measured against the frozen ruler at `b76d5b2`. `kpi/` was
   - in `kpi/score.py`'s run 30 minutes later: it passed, so criterion 10 scored 1.0;
   - on CPU time (`time.process_time()`): 0.11-0.18 s per 4 s of logical time, 22-35× real time.
 - **Independent verifier, fix round 1, same commit, same environment:** the wall-clock check failed in both of its runs (7.1× real time), while the CPU-time speed-up was 32-50× and the ten hashes were identical.
+- **Lane core's two scoreboard runs in fix round 1** (`6c40de6`, `92cb227`, same environment) failed it too: the slowest run was 8.9× and 7.1× real time, and the ten hashes were identical both times.
 - So the test is flaky by environment: it measures the scheduler's starvation of a niced process, not like_keras, and criterion 10 can swing by 1/4 between two runs of the same commit.
 - **Suggested fix:** mark the speed half `timing`, or measure `time.process_time()` in the default tier. A second id for the speed half would also stop it hiding the determinism half.
 
