@@ -10,15 +10,17 @@ From lane CORE at M1, measured against the frozen ruler at `b76d5b2`. `kpi/` was
   - in a direct pytest run: wall clock 1.4× real time, so the test failed;
   - in `kpi/score.py`'s run 30 minutes later: it passed, so criterion 10 scored 1.0;
   - on CPU time (`time.process_time()`): 0.11-0.18 s per 4 s of logical time, 22-35× real time.
+- **Independent verifier, fix round 1, same commit, same environment:** the wall-clock check failed in both of its runs (7.1× real time), while the CPU-time speed-up was 32-50× and the ten hashes were identical.
 - So the test is flaky by environment: it measures the scheduler's starvation of a niced process, not like_keras, and criterion 10 can swing by 1/4 between two runs of the same commit.
 - **Suggested fix:** mark the speed half `timing`, or measure `time.process_time()` in the default tier. A second id for the speed half would also stop it hiding the determinism half.
 
 ## 2. `kpi/blackbox`: the `arm_cell.ArmControllerPy` step imports the module it blocks (criterion 3)
 
 - The step runs `from kpi.tasks.arm_cell.cell import CONFIG` with `like_keras.backends.dora` blocked. `cell.py` imports `from like_keras.backends import dora` at module level.
-- It passes today only because `like_keras.backends` resolves its backends lazily (a `LazyLoader`), so the blocked module is never executed. That laziness is real behaviour (the fallback runs where dora-rs is not installed), but the test should not depend on it.
-- Criterion 3 zeroes on any dirty arm_cell component, so an eager backend import would score the whole criterion 0.
-- **Suggested fix:** take `CONFIG` from `kpi.tasks.arm_cell.arm_controller_py`, or use the toml path directly.
+- **Corrected in fix round 1 (the first text said the row passed because the blocked module was never executed; that was the wrong reason):**
+  - At `84c1e21` the row passed because `like_keras.backends.__getattr__` looked the backend up with `importlib.machinery.PathFinder.find_spec`, which bypasses `sys.meta_path`. The step's Blocker never saw `like_keras.backends.dora`, so the from-import succeeded, and any attribute access (`dora.NAME`) would have run the blocked module. That was a core bug, not the test's.
+  - At `1c42c81` core looks the backend up with `importlib.util.find_spec`, through `sys.meta_path`, and keeps the `LazyLoader`. The Blocker's ImportError now propagates from the from-import, so **this row is red**, and criterion 3 scores 0 (it zeroes on any dirty arm_cell component). That is the honest state until `cell.py` stops importing dora at module level.
+- **Suggested fix (unchanged):** take `CONFIG` from `kpi.tasks.arm_cell.arm_controller_py`, or use the toml path directly. Or move `from like_keras.backends import dora` inside the function that builds the dora deployment, as `kpi/tasks/relay/solution/relay.py` already does.
 
 ## 3. `kpi/churn::test_wire_is_owned_by_like_keras` blocks pyarrow, then imports a module that imports it (criterion 6 part 2)
 

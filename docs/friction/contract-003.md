@@ -58,7 +58,7 @@ From lane CORE while building M1 (`src/like_keras/{__init__,component,system,dep
 - **Python receive builds each message through its robot_msgs constructor.** Arrays are `adopt`ed read-only views into the frame, so there is no copy, but validation runs. §7.3's "without re-validation" is an optimisation left open.
 - **Facility C++ types use `rm::kMaxNames = 64`** (contract-002 item 8). Per-joint types use `lk::kMaxJoints`.
 - **The JointTrajectory view** carries `t`, `positions`, `velocities`, `accelerations`, `effort` and `header`, as contract-002 lists them. `joint_names`, `channels` and `limits` stay Python-side in v0.
-- **`backends` load on first use.** A deployment file can name `from like_keras.backends import dora` and still run its all-Python fallback where dora-rs is not installed (the lean core). `kpi/blackbox`'s ArmControllerPy step depends on this; see ruler-002.
+- **`backends` load on first use, through the import system.** A deployment file can name `from like_keras.backends import dora` and still run its all-Python fallback where dora-rs is not installed (the lean core): the backend's body runs at its first attribute access. The lookup goes through `sys.meta_path` (fix round 1, `1c42c81`), so an import blocker or hook sees the backend like any other import. `kpi/blackbox`'s ArmControllerPy step is therefore red until `cell.py` stops importing dora at module level; see ruler-002 item 2.
 
 ## Not done at M1, on purpose
 
