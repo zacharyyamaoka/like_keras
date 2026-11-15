@@ -10,7 +10,6 @@ not installed (the lean core: robot_msgs is the one runtime dependency).
 
 from __future__ import annotations
 
-import importlib.machinery
 import importlib.util
 import os
 import sys
@@ -19,13 +18,18 @@ import sys
 def __getattr__(name: str):
     if name.startswith("_"):
         raise AttributeError(name)
-    spec = importlib.machinery.PathFinder.find_spec(f"{__name__}.{name}", __path__)
-    if spec is None:
-        raise AttributeError(f"like_keras has no backend {name!r}")
-    spec.loader = importlib.util.LazyLoader(spec.loader)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)  # lazy: the module body runs at its first attribute access
+    qualified = f"{__name__}.{name}"
+    module = sys.modules.get(qualified)  # imported already: the same module object, never a second copy of its state
+    if module is None:
+        # WHY importlib.util.find_spec, not PathFinder: it walks sys.meta_path, so an import hook or blocker sees
+        # the backend like any other import (kpi/blackbox blocks one; a blocker's ImportError propagates as is).
+        spec = importlib.util.find_spec(qualified)
+        if spec is None:
+            raise AttributeError(f"like_keras has no backend {name!r}")
+        spec.loader = importlib.util.LazyLoader(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[qualified] = module
+        spec.loader.exec_module(module)  # lazy: the module body runs at its first attribute access
     globals()[name] = module
     return module
 
