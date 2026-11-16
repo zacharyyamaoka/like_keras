@@ -648,6 +648,7 @@ class Run:
         self.plan, self.lockstep, self.stopped = plan, not plan.realtime, False
         self.stopping, self.threads, self.server = threading.Event(), [], None
         self.heap: list = []
+        self.slots: dict[tuple[int, str], Latest | Queue] = {}  # (leaf, input) -> the one slot it reads
         self.sequence = itertools.count()
         self.epoch0 = self.mono0 = 0.0
         self.boxes = {
@@ -706,15 +707,26 @@ class Run:
             return types.SimpleNamespace(write=write, push=write)
         box, port = self._box(leaf), type(leaf)._lk_ports[name]
         same = consumer is producer
-        if port.queue:
-            wake = None if same or consumer.hz is not None else consumer.notify
-            slot = Queue(port.queue, self.lockstep, wake)
-            box.queues.append((name, slot, not same and consumer.hz is not None))
+        wake = None if same or consumer.hz is not None else consumer.notify
+        strict = not same and consumer.hz is not None if port.queue else port.lagged or not same
+        if (slot := self.slots.get((id(leaf), name))) is not None:
+            # WHY one slot for several writers: only a System's own facility port fans in (CONTRACT §15 A21), and a box
+            # reads one slot per input. Strict if any writer is in another group; woken if any writer can wake it.
+            for entries in (box.queues, box.latest):
+                entries[:] = [(*entry[:2], entry[2] or strict, *entry[3:]) if entry[0] == name else entry
+                              for entry in entries]
+            if port.queue and slot.wake is None:
+                slot.wake = wake
             return slot
-        slot = Latest()
-        box.latest.append((name, slot, port.lagged or not same, port.stale))
-        if port.fresh:
-            box.fresh[name] = 0
+        if port.queue:
+            slot = Queue(port.queue, self.lockstep, wake)
+            box.queues.append((name, slot, strict))
+        else:
+            slot = Latest()
+            box.latest.append((name, slot, strict, port.stale))
+            if port.fresh:
+                box.fresh[name] = 0
+        self.slots[(id(leaf), name)] = slot
         return slot
 
     def _connect(self, edge, producer, consumer) -> None:

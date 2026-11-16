@@ -21,7 +21,7 @@ from typing import Any
 from like_keras import backends
 from like_keras.backends import inproc
 from like_keras.component import ABI, Component, PortRef, as_ref, is_message, message_type, path, site, type_name
-from like_keras.system import Edge, Graph, System, graph, leaves_of, port_of, problem
+from like_keras.system import Edge, Graph, System, graph, leaves_of, out_leaves, port_of, problem
 
 VERSION = "0.1.0"
 # WHY 22: on this machine a shared transport daemon runs there and has stalled for up to 4 s (CONTRACT §4.3 check 4).
@@ -171,15 +171,14 @@ class Deployment:
         chosen: dict[tuple[int, str], tuple[Component, str, str]] = {}
 
         def add(ref: PortRef, topic: str, explicit: bool) -> None:
-            leaf = ref
-            while isinstance(leaf.owner, System):
-                leaf = leaf.owner._exposed[leaf.name][0]
-            kind = port_of(leaf).type
-            if is_message(kind):
+            kind = port_of(ref).type
+            if not is_message(kind):
+                if explicit:
+                    failures.append(problem("record_type", port=ref, got=type_name(kind), at=at))
+                return
+            for leaf in out_leaves(ref):  # a System's own log/health/metrics: every leaf's, on one topic (§15 A21)
                 topic = getattr(type(leaf.owner), "_lk_topics", {}).get(leaf.name, topic)  # a replay keeps its channel
                 chosen.setdefault((id(leaf.owner), leaf.name), (leaf.owner, leaf.name, topic))
-            elif explicit:
-                failures.append(problem("record_type", port=ref, got=type_name(kind), at=at))
 
         for ref in ports:
             if port_of(ref, at).output:

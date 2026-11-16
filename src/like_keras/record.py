@@ -38,6 +38,7 @@ class Recorder:
         self._schemas: dict[str, int] = {}
         self._pending: collections.deque = collections.deque()
         self._sequence = self._channels = 0
+        self._sinks: dict[str, Any] = {}  # topic -> its sink: a System's facility port is many leaves, one channel
 
     @staticmethod
     def _record(opcode: int, body: bytes) -> bytes:
@@ -46,6 +47,8 @@ class Recorder:
     def channel(self, topic: str, kind: type):
         from like_keras import codec
 
+        if topic in self._sinks:
+            return self._sinks[topic]
         if kind.type_name not in self._schemas:
             self._schemas[kind.type_name] = len(self._schemas) + 1
             self._file.write(
@@ -73,6 +76,7 @@ class Recorder:
         def sink(value: Any, sent: float) -> None:  # any group thread; never blocks
             pending.append((channel_id, time.time_ns(), value))
 
+        self._sinks[topic] = sink
         return sink
 
     def flush(self) -> None:

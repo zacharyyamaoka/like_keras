@@ -4,7 +4,8 @@ and edges a Deployment places, with every wiring check of §4.3 catalogued in PR
     s.add(PickPlanner(), "planner", target=targets.target, state=arm.state)   # the child's inputs, named
     s.wire(arm, trajectory=planner.trajectory)                                # inputs of a child added earlier
 
-A System is a component: the ports it exposes are its ports when a parent adds it (closure under composition).
+A System is a component: the ports it exposes are its ports when a parent adds it (closure under composition), and
+its own `log`, `health` and `metrics` carry every component inside it, as a native box's do (CONTRACT §15 A21).
 """
 
 from __future__ import annotations
@@ -60,6 +61,7 @@ PROBLEMS = {
     "lockstep": "the {backend} backend cannot run lockstep (realtime=False) (at {at}). Fix: realtime=True or another backend",
     "record_input": "{port} is an input (recorded at {at}). Fix: record the Out that feeds it",
     "record_type": "{port} carries {got} (recorded at {at}). Fix: record ports of robot_msgs types; only they have a wire layout",
+    "exposed_facility": "{port} is exposed by {system} (at {at}), but a System's {name} carries every component inside it and v0 exposes one leaf's port. Fix: expose each child's {name} under its own name, or wire {port} into a component",
 }
 
 
@@ -143,7 +145,7 @@ class System(Component):
         if name in self._children or name in self._exposed:
             first = self._children[name]._lk.site if name in self._children else self._exposed[name][1]
             raise ValueError(problem("taken", port=f"{path(self)}.{name}", name=name, first=first, at=at))
-        if name in FACILITY_PORTS:  # a System has no log/health/metrics of its own: the name is free, and the
+        if name in FACILITY_PORTS:  # a child or exposed port of that name replaces the System's own (A21): the
             self.__dict__[name] = value  # instance attribute must win over the Component class's port descriptor
         elif hasattr(System, name) or name == "params":
             raise ValueError(problem("member", port=f"{path(self)}.{name}", at=at))
@@ -170,10 +172,13 @@ def _identifier(name: str, at: str) -> None:
 
 
 def port_of(ref: PortRef, at: str = ""):
-    """The declared port behind a PortRef, through a System's exposed ports."""
+    """The declared port behind a PortRef, through a System's exposed ports; a System's own facility port is the
+    Component's (CONTRACT §15 A21)."""
     owner = ref.owner
     if isinstance(owner, System) and ref.name in owner._exposed:
         return port_of(owner._exposed[ref.name][0], at)
+    if isinstance(owner, System) and ref.name in FACILITY_PORTS:
+        return vars(Component)[ref.name]
     port = None if isinstance(owner, System) else type(owner)._lk_ports.get(ref.name)
     if port is None:
         ports = owner._exposed if isinstance(owner, System) else type(owner)._lk_ports
@@ -246,6 +251,21 @@ def leaves_of(component: Component) -> list[Component]:
     return [leaf for child in component._children.values() for leaf in leaves_of(child)]
 
 
+def out_leaves(ref: PortRef) -> list[PortRef]:
+    """The leaf Outs behind an Out, down through exposed Outs. A System's own log, health or metrics is that port of
+    every leaf inside it (CONTRACT §15 A21). WHY: a Python <-> C++ swap must not change how a chain's facilities are
+    read; a native box's facility ports carry every inner component's records, so a Python System's do too. A
+    boundary input met on the way (an exposed In used as a source) is returned as it is."""
+    while isinstance(ref.owner, System):
+        exposed = ref.owner._exposed.get(ref.name)
+        if exposed is None:
+            return [PortRef(leaf, ref.name) for leaf in leaves_of(ref.owner)]
+        if not port_of(exposed[0]).output:
+            return [ref]
+        ref = exposed[0]
+    return [ref]
+
+
 def graph(top: System) -> Graph:
     """Resolve every binding through the System tree into leaf-to-leaf edges (CONTRACT §4.3 checks 1 and 6)."""
     systems, stack = [], [top]
@@ -264,18 +284,15 @@ def graph(top: System) -> Graph:
             chain.append(exposed_as[chain[-1]][0])
         return next((writer[link] for link in chain if link in writer), None), chain[-1]
 
-    def leaf_out(ref: PortRef) -> PortRef | None:
-        """Down through exposed Outs (and up through boundary inputs used as sources) to the leaf Out."""
-        while isinstance(ref.owner, System):
-            inner = ref.owner._exposed[ref.name][0]
-            if port_of(inner).output:
-                ref = inner
-                continue
-            binding, ref = find_writer(ref)
+    def leaf_outs(ref: PortRef) -> list[PortRef]:
+        """Down through exposed Outs (and up through boundary inputs used as sources) to the leaf Outs: one, or
+        every leaf's for a System's own facility port; none when an attach client writes the top's boundary input."""
+        while len(refs := out_leaves(ref)) == 1 and isinstance(refs[0].owner, System):
+            binding, ref = find_writer(refs[0])
             if binding is None:
-                return None  # fed by a boundary input of the top System: an attach client writes it
+                return []  # fed by a boundary input of the top System: an attach client writes it
             ref = binding.src
-        return ref
+        return refs
 
     leaves, edges, failures = leaves_of(top), [], []
     exposed_in: dict[str, list[PortRef]] = {}
@@ -297,11 +314,16 @@ def graph(top: System) -> Graph:
             elif binding is None:
                 if not type(leaf)._lk_ports[name].optional:  # an optional In (A11) stays unwired: no slot, no value
                     failures.append(problem("unbound", port=ref, name=name, at=leaf._lk.site))
-            elif (src := leaf_out(binding.src)) is None:
+            elif not (sources := leaf_outs(binding.src)):
                 exposed_in.setdefault(find_writer(binding.src)[1].name, []).append(ref)
-            else:
-                edges.append(Edge(src.owner, src.name, leaf, name, binding.at, binding.order))
-    exposed_out = {
-        name: leaf_out(PortRef(top, name)) for name, (inner, _) in top._exposed.items() if port_of(inner).output
-    }
+            else:  # several sources only for a System's own facility port, fanned in to this one input (A21)
+                edges += [Edge(src.owner, src.name, leaf, name, binding.at, binding.order) for src in sources]
+    exposed_out = {}
+    for name, (inner, at) in top._exposed.items():
+        if port_of(inner).output:
+            sources = leaf_outs(PortRef(top, name))
+            if len(sources) == 1:
+                exposed_out[name] = sources[0]
+            else:  # WHY refused, not degraded: one exposed name is one leaf's port on the attach socket in v0
+                failures.append(problem("exposed_facility", port=inner, system=path(top), at=at, name=inner.name))
     return Graph(leaves, edges, exposed_out, exposed_in, failures)
