@@ -66,6 +66,10 @@ constexpr double kLingerS = 5.0;
 
 std::string g_node, g_markers;
 std::atomic<bool> g_initialized{false};
+::DoraNode* g_dora = nullptr;          // once init_dora_node has returned
+std::thread::id g_main;                // the thread whose final refusals wait for dora's Stop (A34)
+std::atomic<bool> g_receiving{false};  // the RX thread runs: it takes the Stop, main waits to hear of it
+void hold_until_stopped();             // below, beside the Host it waits on
 
 void mark(const std::string& kind, const std::string& text = "") {
   std::ofstream(g_markers + "/" + kind + "." + g_node) << text;
@@ -74,6 +78,11 @@ void mark(const std::string& kind, const std::string& text = "") {
 [[noreturn]] void refuse(int code, const std::string& message, bool final_refusal) {
   std::fprintf(stderr, "like_keras %s: %s\n", g_node.c_str(), message.c_str());
   if (final_refusal) mark("failed", g_node + ": " + message);
+  // WHY wait for dora's Stop (CONTRACT §15 A34, consumer-017): every node runs restart_policy `always` (§9.2), so a
+  // node that exited on a final refusal (activate, lk_create, dlopen) was restarted 30-100 times a second on the
+  // cores the powered arm shares. The launcher raises on the marker and stops the dataflow; that Stop disables
+  // restarts, and only then does this node exit, never having sent a data frame.
+  if (final_refusal && g_dora != nullptr && std::this_thread::get_id() == g_main) hold_until_stopped();
   mark("exit");
   std::fflush(nullptr);
   _exit(code);
@@ -268,6 +277,18 @@ struct Host {
 };
 
 Host g_host;
+
+void hold_until_stopped() {
+  if (!g_receiving.load()) {  // no RX thread yet: main reads the events itself, up to the Stop
+    for (;;) {
+      auto event = next_event(g_dora->events);
+      const DoraEventType type = event_type(event);
+      if (type == DoraEventType::Stop || type == DoraEventType::AllInputsClosed) return;
+    }
+  }
+  std::unique_lock guard(g_host.lock);
+  g_host.arrived.wait(guard, [] { return g_host.closed || g_host.signalled != 0; });
+}
 
 // ------------------------------------------------------------------ sending
 
@@ -549,7 +570,7 @@ int main(int argc, char** argv) {
     return 2;
   }
   Host& host = g_host;
-  g_node = argv[2];
+  g_node = argv[2], g_main = std::this_thread::get_id();
   std::string plan = argv[1];
   host.read(plan.substr(0, plan.rfind('/') + 1) + g_node + ".host");
   // CONTRACT §15 A18: SIGTERM (systemctl stop, kill), SIGHUP and SIGINT end the node the way dora's Stop does, so
@@ -574,6 +595,7 @@ int main(int argc, char** argv) {
       refuse(4, "init_dora_node did not return within 2 s: is a dora " LK_DORA_VERSION " daemon running?", false);
   }).detach();
   ::DoraNode node = init_dora_node();
+  g_dora = &node;
   g_initialized.store(true);
   void* library = dlopen(host.so.c_str(), RTLD_NOW | RTLD_LOCAL);
   if (library == nullptr) refuse(1, std::string("dlopen: ") + dlerror(), true);
@@ -595,6 +617,7 @@ int main(int argc, char** argv) {
   std::snprintf(nonce, sizeof nonce, "%08x%08x%08x%08x", entropy(), entropy(), entropy(), entropy());
   host.nonce = nonce;
   say_hello(node);
+  g_receiving.store(true);
   std::thread rx(receive, std::ref(node));
   {
     std::unique_lock guard(host.lock);
@@ -610,7 +633,7 @@ int main(int argc, char** argv) {
                  host.stepped ? 0 : 1, host.stepped};
   if (box.start(box.box, &place, error, sizeof error) != 0) {  // §5.7, T7: refused before any data frame
     mark("refused", error);
-    refuse(1, std::string("activate refused: ") + error, host.stepped != 0);
+    refuse(1, std::string("activate refused: ") + error, true);  // final, in real time and lockstep alike (A34)
   }
   {
     std::lock_guard guard(host.lock);

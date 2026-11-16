@@ -292,27 +292,38 @@ def stop_natives(document: dict, timeout_s: float) -> None:
     markers = pathlib.Path(document["markers"])
     plan = str(pathlib.Path(document["directory"]) / "plan.json")
     natives = [name for name, node in document["nodes"].items() if node["role"] == "native" and not node["host"]]
+    signalled = []
     for name in natives:
         try:
             pid = int((markers / f"started.{name}").read_text())
             argv = pathlib.Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
             if argv[1:3] == [plan.encode(), name.encode()]:  # a pid is reused once its process is gone: only ours
                 os.kill(pid, signal.SIGTERM)
+                signalled.append(name)
         except (OSError, ValueError, IndexError):  # it never started, or it has exited: `dora stop` covers it
             continue
-    wait_markers(document["markers"], "drained|exit", natives, timeout_s, quiet=True, failures_raise=False)
+    # WHY only those signalled: a node that never started (one holding a refusal, A34) waits for `dora stop` itself
+    wait_markers(document["markers"], "drained|exit", signalled, timeout_s, quiet=True, failures_raise=False)
+
+
+def refusal(markers: pathlib.Path, node: str) -> str:
+    """What a node said when it refused (its failed marker, else its activate's refused marker), or ''."""
+    for kind in ("failed", "refused"):
+        if (markers / f"{kind}.{node}").exists():
+            return (markers / f"{kind}.{node}").read_text() or f"{node}: refused"
+    return ""
 
 
 def wait_markers(
     markers: str, kind: str, nodes: list[str], timeout_s: float, quiet: bool = False, failures_raise: bool = True
 ) -> None:
     """Wait for markers/<kind>.<node> of every node (`kind` may be "started|refused"); raise naming the missing
-    ones, or the refusal a node marked failed (unless quiet)."""
+    ones (unless quiet), or a node's refusal: marked failed, or refused in activate (final, CONTRACT §15 A34)."""
     kinds, deadline, markers = kind.split("|"), time.monotonic() + timeout_s, pathlib.Path(markers)
     directory = markers.parents[1]
     while True:
         missing = [node for node in nodes if not any((markers / f"{one}.{node}").exists() for one in kinds)]
-        failures = [(markers / f"failed.{node}").read_text() for node in nodes if (markers / f"failed.{node}").exists()]
+        failures = [text for node in nodes if (text := refusal(markers, node))]
         if failures and failures_raise:
             raise RuntimeError("a dora node refused:\n" + "\n".join(failures))
         if not missing or time.monotonic() > deadline:

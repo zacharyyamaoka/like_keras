@@ -48,11 +48,17 @@ def mark(document: dict, kind: str, node: str, text: str = "") -> None:
         pass
 
 
-def fail(document: dict, node: str, message: str, code: int, final: bool = True) -> None:
-    """Refuse loudly and exit; a final refusal (a skewed peer) is marked so a waiting launcher raises at once."""
+def fail(document: dict, node: str, message: str, code: int, final: bool = True, link: Link | None = None) -> None:
+    """Refuse loudly and exit; a final refusal (a skewed peer) is marked so a waiting launcher raises at once. With
+    `link`, a final refusal on the main thread (activate, components that cannot be built here) first waits for
+    dora's Stop. WHY (CONTRACT §15 A34, consumer-017): every node runs restart_policy `always` (§9.2), so a node
+    exiting on a refusal was restarted 30-100 times a second; the launcher raises on the marker and stops the
+    dataflow, whose Stop disables restarts."""
     print(f"like_keras {node}: {message}", file=sys.stderr, flush=True)
     if final:
         mark(document, "failed", node, f"{node}: {message}")
+        if link is not None and threading.current_thread() is threading.main_thread():
+            link.stopping.wait()
     mark(document, "exit", node)
     os._exit(code)
 
@@ -575,7 +581,8 @@ class Host:
         except Exception as error:  # noqa: BLE001 - §5.7: any refusal in activate stops the process, named
             for group in reversed(activated):
                 group.deactivate()
-            fail(self.document, self.process, f"activate refused: {type(error).__name__}: {error}", 1)
+            mark(self.document, "refused", self.process, f"{type(error).__name__}: {error}")
+            fail(self.document, self.process, f"activate refused: {type(error).__name__}: {error}", 1, link=self.link)
         mark(self.document, "started", self.process)
         for group in run.groups:
             if group.hz:
@@ -646,15 +653,14 @@ def main(argv: list[str]) -> int:
             host = Host(document, process, link)
         except Exception as error:  # noqa: BLE001 - a component that cannot be rebuilt here never will be: say so
             traceback.print_exc()
-            fail(document, process, f"cannot build its components: {type(error).__name__}: {error}", 1)
+            fail(document, process, f"cannot build its components: {type(error).__name__}: {error}", 1, link=link)
         link.wait_ready()
         if not document["realtime"]:
             return host.run_lockstep(document["until"])
         try:
             return host.run_realtime()
         except Exception as error:  # noqa: BLE001 - §5.7: activate raising: exit non-zero having sent no data frame
-            print(f"like_keras {process}: {type(error).__name__}: {error}", file=sys.stderr, flush=True)
-            return 1
+            fail(document, process, f"activate refused: {type(error).__name__}: {error}", 1, link=link)
     finally:
         mark(document, "exit", process)
 
