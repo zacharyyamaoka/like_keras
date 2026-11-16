@@ -1204,7 +1204,7 @@ void Box::facilities(int which) {
     // reports its sends, per exposed Out the steps that never went out (strings over the arena, superseded in the
     // slot, refused by the transport; of the publishes since the last take all but the newest are superseded
     // already; an Out its host never takes has no reader to lose them to) and the worst gap between two sends.
-    // WHY (consumer-018): over dora 2-3 % of the states were lost at a subscriber and nothing counted them.
+    // WHY (consumer-018): across processes 2-3 % of the states were lost at a subscriber and nothing counted them.
     int io_policy = -1, io_rank = 0;
     for (const auto& slot : io_threads) {
       const int thread = slot.load(std::memory_order_relaxed);
