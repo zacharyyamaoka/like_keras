@@ -484,9 +484,32 @@ def _export(value) -> int:
     return base
 
 
+_CONSTANT: dict[tuple, tuple] = {}  # (schema node id, which values are None) -> that subtree's nodes, relative
+
+
 def _nodes(node, values: list, nodes: list, codec, np) -> int:
     """codec's layout (its _encode, field for field) as Arrow nodes over the values' own buffers: (length,
     null count, buffers, child indices), depth first. A buffer is bytes, or a numpy array sent as it is."""
+    # WHY a cache: a subtree whose values are all None, or empty lists and maps, is the same Arrow nodes every time,
+    # yet the walk built them anew for each plan: limits, channels, accelerations and effort are 26 of a 7 x 1000
+    # plan's 42 nodes (contract-005 §5; A2 and T2 allow 0.1 ms per push, M2 verifier round 1). The buffers are the
+    # same bytes, so the layout is unchanged (kpi/golden, T10).
+    if node.children and all(value is None or node.format != "+s" and len(value) == 0 for value in values):
+        key = (id(node), tuple(value is None for value in values))
+        if (subtree := _CONSTANT.get(key)) is None:
+            built: list = []
+            _walk(node, values, built, codec, np)
+            subtree = _CONSTANT[key] = tuple(
+                (length, nulls, tuple(b"" if isinstance(part, np.ndarray) else part for part in parts), tuple(kids))
+                for length, nulls, parts, kids in built
+            )  # an empty numpy buffer and b"" both export as a null pointer
+        base = len(nodes)
+        nodes += [(length, nulls, list(parts), [base + kid for kid in kids]) for length, nulls, parts, kids in subtree]
+        return base
+    return _walk(node, values, nodes, codec, np)
+
+
+def _walk(node, values: list, nodes: list, codec, np) -> int:
     index = len(nodes)
     entry = (len(values), sum(value is None for value in values), [codec._validity(values)], [])
     nodes.append(entry)
