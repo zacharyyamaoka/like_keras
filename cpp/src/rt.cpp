@@ -47,18 +47,29 @@ void Component::metric(const char* name, double value) {
   child.metric_count.store(count + 1, std::memory_order_release);
 }
 
-void Component::Log::info(const char* fmt, double a, double b) {
+void Component::Log::info(const char* fmt, detail::Arg a, detail::Arg b) {
   if (owner_->box_) owner_->box_->write_log(*owner_, 20, fmt, a, b);
 }
-void Component::Log::warning(const char* fmt, double a, double b) {
+void Component::Log::warning(const char* fmt, detail::Arg a, detail::Arg b) {
   if (owner_->box_) owner_->box_->write_log(*owner_, 30, fmt, a, b);
 }
-void Component::Log::error(const char* fmt, double a, double b) {
+void Component::Log::error(const char* fmt, detail::Arg a, detail::Arg b) {
   if (owner_->box_) owner_->box_->write_log(*owner_, 40, fmt, a, b);
 }
 
 double Component::period() const {  // place is written before the first activate (Box::start)
   return box_ != nullptr && box_->place.hz > 0.0 ? 1.0 / box_->place.hz : 0.0;
+}
+
+void Component::health(const char* level, const char* code) {
+  if (box_ == nullptr) return;  // an eager call: no box, no facilities
+  detail::Child& child = box_->children[index_];
+  const std::uint32_t seq = child.own_seq.load(std::memory_order_relaxed);
+  child.own_seq.store(seq + 1, std::memory_order_relaxed);  // odd: being written
+  std::atomic_thread_fence(std::memory_order_release);
+  child.own_level.store(level, std::memory_order_relaxed);
+  child.own_code.store(code, std::memory_order_relaxed);
+  child.own_seq.store(seq + 2, std::memory_order_release);
 }
 
 System::System(std::string_view name) { name_ = name; }
@@ -395,7 +406,7 @@ void Box::deactivate_all() {
   }
 }
 
-void Box::write_log(const Component& component, int level, const char* fmt, double a, double b) {
+void Box::write_log(const Component& component, int level, const char* fmt, Arg a, Arg b) {
   const bool own = &component != &system;
   const std::uint64_t tick = own ? children[component.index_].steps.load(std::memory_order_relaxed) : 0;
   // WHY wall time, not clock(): CONTRACT §2.3 stamps a LogRecord with the wall time of the record, as Python's
@@ -606,14 +617,38 @@ std::array<double, 2> percentiles(const Histogram& histogram, std::array<std::ui
 
 std::string formatted(const LogEntry& entry) {
   char text[512];
+  const Arg &a = entry.a, &b = entry.b;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
-  std::snprintf(text, sizeof text, entry.fmt, entry.a, entry.b);  // CONTRACT §6.1: a literal and two numbers
+  // CONTRACT §6.1, §15 A22: a literal and two arguments, each a number (%g) or a string literal (%s)
+  if (a.text != nullptr && b.text != nullptr)
+    std::snprintf(text, sizeof text, entry.fmt, a.text, b.text);
+  else if (a.text != nullptr)
+    std::snprintf(text, sizeof text, entry.fmt, a.text, b.number);
+  else if (b.text != nullptr)
+    std::snprintf(text, sizeof text, entry.fmt, a.number, b.text);
+  else
+    std::snprintf(text, sizeof text, entry.fmt, a.number, b.number);
 #pragma GCC diagnostic pop
   return text;
 }
 
 const char* const kModes[] = {"initialization", "operational", "offline"};
+
+int severity(std::string_view level) {  // what "the worse" of two health levels means (CONTRACT §15 A22)
+  return level == "error" ? 3 : level == "warn" ? 2 : level == "ok" ? 0 : 1;
+}
+
+// The component's own health(level, code), read whole (Child::own_seq); nullptr level: never called
+std::pair<const char*, const char*> own_health(const Child& child) {
+  for (;;) {
+    const std::uint32_t before = child.own_seq.load(std::memory_order_acquire);
+    const char* level = child.own_level.load(std::memory_order_relaxed);
+    const char* code = child.own_code.load(std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_acquire);
+    if (before % 2 == 0 && child.own_seq.load(std::memory_order_relaxed) == before) return {level, code};
+  }
+}
 
 }  // namespace
 
@@ -621,7 +656,8 @@ void Box::facilities(int which) {
   LogEntry entry{};
   while (logs.pop(entry)) {
     for (std::uint32_t index = 0; entry.level >= 30 && index < children.size(); ++index)  // a box line warns them all
-      if (entry.child == index || entry.child == kBoxLog) children[index].warning = formatted(entry);
+      if (entry.child == index || entry.child == kBoxLog)
+        (entry.level >= 40 ? children[index].logged_error : children[index].warning) = formatted(entry);
     backlog.push_back(entry);
     if (backlog.size() > 4096) backlog.pop_front(), ++log_trimmed;  // nobody takes the log port: keep the newest
   }
@@ -688,6 +724,8 @@ void Box::facilities(int which) {
       record.level = "ok";
       if (broken && !child.error.empty()) {
         record.level = "error", record.code = "Exception", message = child.error;
+      } else if (!child.logged_error.empty()) {  // CONTRACT §15 A22: until a round in which no error was logged
+        record.level = "error", record.code = "ErrorLogged", message = child.logged_error;
       } else if (!stale.empty()) {
         record.level = "warn", record.code = "InputStale", message = "stale:";
         for (const auto& name : stale) message += (message.size() > 6 ? ", " : " ") + name;
@@ -699,7 +737,14 @@ void Box::facilities(int which) {
       } else if (mode == kInitialization) {
         record.level = "unknown";
       }
-      child.warning.clear();
+      // CONTRACT §15 A22: the worse of the component's own health(level, code) and the facility's; on a tie the
+      // component's code says more, but an Exception always wins (the component no longer runs to say otherwise)
+      const auto [own_level, own_code] = own_health(child);
+      if (own_level != nullptr && record.code != "Exception" &&
+          severity(own_level) >= std::max(severity(record.level), 1)) {
+        record.level = own_level, record.code = own_code != nullptr ? own_code : "", message.clear();
+      }
+      child.warning.clear(), child.logged_error.clear();
       record.header.stamp = at, record.path = name_of(index), record.message = message, record.mode = kModes[mode];
       record.expected_period_s = 1.0;
       record.uptime_s = mode == kOperational ? at - child.activated.load(std::memory_order_relaxed) : 0.0;

@@ -106,6 +106,71 @@ TEST(Period, IsTheGroupsPeriodFromActivateAndZeroRateLessOrEager) {
   }
 }
 
+// ---------------------------------------------------------------- A22: health(level, code), %s
+
+struct SaysHealth : lk::Component {
+  int step = 0;
+  void forward() override {
+    switch (step++) {
+      case 0:
+        health("warn", "Degraded");
+        break;  // round 1: warn / Degraded
+      case 2:
+        log.warning("a warning, same level");
+        break;  // round 3: the component's code on a tie
+      case 3:
+        log.error("refused: %s at %g", "joint", 3);
+        break;  // round 4: error / ErrorLogged, worse
+      case 5:
+        throw std::runtime_error("broken");  // round 6: Exception wins over the held error
+      default:
+        break;
+    }
+    if (step == 5) health("error", "Braked");  // round 5: error / Braked, the component's
+  }
+};
+
+TEST(Health, HeldTheWorseOfTheComponentsAndTheFacilitysAndAnExceptionWins) {
+  lk::System s{"saying"};
+  s.add<SaysHealth>("says");
+  Box box{std::move(s)};
+  std::string error;
+  ASSERT_TRUE(box.start(kStepped, error)) << error;
+  std::vector<std::pair<std::string, std::string>> rounds;
+  for (int round = 0; round < 6; ++round) {
+    box.step(round * 0.02);
+    const auto health = health_round(box);
+    ASSERT_EQ(health.size(), 1u);
+    rounds.emplace_back(health[0].level, health[0].code);
+  }
+  const std::vector<std::pair<std::string, std::string>> expected{{"warn", "Degraded"}, {"warn", "Degraded"},
+                                                                  {"warn", "Degraded"}, {"error", "ErrorLogged"},
+                                                                  {"error", "Braked"},  {"error", "Exception"}};
+  EXPECT_EQ(rounds, expected);
+  const auto lines = log_round(box);
+  EXPECT_NE(std::find(lines.begin(), lines.end(), "refused: joint at 3"), lines.end()) << "a %s argument";
+  box.stop();
+}
+
+TEST(Health, AnErrorLoggedLastsUntilARoundWithNone) {
+  struct Once : lk::Component {
+    int step = 0;
+    void forward() override {
+      if (step++ == 0) log.error("once");
+    }
+  };
+  lk::System s{"once"};
+  s.add<Once>("once");
+  Box box{std::move(s)};
+  std::string error;
+  ASSERT_TRUE(box.start(kStepped, error)) << error;
+  box.step(0.0);
+  EXPECT_EQ(health_round(box)[0].code, "ErrorLogged");
+  box.step(0.02);
+  EXPECT_EQ(health_round(box)[0].level, "ok") << "no error logged in this round";
+  box.stop();
+}
+
 // ---------------------------------------------------------------- A23: an optional input
 
 struct Guarded : lk::Component {

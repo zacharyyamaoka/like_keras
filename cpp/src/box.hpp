@@ -160,17 +160,22 @@ struct Child {  // one leaf of the box's System
   std::atomic<int> metric_count{0};
   std::atomic<int> mode{kInitialization};
   std::atomic<double> activated{0.0};
+  // Component::health(level, code): string literals behind a sequence count (odd while written), so the facilities
+  // thread never reads one call's level with another's code; one writer, the thread the component runs on
+  std::atomic<std::uint32_t> own_seq{0};
+  std::atomic<const char*> own_level{nullptr}, own_code{nullptr};
   bool stepped = false;  // this step (rate-less trigger)
   // the facilities thread's side
   std::array<std::uint32_t, Histogram::kBins> step_seen{};
-  std::string warning, error;
+  std::string warning, logged_error, error;  // since the last health round; logged_error: log.error's text
 };
 
 struct LogEntry {
   std::uint32_t child;
   std::int32_t level;
   const char* fmt;
-  double a, b, wall;
+  Arg a, b;
+  double wall;
   std::int64_t tick;
 };
 
@@ -187,7 +192,7 @@ struct Box {
   void bury();                     // host: release what the RT thread retired
   void fail(Child& child, const char* what);
   void deactivate_all();
-  void write_log(const Component& component, int level, const char* fmt, double a = 0, double b = 0);
+  void write_log(const Component& component, int level, const char* fmt, Arg a = 0.0, Arg b = 0.0);
   double clock() const;  // the box's own step clock: every stamp the box takes but a log line's wall time
   // the host side (abi.cpp, rt.cpp)
   int push(std::uint32_t port, ArrowArray* msg);

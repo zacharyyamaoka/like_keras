@@ -35,6 +35,18 @@ namespace detail {
 struct Box;  // cpp/src/box.hpp: one created .so instance, the C ABI's lk_box
 class Fields;
 
+// One argument of a log line: a number (%g) or a string literal (%s, kept by pointer: no allocation, CONTRACT §15 A22)
+struct Arg {
+  Arg() = default;
+  Arg(double number);
+  Arg(const char* text);
+  template <class Integer>
+    requires std::is_integral_v<Integer>
+  Arg(Integer number);  // WHY: a literal 0 would otherwise be ambiguous between a number and a null pointer
+  double number = 0.0;
+  const char* text = nullptr;
+};
+
 // What an In reads: a value, a count bumped on every write, and the writer's now() at that write. Atomic because
 // the facilities thread reads the stamp for input ages; every access is relaxed (a plain load on x86).
 struct Feed {
@@ -92,10 +104,15 @@ class Component {
   double now() const;           // this step's scheduled time, seconds (CONTRACT §5.6)
   double period() const;        // the group's period, seconds; 0.0 when rate-less; from activate() on (§15 A20)
   void metric(const char* name, double value);  // name: a string literal; <= 32 per component; no allocation
-  struct Log {  // fmt: a string literal; two numbers (%g); copied into a lock-free ring, formatted off the RT thread
-    void info(const char* fmt, double a = 0, double b = 0);
-    void warning(const char* fmt, double a = 0, double b = 0);
-    void error(const char* fmt, double a = 0, double b = 0);
+  // level "ok" | "warn" | "error" and a PascalCase code, both string literals; held until called again, and health
+  // reports the worse of it and the facility's own (CONTRACT §15 A22)
+  void health(const char* level, const char* code);
+  struct Log {  // fmt: a string literal; two arguments, numbers (%g) or string literals (%s); copied into a
+                // lock-free ring, formatted off the RT thread. An error makes health error / ErrorLogged until a
+                // round in which none was logged.
+    void info(const char* fmt, detail::Arg a = 0.0, detail::Arg b = 0.0);
+    void warning(const char* fmt, detail::Arg a = 0.0, detail::Arg b = 0.0);
+    void error(const char* fmt, detail::Arg a = 0.0, detail::Arg b = 0.0);
 
    private:
     friend class Component;
@@ -168,6 +185,12 @@ class System : public Component {
 // ---------------------------------------------------------------- bodies
 
 inline double Component::now() const { return clock_ ? clock_->load(std::memory_order_relaxed) : 0.0; }
+
+inline detail::Arg::Arg(double value) : number(value) {}
+inline detail::Arg::Arg(const char* value) : text(value) {}
+template <class Integer>
+  requires std::is_integral_v<Integer>
+inline detail::Arg::Arg(Integer value) : number(static_cast<double>(value)) {}
 
 template <class T>
 In<T>::In(Component* owner, const char* name, InOpts opts) {
