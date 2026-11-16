@@ -125,7 +125,7 @@ bool Ring::ready(Box& box) {  // the reader trims to n (drop-oldest) and empties
   const std::uint64_t end = head.load(std::memory_order_acquire),
                       retracted = retract_to.load(std::memory_order_acquire);
   for (; at < end && (at < retracted || end - at > n); ++at) {
-    if (at >= retracted) bump(drops);
+    if (at >= retracted) bump(trimmed);
     box.retire(slots[at & mask].owner);
   }
   tail.store(at, std::memory_order_release);
@@ -286,7 +286,8 @@ void Box::step(double at) {
   }
   const bool rateless = place.hz <= 0.0;
   bool published = false;
-  std::int64_t mark = mono_ns();
+  const std::int64_t began = mono_ns();
+  std::int64_t mark = began;
   for (Child& child : children) {
     child.stepped = false;
     if (child.mode.load(std::memory_order_relaxed) != kOperational) continue;
@@ -313,6 +314,8 @@ void Box::step(double at) {
     for (Port* out : child.outs)
       if (out->written) published |= send(*out, at);
   }
+  step_time.add(mark - began);  // to the end of the last child that stepped
+  bump(steps, std::uint64_t{1});
   for (Lag& lag : lags) {
     const std::uint64_t seq = lag.src->own.seq.load(std::memory_order_relaxed);
     if (seq == lag.seq) continue;
@@ -338,7 +341,7 @@ bool Box::send(Port& out, double at) {
   for (Ring* ring : plumbed.rings) {
     Slot* slot = ring->claim();
     if (slot == nullptr) {
-      bump(ring->drops);
+      bump(ring->refused);
       continue;
     }
     std::memcpy(slot->value.data(), out.value, out.bytes);
@@ -389,6 +392,8 @@ void Box::deactivate_all() {
 void Box::write_log(const Component& component, int level, const char* fmt, double a, double b) {
   const bool own = &component != &system;
   const std::uint64_t tick = own ? children[component.index_].steps.load(std::memory_order_relaxed) : 0;
+  // WHY wall time, not clock(): CONTRACT §2.3 stamps a LogRecord with the wall time of the record, as Python's
+  // logging.LogRecord.created does under lockstep too. It is never subtracted from a step time.
   const LogEntry entry{own ? static_cast<std::uint32_t>(component.index_) : kBoxLog,
                        level,
                        fmt,
@@ -396,10 +401,17 @@ void Box::write_log(const Component& component, int level, const char* fmt, doub
                        b,
                        epoch_s(),
                        static_cast<std::int64_t>(tick)};
-  if (!logs.push(entry)) bump(logs_dropped);
+  if (!logs.push(entry)) bump(log_refused);
 }
 
-double Box::clock() const { return started ? epoch0 + static_cast<double>(mono_ns() - mono0) * 1e-9 : epoch_s(); }
+// WHY one clock for every stamp (activation, arrival, health and metrics): health's uptime subtracted a wall-clock
+// activation (epoch s) from the logical step time, -1.79e9 s under lockstep, which robot_msgs refused (M2 verifier,
+// round 1). Stepped, it is the last lk_step's time, 0.0 before the first, where CONTRACT §5.5 starts logical time
+// (Python's inproc activates there too); in real time, epoch seconds on the monotonic clock mapped at start.
+double Box::clock() const {
+  if (place.stepped) return now.load(std::memory_order_relaxed);
+  return started ? epoch0 + static_cast<double>(mono_ns() - mono0) * 1e-9 : epoch_s();
+}
 
 bool Box::start(const lk_place& placed, std::string& error) {
   place = placed;
@@ -413,7 +425,7 @@ bool Box::start(const lk_place& placed, std::string& error) {
       deactivate_all();
       return false;
     }
-    child.activated.store(epoch_s(), std::memory_order_relaxed);
+    child.activated.store(clock(), std::memory_order_relaxed);
     child.mode.store(kOperational, std::memory_order_release);
   }
   mono0 = mono_ns(), epoch0 = epoch_s(), started = true;  // after activation: tick 0 is not already late
@@ -495,7 +507,7 @@ int Box::push(std::uint32_t port, ArrowArray* msg) {
     return -1;
   }
   Inlet& inlet = *ins[port];
-  const double stamp = place.stepped ? now.load(std::memory_order_relaxed) : clock();
+  const double stamp = clock();
   if (inlet.ring != nullptr) {
     Ring& ring = *inlet.ring;
     if (msg == nullptr) {  // retracted: the reader empties what was queued before now
@@ -504,7 +516,7 @@ int Box::push(std::uint32_t port, ArrowArray* msg) {
     }
     Slot* slot = ring.claim();
     if (slot == nullptr || !inlet.wire->decode(*msg, slot->value.data())) {
-      if (slot == nullptr) bump(ring.drops);
+      if (slot == nullptr) bump(ring.refused);
       release(*msg);
       return slot == nullptr ? 0 : -1;
     }
@@ -605,9 +617,9 @@ void Box::facilities(int which) {
     for (std::uint32_t index = 0; entry.level >= 30 && index < children.size(); ++index)  // a box line warns them all
       if (entry.child == index || entry.child == kBoxLog) children[index].warning = formatted(entry);
     backlog.push_back(entry);
-    if (backlog.size() > 4096) backlog.pop_front(), bump(logs_dropped);  // nobody takes the log port: keep the newest
+    if (backlog.size() > 4096) backlog.pop_front(), ++log_trimmed;  // nobody takes the log port: keep the newest
   }
-  const double at = place.stepped ? now.load(std::memory_order_relaxed) : clock();
+  const double at = clock();
   const auto encode = [&](const auto& record, std::uint64_t hash) {
     ArrowArray array{};
     find_wire(hash)->encode(&record, &array);
@@ -630,6 +642,34 @@ void Box::facilities(int which) {
   const bool broken = failed.load(std::memory_order_acquire);
   const std::uint64_t overran = overruns.load(std::memory_order_relaxed);
   const auto period = which == 2 ? percentiles(period_error, period_seen) : std::array<double, 2>{};
+  using Values = std::vector<std::pair<std::string, double>>;
+  const auto standard = [&](Histogram& took, std::array<std::uint32_t, Histogram::kBins>& seen, std::uint64_t count) {
+    const auto step = percentiles(took, seen);
+    const std::int64_t longest = took.max_ns.exchange(0, std::memory_order_relaxed);
+    return Values{{"steps", static_cast<double>(count)},
+                  {"step_p50_s", step[0]},
+                  {"step_p99_s", step[1]},
+                  {"step_max_s", std::isnan(step[0]) ? step[0] : static_cast<double>(longest) * 1e-9},
+                  {"period_error_p99_s", period[1]},
+                  {"overruns", static_cast<double>(overran)}};
+  };
+  const auto publish = [&](std::string_view path, const Values& values) {
+    rm::Metrics record{};
+    record.header.stamp = at, record.path = path;
+    record.size = std::min(values.size(), record.names.size());
+    for (std::size_t slot = 0; slot < record.size; ++slot)
+      record.names[slot] = values[slot].first, record.values[slot] = values[slot].second;
+    encode(record, rm::Metrics::kHash);
+  };
+  // WHY the box's own record (path "", which the host names the box's path): the log ring and the graveyard belong
+  // to no child, and a dropped log line or an unreleased message must be counted where someone can see it (M2
+  // verifier, round 1). WHY first: its steps count at a step's end, so it never exceeds a child's read after it.
+  if (which == 2) {
+    Values box = standard(step_time, step_seen, steps.load(std::memory_order_relaxed));
+    box.emplace_back("drops.log", static_cast<double>(log_refused.load(std::memory_order_relaxed) + log_trimmed));
+    box.emplace_back("unreleased", static_cast<double>(unreleased.load(std::memory_order_relaxed)));
+    publish("", box);
+  }
   for (std::uint32_t index = 0; index < children.size(); ++index) {
     Child& child = children[index];
     const int mode = child.mode.load(std::memory_order_acquire);
@@ -662,39 +702,34 @@ void Box::facilities(int which) {
       encode(record, rm::DiagnosticRecord::kHash);
       continue;
     }
-    const auto step = percentiles(child.step, child.step_seen);
-    const std::int64_t longest = child.step.max_ns.exchange(0, std::memory_order_relaxed);
-    std::vector<std::pair<std::string, double>> values{
-        {"steps", static_cast<double>(child.steps.load(std::memory_order_relaxed))},
-        {"step_p50_s", step[0]},
-        {"step_p99_s", step[1]},
-        {"step_max_s", std::isnan(step[0]) ? step[0] : static_cast<double>(longest) * 1e-9},
-        {"period_error_p99_s", period[1]},
-        {"overruns", static_cast<double>(overran)}};
+    Values values = standard(child.step, child.step_seen, child.steps.load(std::memory_order_relaxed));
     for (Port* in : child.ins) {
       if (in->opts.queue > 0) {
-        values.emplace_back("drops." + std::string(in->name), static_cast<Ring*>(in->plumbing)->drops.load());
+        values.emplace_back("drops." + std::string(in->name), static_cast<Ring*>(in->plumbing)->drops());
       } else {
         const bool has = in->feed->value.load(std::memory_order_relaxed) != nullptr;
         values.emplace_back("input_age_s." + std::string(in->name),
                             has ? at - in->feed->stamp.load(std::memory_order_relaxed) : std::nan(""));
       }
     }
+    for (Port* out : child.outs) {  // an exposed Out whose strings overflowed the 4 KiB arena was not published
+      if (out->plumbing == nullptr || static_cast<Plumbing*>(out->plumbing)->outlets.empty()) continue;
+      std::uint64_t dropped = 0;
+      for (const Outlet* outlet : static_cast<Plumbing*>(out->plumbing)->outlets)
+        dropped += outlet->drops.load(std::memory_order_relaxed);
+      values.emplace_back("drops." + std::string(out->name), static_cast<double>(dropped));
+    }
     const int custom = child.metric_count.load(std::memory_order_acquire);
     for (int slot = 0; slot < custom; ++slot) {
       const std::string name = child.metric_names[slot].load(std::memory_order_relaxed);
-      const bool standard =
+      const bool standard_name =
           std::any_of(values.begin(), values.begin() + 6, [&](const auto& kept) { return kept.first == name; });
-      if (!standard && name.rfind("input_age_s.", 0) && name.rfind("drops.", 0) && name.rfind("refused_writes.", 0))
+      if (!standard_name && name.rfind("input_age_s.", 0) && name.rfind("drops.", 0) &&
+          name.rfind("refused_writes.", 0))
         values.emplace_back(name,
                             child.metric_values[slot].load(std::memory_order_relaxed));  // a standard name is refused
     }
-    rm::Metrics record{};
-    record.header.stamp = at, record.path = name_of(index);
-    record.size = std::min(values.size(), record.names.size());
-    for (std::size_t slot = 0; slot < record.size; ++slot)
-      record.names[slot] = values[slot].first, record.values[slot] = values[slot].second;
-    encode(record, rm::Metrics::kHash);
+    publish(name_of(index), values);
   }
   if (which == 1) overruns_seen = overran;
 }

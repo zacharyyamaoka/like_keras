@@ -1,0 +1,20 @@
+# Lane cpp's own C++ tests (not the ruler's kpi/): the box's counters and clock, on the box itself (cpp/src/box.hpp).
+#
+#   cmake -S /home/bam/like_keras/tests/cpp -B /home/bam/like_keras/build/tests-cpp -DCMAKE_BUILD_TYPE=Release
+#   nice -n 19 cmake --build /home/bam/like_keras/build/tests-cpp -j 2
+#   /home/bam/like_keras/build/tests-cpp/box_tests
+#
+# tests/test_cpp_box.py runs the same three steps under pytest. WHY a project of its own: the top-level
+# CMakeLists.txt is the ruler's, and cmake/like_keras.cmake is what component builds include, so test targets go in
+# neither.
+cmake_minimum_required(VERSION 3.28)
+project(like_keras_tests LANGUAGES C CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/like_keras.cmake)
+
+find_package(GTest REQUIRED)
+add_executable(box_tests test_box.cpp)
+target_include_directories(box_tests PRIVATE ${LIKE_KERAS_ROOT}/cpp/src)
+target_link_libraries(box_tests PRIVATE like_keras::rt GTest::gtest GTest::gtest_main)

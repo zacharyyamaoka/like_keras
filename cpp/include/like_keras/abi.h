@@ -5,7 +5,8 @@
  * of lk_describe()'s "ports". The out ports after the exposed ones are the box's facilities, in this order: log
  * (std/LogRecord), health (std/DiagnosticRecord), metrics (std/Metrics), one record per component per take round
  * (lk_take returns them one by one, then 0, then starts the next round); `path` is the component's name in the box,
- * which the host prefixes with the box's own path.
+ * which the host prefixes with the box's own path. A metrics round starts with the box's own record, path "": its
+ * whole step, drops.log (log lines lost) and unreleased (retired messages never released).
  * lk_push(box, port, NULL) retracts that input (CONTRACT §5.4): a latest input reads as none until its next value, a
  * queue is emptied.
  */

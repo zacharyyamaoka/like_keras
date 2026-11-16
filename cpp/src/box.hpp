@@ -97,12 +97,18 @@ struct Ring {
   void commit();  // writer
   bool ready(Box& box);
   void pop(Box& box, Port& port);
+  std::uint64_t drops() const {
+    return refused.load(std::memory_order_relaxed) + trimmed.load(std::memory_order_relaxed);
+  }
   std::size_t n, mask;
   std::vector<Slot> slots;
   Slot current;  // the message this step's forward reads
+  // WHY a counter per side: bump() is a load and a store, so one counter bumped by the host (a full exposed ring)
+  // and by the RT thread (its trims) lost counts (M2 verifier, round 1). drops.<port> is their sum.
   alignas(64) std::atomic<std::uint64_t> head{0};
+  std::atomic<std::uint64_t> retract_to{0}, refused{0};  // the writer's: a full ring refuses the newest
   alignas(64) std::atomic<std::uint64_t> tail{0};
-  std::atomic<std::uint64_t> retract_to{0}, drops{0};
+  std::atomic<std::uint64_t> trimmed{0};  // the reader's: drop-oldest beyond n
 };
 
 struct Inlet {  // an exposed In: the host pushes (any thread, one at a time), the RT thread reads
@@ -182,7 +188,7 @@ struct Box {
   void fail(Child& child, const char* what);
   void deactivate_all();
   void write_log(const Component& component, int level, const char* fmt, double a = 0, double b = 0);
-  double clock() const;  // epoch seconds on the box's clock (arrival stamps)
+  double clock() const;  // the box's own step clock: every stamp the box takes but a log line's wall time
   // the host side (abi.cpp, rt.cpp)
   int push(std::uint32_t port, ArrowArray* msg);
   int take(std::uint32_t port, ArrowArray* out);
@@ -196,10 +202,12 @@ struct Box {
   std::deque<Plumbing> plumbing;
   std::vector<Lag> lags;
   std::atomic<double> now{0.0};
-  Histogram period_error;
-  std::array<std::uint32_t, Histogram::kBins> period_seen{};
-  std::atomic<std::uint64_t> overruns{0}, unreleased{0}, logs_dropped{0};
-  std::uint64_t overruns_seen = 0;
+  Histogram period_error, step_time;  // step_time: the whole step, every child (the box's own metrics record)
+  std::array<std::uint32_t, Histogram::kBins> period_seen{}, step_seen{};
+  // One writer each: steps, overruns, unreleased by the stepping thread; log_refused by the thread that logs (the
+  // host before the RT thread starts and after it is joined); log_trimmed by the facilities thread.
+  std::atomic<std::uint64_t> steps{0}, overruns{0}, unreleased{0}, log_refused{0};
+  std::uint64_t overruns_seen = 0, log_trimmed = 0;
   Spsc<ArrowArray, 4096> graveyard;
   std::atomic_flag burying;
   Spsc<LogEntry, 1024> logs;
