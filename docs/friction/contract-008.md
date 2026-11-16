@@ -12,3 +12,7 @@ Lanes cpp, core and dora implemented §15 A31-A34, A36 and A37 on `build/v0` wit
    - **What it does not promise:** between two signalled waves (a chain of three Python processes, or the planner after the arm) a later wave is signalled about 50 ms after the earlier one drained, so a frame still in the daemon can arrive after its reader stopped. Only dora's own Stop is ordered after frames. Nothing in v0 needs a middle node's final words; a reader of them sits at the end, where it gets dora's Stop.
    - A signalled node waits for dora's Stop for at most 15 s (`lk-dora-host` and the Python host alike), longer than the whole drain, so dora never restarts it mid-stop.
    - **Amend if wanted:** A30's "a dora stop() signals native nodes first" reads "signals the nodes other components read, upstream first (in a cycle, native nodes first)".
+
+## Resolution (2026-11-16, dispatcher)
+
+CONTRACT.md §15 A39 (both readings ratified).

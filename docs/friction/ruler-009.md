@@ -46,3 +46,7 @@ Until the ruler lane makes it, that one case is a ruler defect, never a lane fai
 ## Not changed in the library
 
 Keeping `start()` silent for a Python refusal would pass this case and fail A34 for every Python component, leave the Python fallback (`ArmControllerPy`) behaving unlike its C++ twin under dora, and leave an idle refused node in a dataflow `start()` reported as started. The lane test `tests/test_dora_refusal.py` pins the Python half of A34.
+
+## Resolution (2026-11-16, dispatcher)
+
+CONTRACT.md §15 A40: the ruler lane fixes it in the next ruler commit.
