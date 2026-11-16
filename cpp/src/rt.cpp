@@ -42,6 +42,10 @@ void bump(std::atomic<T>& counter, T by = 1) {  // one writer: a load and a stor
   counter.store(counter.load(std::memory_order_relaxed) + by, std::memory_order_relaxed);
 }
 constexpr std::uint32_t kBoxLog = std::numeric_limits<std::uint32_t>::max();  // a log line about the box itself
+// CONTRACT §15 A42: why a push was refused, each the fmt of the line that says so (the input, the count so far)
+constexpr const char* kUndecoded = "a push on %s was refused: not its type or over kMaxJoints (%.0f refused so far)";
+constexpr const char* kOutside = "a push on %s was refused outside activate()..deactivate() (%.0f refused so far)";
+constexpr const char* kThrew = "a push on %s was refused: its conversion threw (%.0f refused so far)";
 }  // namespace
 
 Component::Component() { log.owner_ = this; }
@@ -281,7 +285,7 @@ Box::Box(System built) : system(std::move(built)) {
       throw std::invalid_argument(where(port) +
                                   ": an exposed input crosses a group, which delays it already; drop lagged");
     Inlet& inlet = *ins.emplace_back(std::make_unique<Inlet>());
-    inlet.port = port, inlet.wire = wire;
+    inlet.port = port, inlet.wire = wire, inlet.name = name;
     if (port->opts.queue > 0) {
       inlet.ring = rings.emplace_back(std::make_unique<Ring>(port->opts.queue, port->bytes)).get();
       inlet.ring->gates.store(!port->opts.optional, std::memory_order_relaxed);  // until its host pushes (§15 A23)
@@ -961,27 +965,37 @@ void drop_held(ArrowArray* array) {  // a converted value's release, run on a ho
 
 // On the pushing thread: msg decoded into the slot's view, and for an In<T, Converted> converted right here
 // (CONTRACT §15 A17: allocation and validation off the RT thread), its arrays then released at once. The slot's
-// owner is what a host thread releases once the reader has moved on. False: refused (msg released).
+// owner is what a host thread releases once the reader has moved on. False: refused (msg released, and counted).
 bool Box::admit(Inlet& inlet, Slot& slot, ArrowArray& msg) {
   slot.converted = nullptr;
-  if (!inlet.wire->decode(msg, slot.value.data())) return release(msg), false;
-  if (inlet.port->convert == nullptr) {
-    slot.owner = msg, msg.release = nullptr;
-    return true;
-  }
-  // WHY a window (CONTRACT §15 A31, consumer-014): a conversion may read its owner's params and what activate()
-  // built, so it runs only while the owner is operational. The count and the mode are seq_cst on both sides (here
-  // and deactivate_all), so either this push sees the owner offline or deactivate() waits for this conversion.
+  const char* refusal = kUndecoded;
   Held* held = nullptr;
-  converting.fetch_add(1);
-  try {
-    if (children[inlet.port->owner->index_].mode.load() == kOperational)
-      held = inlet.port->convert(slot.value.data(), inlet.port->owner);
-  } catch (...) {  // Converted::from refused it (validation): counted as a refused push, never thrown into C
+  if (inlet.wire->decode(msg, slot.value.data())) {
+    if (inlet.port->convert == nullptr) {
+      slot.owner = msg, msg.release = nullptr;
+      return true;
+    }
+    // WHY a window (CONTRACT §15 A31, consumer-014): a conversion may read its owner's params and what activate()
+    // built, so it runs only while the owner is operational. The count and the mode are seq_cst on both sides (here
+    // and deactivate_all), so either this push sees the owner offline or deactivate() waits for this conversion.
+    refusal = kOutside;
+    converting.fetch_add(1);
+    try {
+      if (children[inlet.port->owner->index_].mode.load() == kOperational)
+        held = inlet.port->convert(slot.value.data(), inlet.port->owner);
+    } catch (...) {  // Converted::from refused it (validation): a refused push, never thrown into C
+      refusal = kThrew;
+    }
+    converting.fetch_sub(1);
   }
-  converting.fetch_sub(1);
   release(msg);
-  if (held == nullptr) return false;
+  if (held == nullptr) {
+    // WHY counted here and said by the facilities thread (CONTRACT §15 A42, consumer-021): a refused plan was counted
+    // nowhere, and the log ring has one writer, the thread that steps, which a pushing thread need not be
+    inlet.refusal.store(refusal, std::memory_order_relaxed);
+    inlet.refused.fetch_add(1, std::memory_order_release);
+    return false;
+  }
   slot.owner = ArrowArray{0, 0, 0, 0, 0, nullptr, nullptr, nullptr, drop_held, held};
   slot.converted = held->value;
   return true;
@@ -1146,6 +1160,16 @@ void Box::facilities(int which) {
     }
   }
   const double at = clock();
+  // CONTRACT §15 A42: a refused push, said on its input owner's log: the first, then at most one line a second each
+  for (const auto& inlet : ins) {
+    const std::uint64_t refused = inlet->refused.load(std::memory_order_acquire);
+    if (refused == inlet->refused_said || std::abs(at - inlet->said_at) < 1.0) continue;  // abs: clocks switch at start
+    const auto index = static_cast<std::uint32_t>(inlet->port->owner->index_);
+    const auto tick = static_cast<std::int64_t>(children[index].steps.load(std::memory_order_relaxed));
+    entry = {index, 30, inlet->refusal.load(), inlet->name.c_str(), refused, epoch_s(), tick};
+    inlet->refused_said = refused, inlet->said_at = at;
+    take_in();
+  }
   const auto encode = [&](const auto& record, std::uint64_t hash) {
     ArrowArray array{};
     find_wire(hash)->encode(&record, &array);
@@ -1194,6 +1218,8 @@ void Box::facilities(int which) {
     Values box = standard(step_time, step_seen, steps.load(std::memory_order_relaxed));
     box.emplace_back("drops.log", static_cast<double>(log_refused.load(std::memory_order_relaxed) + log_trimmed));
     box.emplace_back("unreleased", static_cast<double>(unreleased.load(std::memory_order_relaxed)));
+    for (const auto& inlet : ins)  // CONTRACT §15 A42: per exposed input, every push the box refused
+      box.emplace_back("refused." + inlet->name, static_cast<double>(inlet->refused.load(std::memory_order_relaxed)));
     sched_param param{};  // CONTRACT §15 A19: what the RT thread runs under now, read from the thread itself
     if (const int thread = rt_tid.load(std::memory_order_acquire);
         thread != 0 && ::sched_getparam(thread, &param) == 0) {

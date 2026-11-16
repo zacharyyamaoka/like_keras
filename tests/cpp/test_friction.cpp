@@ -1,10 +1,10 @@
 // Lane cpp's tests of the consumers' decisions on the C++ side (CONTRACT §15 A17, A19, A20, A22, A23, A24, A28, A31,
-// A33), where the frozen ruler test does not reach the failure mode: a queue of converted inputs and a refused
+// A33, A42), where the frozen ruler test does not reach the failure mode: a queue of converted inputs and a refused
 // conversion (A17), a conversion still running when its owner deactivates (A31), the scheduling policy only while an
 // RT thread runs (A19), the period of a rate-less box (A20), held health against the facility's own and a %s argument
 // (A22), an optional input that is neither wired nor exposed (A23), the JSON paths of a table's errors (A24),
-// deactivate's last words on the C ABI (A28), and non-finite numbers in a vector default and where an int is read
-// (A33).
+// deactivate's last words on the C ABI (A28), non-finite numbers in a vector default and where an int is read
+// (A33), and refused pushes of every kind, counted per input and said at a limited rate (A42).
 #include <gtest/gtest.h>
 #include <like_keras/abi.h>
 #include <sched.h>
@@ -176,6 +176,83 @@ TEST(ConvertedInput, AConversionThatThrowsIsARefusedPushAndTheLastValueStays) {
   }
   EXPECT_EQ(made.load(), 1);
   EXPECT_EQ(freed.load(), 1);
+}
+
+// ---------------------------------------------------------------- A42: a refused push is counted and said
+
+struct LogLine {
+  std::string path, message;
+  int level;
+};
+
+std::vector<LogLine> log_lines(Box& box) {
+  std::vector<LogLine> lines;
+  ArrowArray array{};
+  while (box.take(facility_port(box, 0), &array) == 1) {
+    rm::LogRecord view{};
+    EXPECT_TRUE(lk::detail::find_wire(rm::LogRecord::kHash)->decode(array, &view));
+    lines.push_back({std::string(view.path), std::string(view.message), static_cast<int>(view.level)});
+    lk::detail::release(array);
+  }
+  return lines;
+}
+
+double on_the_box_record(Box& box, const std::string& name) {  // one metrics round; the box's own record comes first
+  double found = -1.0;
+  ArrowArray array{};
+  for (bool first = true; box.take(facility_port(box, 2), &array) == 1; first = false) {
+    rm::Metrics view{};
+    EXPECT_TRUE(lk::detail::find_wire(rm::Metrics::kHash)->decode(array, &view));
+    for (std::size_t at = 0; first && at < view.size; ++at)
+      if (view.names[at] == name) found = view.values[at];
+    lk::detail::release(array);
+  }
+  return found;
+}
+
+// The ruler (facilities::test_refused_pushes_are_counted_and_logged) has one input, refused by its conversion and
+// before lk_start. Here: a push that does not decode, one after deactivate(), two inputs counted apart under their
+// exposed names, each line on its owner's log, and the rate limit over 3 s of refusals.
+TEST(RefusedPushes, CountedPerExposedInputAndSaidOnItsOwnersLogTheFirstThenOnceASecond) {
+  lk::System s{"refusing"};
+  Latest& first = s.add<Latest>("first");
+  Latest& second = s.add<Latest>("second");
+  s.expose(first.plan);
+  s.expose("other", second.plan);
+  Box box{std::move(s)};
+  ArrowArray early = encoded(1.0);
+  EXPECT_EQ(box.push(0, &early), -1) << "before activate(): outside the conversion's window";
+  std::string error;
+  ASSERT_TRUE(box.start(kStepped, error)) << error;
+  ArrowArray empty = encoded(1.0);
+  empty.length = 0;
+  EXPECT_EQ(box.push(0, &empty), -1) << "an empty array does not decode";
+  std::vector<LogLine> lines;
+  for (int tick = 0; tick < 30; ++tick) {  // one its conversion refuses every 0.1 s, for 3 s
+    ArrowArray negative = encoded(-1.0);
+    EXPECT_EQ(box.push(0, &negative), -1);
+    box.step(tick * 0.1);
+    for (LogLine& line : log_lines(box)) lines.push_back(std::move(line));
+  }
+  EXPECT_EQ(on_the_box_record(box, "refused.plan"), 32.0);
+  EXPECT_EQ(on_the_box_record(box, "refused.other"), 0.0) << "counted per exposed input, under its exposed name";
+  ASSERT_EQ(lines.size(), 3u) << "the first, then at most one a second: at 0, 1 and 2 s";
+  EXPECT_EQ(lines[0].path, "first") << "said on the log of the input's owner";
+  EXPECT_EQ(lines[0].level, 30);
+  EXPECT_EQ(lines[0].message, "a push on plan was refused: its conversion threw (3 refused so far)");
+  EXPECT_EQ(lines[2].message, "a push on plan was refused: its conversion threw (23 refused so far)");
+  const auto health = health_round(box);
+  ASSERT_EQ(health.size(), 2u);
+  EXPECT_EQ(health[0].level, "warn") << "a warning logged this period: " << health[0].message;
+  EXPECT_EQ(health[1].level, "ok") << "the other input's owner refused nothing";
+  box.stop();
+  ArrowArray late = encoded(1.0);
+  EXPECT_EQ(box.push(1, &late), -1) << "after deactivate(): outside the conversion's window";
+  lines = log_lines(box);
+  ASSERT_EQ(lines.size(), 1u);
+  EXPECT_EQ(lines[0].path, "second");
+  EXPECT_EQ(lines[0].message, "a push on other was refused outside activate()..deactivate() (1 refused so far)");
+  EXPECT_EQ(on_the_box_record(box, "refused.other"), 1.0);
 }
 
 // ---------------------------------------------------------------- A31: a conversion sees its owner

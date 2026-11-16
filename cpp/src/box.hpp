@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <deque>
 #include <like_keras/lk.hpp>
+#include <limits>
 #include <memory>
 #include <string>
 #include <thread>
@@ -121,9 +122,15 @@ struct Ring {
 struct Inlet {  // an exposed In: the host pushes (any thread, one at a time), the RT thread reads
   Port* port;
   const Wire* wire;
+  std::string name;      // its exposed name
   Ring* ring = nullptr;  // queue inputs; latest ones use the triple buffer
   std::array<Slot, 3> slots;
   Triple triple;
+  // CONTRACT §15 A42, the pushing thread's: pushes refused, and why the last one was (a log line's fmt, a literal)
+  std::atomic<std::uint64_t> refused{0};
+  std::atomic<const char*> refusal{nullptr};
+  std::uint64_t refused_said = 0;  // the facilities thread's: the count its last line said, and when
+  double said_at = -std::numeric_limits<double>::infinity();
 };
 
 struct Outlet {  // an exposed Out: the RT thread publishes a copy, a host thread takes it as a fresh Arrow array

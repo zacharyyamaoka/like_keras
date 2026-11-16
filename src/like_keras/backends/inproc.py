@@ -342,12 +342,8 @@ class NativeGroup:
         return write
 
     def _push(self, port: int, value) -> None:
-        root = 0 if value is None else _export(value)  # None: retracted (CONTRACT §5.4)
-        if self.hot.lk_push(self.box, port, root) < 0 and not self.refusals:
-            self.refusals += 1
-            self.component.log.error(
-                "%s refused a %s on %s", path(self.component), type(value).__name__, self.ins[port]
-            )
+        # WHY no word here (CONTRACT §15 A42): the box counts and logs a push it refuses, under every host alike
+        self.hot.lk_push(self.box, port, 0 if value is None else _export(value))  # None: retracted (CONTRACT §5.4)
 
     def step(self, now: float) -> bool:
         """Lockstep: deliver what is due, one step through lk_step on this thread, hand on what it sent at `now`."""

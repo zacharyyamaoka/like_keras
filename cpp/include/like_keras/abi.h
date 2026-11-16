@@ -6,10 +6,13 @@
  * (std/LogRecord), health (std/DiagnosticRecord), metrics (std/Metrics), one record per component per take round
  * (lk_take returns them one by one, then 0, then starts the next round); `path` is the component's name in the box,
  * which the host prefixes with the box's own path. A metrics round starts with the box's own record, path "": its
- * whole step, drops.log (log lines lost), unreleased (retired messages never released) and, while its RT thread runs,
- * sched_policy and sched_priority (CONTRACT §15 A19). After lk_stop the facility ports still hold the box's last
- * records until lk_destroy (what it logged in its last partial second and in deactivate(), a last health round, mode
- * offline, and the last metrics): a host takes them once more in between (§15 A28).
+ * whole step, drops.log (log lines lost), unreleased (retired messages never released), refused.<exposed name> per
+ * exposed input (the pushes lk_push refused with -1, CONTRACT §15 A42: not its type or over kMaxJoints, outside its
+ * converting owner's activate()..deactivate(), or a conversion that threw; each also said on that owner's log, the
+ * first and then at most one line a second) and, while its RT thread runs, sched_policy and sched_priority (§15 A19).
+ * After lk_stop the facility ports still hold the box's last records until lk_destroy (what it logged in its last
+ * partial second and in deactivate(), a last health round, mode offline, and the last metrics): a host takes them
+ * once more in between (§15 A28).
  * lk_push(box, port, NULL) retracts that input (CONTRACT §5.4): a latest input reads as none until its next value, a
  * queue is emptied.
  * An optional queue input (§15 A23) gates a step (§5.2) only once its host has pushed to it, a retraction included:
