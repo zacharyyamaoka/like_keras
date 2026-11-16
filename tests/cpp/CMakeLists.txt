@@ -31,3 +31,6 @@ lk_component(spinner spinner.cpp)
 
 # CONTRACT §15 A23: an exposed optional queue input, wired or left unwired by the deployment (tests/test_optional_queue.py)
 lk_component(optional_queue optional_queue.cpp)
+
+# CONTRACT §15 A28 (consumer-012): a line logged between two facility rounds, for a reader (tests/test_log_readers.py)
+lk_component(log_once log_once.cpp)

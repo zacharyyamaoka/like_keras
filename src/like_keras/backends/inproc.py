@@ -362,7 +362,9 @@ class NativeGroup:
             del waiting[:due]
         if self.hot.lk_step(self.box, now) != 0:
             self.dead = True  # §5.7: the box deactivated itself; its health says why
-        self._drain(now, len(self.outs) - len(FACILITY_PORTS))
+        # WHY the log port too, every step: a Python component's line reaches its readers in the step that logs it,
+        # and a native box's must as well, or a log tap reads a swap differently (consumer-012; fix round 1, item 3)
+        self._drain(now, len(self.outs) - len(FACILITY_PORTS) + 1)
         return False
 
     def loop(self) -> None:
@@ -372,10 +374,11 @@ class NativeGroup:
             if self.calls.lk_wait(self.box, 100) > 0:
                 self._drain(run.epoch0 + time.monotonic() - run.mono0, len(self.outs) - len(FACILITY_PORTS))
 
-    def publish(self, now: float) -> None:
+    def publish(self, now: float, log_only: bool = False) -> None:
         """The facilities thread (CONTRACT §8): the box's log, health and metrics records, under this path."""
         if self.box is not None:
-            self._drain(now, len(self.outs), len(self.outs) - len(FACILITY_PORTS))
+            first = len(self.outs) - len(FACILITY_PORTS)
+            self._drain(now, first + 1 if log_only else len(self.outs), first)
 
     def _drain(self, sent: float, end: int, begin: int = 0) -> None:
         import ctypes
@@ -857,10 +860,17 @@ class Run:
                 heapq.heappush(heap, ((tick + 1) / group.hz, 0, index, index, tick + 1))
 
     def _facilities(self) -> None:
-        second = 0
-        while not self.stopping.wait(max(0.0, self.mono0 + second - time.monotonic())):
-            self._publish(self.epoch0 + second)
-            second += 1
+        # WHY a native box's log every 0.1 s: a Python component's line reaches its readers at once, a native box's
+        # only when this thread (the one that drains its facility ports) takes it; once a second left a reader a line
+        # short of a Python twin's, and the last second's for good once the readers stopped (fix round 1, item 3)
+        tenth = 0
+        while not self.stopping.wait(max(0.0, self.mono0 + tenth / 10 - time.monotonic())):
+            if tenth % 10 == 0:
+                self._publish(self.epoch0 + tenth // 10)
+            else:
+                for native in self.natives.values():
+                    native.publish(self.epoch0 + tenth / 10, log_only=True)
+            tenth += 1
 
     def _publish(self, now: float) -> None:
         """health and metrics of every component, once a second (CONTRACT §8); the recordings written out."""
