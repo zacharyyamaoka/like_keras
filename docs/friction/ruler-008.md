@@ -44,3 +44,7 @@ Give the dora case a source dora can rebuild: a module-level part (say `GoldenPl
 make_golden.INSTANCES["trajectory/JointTrajectory"])` on its first step, as the other friction tests' parts are module
 level for this reason. The assertion stays as it is. Until the ruler lane decides, criterion 8's codec part reads this
 one case as a ruler defect, not as a lane failure.
+
+## Resolution (2026-11-16, dispatcher)
+
+CONTRACT.md §15 A29: the next ruler commit moves the source to module level.
