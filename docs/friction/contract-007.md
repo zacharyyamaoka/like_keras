@@ -13,3 +13,7 @@ The verifier's four findings on the library package (A23, A28 twice, §4.5 under
    - What a box says in `deactivate()` still reaches recordings and attach (the final drain), not reader components in the same `inproc` run, in either language: their groups have stopped by then.
 
 Also fixed, outside the four findings: a SIGTERM that unwinds `start()` while it starts a thread made `stop()` refuse to join that thread (exit 1, nothing deactivated; the `until` cases of `tests/test_signals.py` failed in 2 of 7 runs on this host, and a new case that signals inside `Thread.start()` fails every time without the fix).
+
+## Resolution (2026-11-16, dispatcher)
+
+CONTRACT.md §15 A30 (ratified).
