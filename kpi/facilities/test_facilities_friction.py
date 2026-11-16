@@ -16,9 +16,12 @@ Ruler M0.5 (CONTRACT §15 A38) adds three:
 Ruler M0.7 (CONTRACT §15 A43) adds two:
   A41 test_native_describe_lists_param_defaults    params: a native box's describe() lists every default, overlaid
   A42 test_refused_pushes_are_counted_and_logged   metrics: refused.<port> on the box record, a line on its log port
+Ruler M0.8 (CONTRACT §15 A45) adds one, from the library verifier's round after A31-A42:
+  A44 test_partly_given_rows_run_as_described      params: a partly given row runs, and is listed, as its member
+                                                   defaults overlaid by the keys given
 The C++ boxes (hand_back.cpp, self_health.cpp, table_params.cpp, tie_health.cpp, non_finite.cpp, described_params.cpp,
-refused_pushes.cpp) are built on demand (kpi/support/lk.feature_library): until a decision lands, its box does not
-compile, or the library does not do it, and its test FAILS, never skips.
+refused_pushes.cpp, partial_rows.cpp) are built on demand (kpi/support/lk.feature_library): until a decision lands, its
+box does not compile, or the library does not do it, and its test FAILS, never skips.
 """
 
 from __future__ import annotations
@@ -824,3 +827,76 @@ def test_refused_pushes_are_counted_and_logged(case, tmp_path, request):
             request.getfixturevalue("private_dora")
         problems = _refusals_through_a_host(case, tmp_path)
     assert not problems, "\n".join(problems)
+
+
+# ================================================================ ruler M0.8 (CONTRACT §15 A45)
+
+# ---------------------------------------------------------------- A44 (library verifier): params
+
+# partial_rows.cpp: its row type's member defaults (what a value-initialized PartRow holds) and its default table, two
+# rows unlike those defaults, so a key a given row leaves out shows which of them filled it.
+ROW_MEMBER_DEFAULTS = {"name": "spare", "offset": 0.125, "scale": 1.5}
+DEFAULT_TABLE = [{"name": "shoulder", "offset": 0.25, "scale": 2.0}, {"name": "elbow", "offset": -0.5, "scale": 3.0}]
+# Three given rows: inside the default table, a partial row (no offset, no scale) and a full one (every value unlike
+# the default row's); past it, a partial row (no name, no scale).
+GIVEN_TABLE = [{"name": "wrist"}, {"name": "elbow", "offset": 0.75, "scale": 4.0}, {"offset": -0.3}]
+FILLED_TABLE = [{**ROW_MEMBER_DEFAULTS, **row} for row in GIVEN_TABLE]
+
+
+@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+def test_partly_given_rows_run_as_described(backend_name, tmp_path, request):
+    """CONTRACT §15 A44: a given row of a params table is filled from the row type's member defaults (a
+    value-initialized row), never from the default table's row at the same index, and describe() lists each given
+    row filled the same way, so the datasheet is exactly what the box runs. partial_rows.cpp (a table of two default
+    rows; member defaults unlike either) is given three rows, two of them partial, and runs in its own process,
+    lockstep, sending what it runs once to a reader in another process. For every row and key: what describe() lists
+    for the box equals what the box runs, and both equal the given row over the member defaults. lk_describe()'s
+    params stay A41's shape (the default table as its rows); how lk_describe() exposes the row defaults is not
+    pinned. WHY (library verifier, the round after A31-A42): given [{"name": "wrist"}, {"name": "elbow", "offset":
+    0.7}, {"name": "hand"}] against default rows {shoulder, 0.25, 2.0} and {elbow, -0.5, 3.0}, describe() showed the
+    rows as given while the box ran wrist at offset 0.25 and scale 2.0 (default row 0's), elbow at scale 3.0 (default
+    row 1's) and hand at the member defaults, in both backends: the datasheet was not what the box ran, and the same
+    partial row ran different values at different indices."""
+    lk = like_keras()
+    if backend_name == "dora":
+        request.getfixturevalue("private_dora")
+    chosen = backend(backend_name)
+    library = feature_library("partial_rows")
+    from kpi.polyglot.friction_parts import JointStateLog
+
+    so = ctypes.CDLL(str(library))
+    so.lk_describe.restype = ctypes.c_char_p
+    defaults = json.loads(so.lk_describe())["params"]
+    assert defaults == {"joints": DEFAULT_TABLE}, f"lk_describe()'s params: {defaults}"
+    s = lk.System(f"partial_rows_{backend_name}")
+    box = s.add(lk.native(library, config={"joints": GIVEN_TABLE}), "box")
+    s.add(JointStateLog(path=str(tmp_path / "echo.jsonl")), "sink", value=box.echo)
+    dep = lk.Deployment(s, backend=chosen, realtime=False)
+    dep.place(s.box, process="box", hz=10)
+    dep.place(s.sink, process="sink")
+    shown = next(component["params"] for path, component in dep.describe()["components"].items()
+                 if path.endswith(".box"))
+    try:
+        dep.start(until=0.45)
+    finally:
+        dep.stop()
+    echoed = rows(tmp_path / "echo.jsonl")
+    assert len(echoed) == 1, f"the box sends what it runs once: {echoed}"
+    ran = [{"name": name, "offset": offset, "scale": scale} for name, offset, scale
+           in zip(echoed[0]["name"], echoed[0]["position"], echoed[0]["velocity"] or [])]
+    listed = shown.get("joints")
+    problems = []
+    if set(shown) != {"joints"}:
+        problems.append(f"describe() lists the params keys {sorted(shown)}, the box has only 'joints'")
+    if not isinstance(listed, list) or len(listed) != len(GIVEN_TABLE):
+        problems.append(f"describe() lists joints = {listed!r}, not the {len(GIVEN_TABLE)} rows given")
+    if len(ran) != len(GIVEN_TABLE):
+        problems.append(f"the box runs {len(ran)} rows, not the {len(GIVEN_TABLE)} given: {ran}")
+    for at, given in enumerate(GIVEN_TABLE):
+        listed_row = listed[at] if isinstance(listed, list) and at < len(listed) else None
+        ran_row = ran[at] if at < len(ran) else None
+        if listed_row != FILLED_TABLE[at] or ran_row != FILLED_TABLE[at]:
+            disagree = " (the datasheet and the box disagree)" if listed_row != ran_row else ""
+            problems.append(f"joints[{at}] given {given}: describe() lists {listed_row}, the box runs {ran_row}"
+                            f"{disagree}; over the row type's member defaults it is {FILLED_TABLE[at]}")
+    assert not problems, f"{backend_name}, default table {DEFAULT_TABLE}:\n" + "\n".join(problems)

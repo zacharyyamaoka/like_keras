@@ -88,6 +88,17 @@ nice -n 19 ionice -c3 cmake --build /home/bam/like_keras/build -j 2
   - **A41's shape** is the Python twin's. Each given key replaces its default whole (a given row table is shown as given, as Python stores what it is given), and the two datasheets compare as sorted JSON, so an int stays an int and NaN stays NaN.
   - **A42's counter** sits on the box record (path = the box's own path, A9), as consumer-021 proposed: `refused.<exposed name>`, cumulative. Its log line names the input; its text and level are not pinned, and rate limiting may keep it to one line. The host cases run in lockstep, so delivery, and with it the count, is exact on both backends.
   - **A42's `before_activate` case** drives the box through the C ABI: two pushes before `lk_start`, then one admitted and one its conversion refuses. No host pushes before `lk_start` (dora holds a frame until the box runs, and inproc drops a write until then), yet the box refuses such a push, so the box itself must count and log it.
+
+  M0.8 (CONTRACT §15 A45) freezes one test for A44 (the library verifier's round after A31-A42), the same way, before its fix lands. Its box compiles on the library at `aed9cc6`, and the test fails there: a partly given row is listed as given, and inside the default table it runs the default row's values at its index.
+
+  | Decision | Test | Counts with |
+  |---|---|---|
+  | A44 a given row of a params table is filled from the row type's member defaults, never from the default table's row at its index, and `describe()` lists it filled the same way | `facilities::test_partly_given_rows_run_as_described[inproc,dora]` | criterion 9, params |
+
+  The readings M0.8 pins where the contract names no spelling:
+  - **A44's row** is the row type's member defaults (a value-initialized row) overlaid by the keys given, key for key; what `describe()` lists and what the box sends back must both equal it, value for value. The box's member defaults (`spare`, 0.125, 1.5) differ from both default rows and from a zeroed row, so the test sees which one filled a missing key.
+  - **A44 refines M0.7's A41 reading** for a partly given row only. A given table still replaces the default table whole (its row count is the config's), and a fully given row is still shown as given, so `test_native_describe_lists_param_defaults` (whole rows) keeps its meaning.
+  - **How `lk_describe()` exposes the row defaults** is the library's choice and is not pinned. Its `params` keep A41's shape (the default table as its rows), which the M0.7 test already pins.
 - A19's test asks the host what it offers first (`kpi/blackbox/rt_ladder_child.py --oracle`). Under `kpi/run.py`'s private PID namespace rtkit cannot name our threads, so there the honest answer is `SCHED_OTHER`, reported; run outside that namespace (plain pytest in the device sandbox) it expects rtkit's `SCHED_RR` on this host.
 - **Where kpi writes:** nothing outside the repo. Temporary files go to `build/kpi/tmp`, the private dora's working directory is `build/kpi/dora-<pid>`, and attach sockets go under `build/kpi/xdg/` (M0.4).
 
@@ -103,7 +114,7 @@ nice -n 19 ionice -c3 cmake --build /home/bam/like_keras/build -j 2
 | `churn/` | Criterion 6, parts 1-4 (T11) |
 | `golden/` | §7 LKF goldens, written by `make_golden.py` with the ruler's own codec (`lkf.py`, numpy + struct). pyarrow validates each golden in full. |
 | `polyglot/` | Criterion 8 (T10); `test_polyglot_friction.py` (A16, A17, A23, A31) |
-| `facilities/` | Criterion 9; `test_facilities_friction.py` (A18, A21, A22, A24, A28, A33, A35, A37, A41, A42) |
+| `facilities/` | Criterion 9; `test_facilities_friction.py` (A18, A21, A22, A24, A28, A33, A35, A37, A41, A42, A44) |
 | `twin/` | Criterion 10 |
 | `attach/` | Criterion 11 |
 | `blackbox/` + `blackbox.py` + `/.importlinter` | Criterion 3; `test_blackbox_friction.py` (A19) |

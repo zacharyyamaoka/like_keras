@@ -50,9 +50,11 @@ if(COMMAND lk_component AND TARGET like_keras::rt)
   # Ruler M0.7 (CONTRACT §15 A43): A41 and A42 (consumer-020, consumer-021).
   lk_component(described_params facilities/described_params.cpp)  # A41: describe() lists a native box's defaults
   lk_component(refused_pushes facilities/refused_pushes.cpp)      # A42: refused pushes are counted and logged
+  # Ruler M0.8 (CONTRACT §15 A45): A44 (library verifier, the round after A31-A42).
+  lk_component(partial_rows facilities/partial_rows.cpp)  # A44: a partly given row runs as describe() lists it
   set_target_properties(joint_names kept_plan hand_back rt_ladder period_probe self_health verdict table_params
                         arrivals optional_queue log_steps tie_health owner_conversion non_finite refuser
-                        described_params refused_pushes
+                        described_params refused_pushes partial_rows
                         PROPERTIES EXCLUDE_FROM_ALL ON)
 
   find_package(GTest REQUIRED)

@@ -27,6 +27,9 @@ T4 (the dora boundary). Weights, gates, formulas and denominators stay as they a
 M0.7 (CONTRACT §15 A43) adds one companion each for A41 (criterion 9, params: a native box's describe() lists every
 default, overlaid by its config) and A42 (criterion 9, metrics: a refused push is counted as refused.<port> and
 logged), the same way. Weights, gates, formulas and denominators stay as they are.
+M0.8 (CONTRACT §15 A45) adds one companion for A44 (criterion 9, params: a partly given row of a params table runs,
+and describe() lists it, as the row type's member defaults overlaid by the keys given), the same way. Weights, gates,
+formulas and denominators stay as they are.
 """
 
 from __future__ import annotations
@@ -104,7 +107,8 @@ FRICTION_FACILITIES = {
                "test_health_tie_keeps_the_facility_message"],  # M0.4, A22 with §4.5: a tie keeps the message
     "params": ["test_vector_params",  # A24: LK_PARAMS reflects vectors and vectors of rows
                "test_non_finite_params_defaults",  # M0.5, A33: NaN and +-inf defaults round-trip
-               "test_native_describe_lists_param_defaults"],  # M0.7, A41: a native datasheet lists the defaults
+               "test_native_describe_lists_param_defaults",  # M0.7, A41: a native datasheet lists the defaults
+               "test_partly_given_rows_run_as_described"],  # M0.8, A44: a partly given row runs as it is listed
 }
 VALID_GRAPHS = [("test_valid_graph_accepted", name) for name in (
     "cross_group_cycle", "exposed_input_unwired", "fan_out", "fifo_on_python_ignored", "gather", "lagged_cycle", "linear",
