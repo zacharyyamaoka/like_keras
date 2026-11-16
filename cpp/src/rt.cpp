@@ -1,6 +1,7 @@
 // The C++ runtime of one box (CONTRACT §5, §6.1, §8): the Component and System API, the derived order, the RT
 // thread on absolute deadlines, the lock-free slots between it and the host, and the facilities (the RT thread only
 // bumps counters and histogram bins; records are built on the host thread that takes them).
+#include <dirent.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
@@ -10,6 +11,7 @@
 #include <sys/eventfd.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
+#include <sys/signalfd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -18,8 +20,10 @@
 #include <algorithm>
 #include <bit>
 #include <cerrno>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <condition_variable>
 #include <cstring>
 #include <like_keras/msgs/std.hpp>
 #include <limits>
@@ -27,6 +31,7 @@
 #include <mutex>
 #include <set>
 #include <stdexcept>
+#include <thread>
 
 #include "box.hpp"
 
@@ -267,7 +272,7 @@ Box::Box(System built) : system(std::move(built)) {
       if (wire->encode == nullptr)
         throw std::invalid_argument(where(port) + ": " + std::string(port->type) + " is In-only in v0 (CONTRACT §7.4)");
       Outlet& outlet = *outs.emplace_back(std::make_unique<Outlet>());
-      outlet.port = port, outlet.wire = wire;
+      outlet.port = port, outlet.wire = wire, outlet.name = name;
       for (Slot& slot : outlet.slots) slot.value.resize(port->bytes), slot.arena.resize(4096);
       plumb(port).outlets.push_back(&outlet);
       continue;
@@ -389,10 +394,13 @@ bool Box::send(Port& out, double at) {
     Slot& slot = outlet->slots[outlet->triple.back];
     std::memcpy(slot.value.data(), out.value, out.bytes);
     Arena arena{slot.arena.data(), slot.arena.size()};
-    if (outlet->wire->pin(slot.value.data(), arena))
+    if (outlet->wire->pin(slot.value.data(), arena)) {
+      slot.seq = outlet->published.load(std::memory_order_relaxed) + 1;
       outlet->triple.publish();
-    else
+      bump(outlet->published);
+    } else {
       bump(outlet->drops);
+    }
   }
   return !plumbed.outlets.empty();
 }
@@ -451,7 +459,7 @@ double Box::clock() const {
   return started ? epoch0 + static_cast<double>(mono_ns() - mono0) * 1e-9 : epoch_s();
 }
 
-// ---------------------------------------------------------------- the RT thread's scheduling ladder (CONTRACT §15 A19)
+// ---------------------------------------------------------------- the scheduling ladder (CONTRACT §15 A19, A35)
 //
 // SCHED_FIFO at place.fifo, else rtkit's SCHED_RR, else SCHED_OTHER, reported in the box's metrics (sched_policy as
 // Linux numbers it, sched_priority). Lifted, with credit, from the controller lane's first node
@@ -471,9 +479,30 @@ double Box::clock() const {
 // WHY a handler, not the raw node's signalfd sentinel: a component runs in someone's process (a Python one under
 // inproc), whose threads cannot all block SIGXCPU. The kernel hands it to the thread that ran over, which runs the
 // handler on its way back to user space and demotes itself; any other thread that takes it demotes it by id.
+//
+// CONTRACT §15 A35 puts a host's own threads and its transport's on the same ladder (lk_raise, lk_lower, abi.h),
+// with the rules the raw node proved, lifted with credit:
+// - below the RT thread, and only while it is realtime: rtkit caps grants per user, so the order is the RT thread,
+//   the sentinel (below), then the host's I/O threads (lk_raise comes after lk_start), then another process's.
+// - another process (the transport's daemon) gets RLIMIT_RTTIME soft < hard first, rtkit's condition. It cannot
+//   catch SIGXCPU, so its soft limit, 10 ms below the hard one, only names the cause of a death (raw kDaemonRtTime).
+// - every rtkit call is listed from its busctl's spawn until it is reaped, and a process realtime has ended for gets
+//   none from then on (checked under the spawn's lock). lk_stop ends it for this process (when it runs the sentinel)
+//   and every process the box raised, sweeps them in /proc, hands back (deactivate), waits for the calls in flight
+//   (1 s, then SIGKILL) and sweeps again: no grant outlives the stop. WHY (raw node, round 6, 4 of 4): a request
+//   answered after the node exited left its daemon SCHED_RR under RLIMIT_RTTIME while every thread read demoted.
+// - in a dedicated process (a native host that blocks SIGXCPU in every thread before any exists, cpp/hosts), the
+//   sentinel reads SIGXCPU on a signalfd at the RT thread's priority: it demotes every realtime thread that is
+//   running (state R, the only one RLIMIT_RTTIME counts), puts the soft limit back, and 10 s after the last SIGXCPU
+//   asks once for each thread demoted once (one demoted twice stays SCHED_OTHER). WHY not the handler there: a thread
+//   that crosses the limit inside the kernel runs a handler only on its way out, past the hard limit's SIGKILL (raw
+//   node, round 3, memory storms); the sentinel demotes it from outside.
 namespace {
 
-constexpr ino_t kHostPidNamespace = 0xEFFFFFFC;  // PROC_PID_INIT_INO
+constexpr ino_t kHostPidNamespace = 0xEFFFFFFC;            // PROC_PID_INIT_INO
+constexpr std::int64_t kSettleNs = 1'000'000'000;           // lk_stop's wait for calls in flight (raw kRtkitSettleS)
+constexpr std::int64_t kRepromoteAfterNs = 10'000'000'000;  // the sentinel's quiet spell (raw repromote_after_s)
+constexpr rlim_t kOtherSoftBelowUs = 10'000;                 // another process's soft limit below its hard one
 
 struct Ladder {  // process-wide: every RT thread a SIGXCPU demotes, whichever thread takes the signal
   std::array<std::atomic<int>, 16> threads{};
@@ -481,7 +510,17 @@ struct Ladder {  // process-wide: every RT thread a SIGXCPU demotes, whichever t
   rlimit budget{RLIM_INFINITY, RLIM_INFINITY};  // what each SIGXCPU puts back
   struct sigaction previous {};
   int users = 0;
-  std::mutex mutex;  // host threads only (Box::climb, Box::stop)
+  std::mutex mutex;  // host threads only (Box::climb, raise, stop): everything here but the sentinel's own state
+  std::condition_variable reaped;
+  std::array<std::pair<pid_t, long>, 32> calls{};  // (busctl, the process it asks for), from its spawn until reaped
+  std::vector<long> ended;                         // processes realtime has ended for
+  int highest = 0;                                 // rtkit's MaxRealtimePriority and RTTimeUSecMax, asked once
+  long long rttime_max = 0;
+  std::thread sentinel;
+  std::atomic<int> sentinel_tid{0};
+  int signal_fd = -1, stop_fd = -1;
+  std::map<int, std::pair<int, int>> demoted;  // the sentinel's own: thread -> (its priority, times demoted)
+  std::int64_t last_sigxcpu = 0;
 } ladder;
 
 bool realtime(int thread) {  // 0: the calling thread
@@ -513,8 +552,9 @@ void on_sigxcpu(int number, siginfo_t* info, void* context) {  // async-signal-s
 }
 
 // `busctl --system <arguments>`: true when it answered within 1 s and exited 0, its stdout in `out`. WHY the bound:
-// a stuck request must never hold lk_start, and one SIGKILLed is reaped here, so none is in flight after it.
-bool busctl(std::vector<std::string> arguments, std::string& out) {
+// a stuck request must never hold lk_start, and one SIGKILLed is reaped here, so none is in flight after it. A call
+// for `process` is listed (Ladder::calls) unless realtime has ended for it, then it is never sent.
+bool busctl(std::vector<std::string> arguments, std::string& out, long process = 0) {
   arguments.insert(arguments.begin(), {"busctl", "--system"});
   std::vector<char*> argv;
   for (std::string& argument : arguments) argv.push_back(argument.data());
@@ -526,7 +566,15 @@ bool busctl(std::vector<std::string> arguments, std::string& out) {
   posix_spawn_file_actions_adddup2(&actions, ends[1], 1);
   posix_spawn_file_actions_addopen(&actions, 2, "/dev/null", O_WRONLY, 0);
   pid_t child = 0;
-  const int spawned = ::posix_spawnp(&child, "busctl", &actions, nullptr, argv.data(), environ);
+  int spawned = -1;
+  {
+    std::lock_guard guard(ladder.mutex);
+    const auto free = std::find(ladder.calls.begin(), ladder.calls.end(), std::pair<pid_t, long>{});
+    if (std::count(ladder.ended.begin(), ladder.ended.end(), process) == 0 && free != ladder.calls.end()) {
+      spawned = ::posix_spawnp(&child, "busctl", &actions, nullptr, argv.data(), environ);
+      if (spawned == 0 && process != 0) *free = {child, process};
+    }
+  }
   posix_spawn_file_actions_destroy(&actions);
   ::close(ends[1]);
   bool ended = false;
@@ -543,38 +591,148 @@ bool busctl(std::vector<std::string> arguments, std::string& out) {
   ::close(ends[0]);
   if (spawned != 0) return false;
   if (!ended) ::kill(child, SIGKILL);
+  // WHY unlisted only once it has exited, and reaped only after: a listed pid is never reused, so lk_stop may
+  // SIGKILL what is listed (raw node round 6)
+  siginfo_t exited{};
+  while (::waitid(P_PID, child, &exited, WEXITED | WNOWAIT) < 0 && errno == EINTR) {
+  }
+  {
+    std::lock_guard guard(ladder.mutex);
+    for (auto& call : ladder.calls)
+      if (call.first == child) call = {};
+  }
+  ladder.reaped.notify_all();
   int status = 0;
   while (::waitpid(child, &status, 0) < 0 && errno == EINTR) {
   }
   return ended && WIFEXITED(status) && WEXITSTATUS(status) == 0;
 }
 
-// rtkit's SCHED_RR for `thread` at min(wanted, rtkit's highest): nullptr when granted, else why not
-const char* ask_rtkit(int thread, int wanted) {
+// rtkit's SCHED_RR for thread `thread` of process `process` at min(wanted, rtkit's highest): nullptr when granted,
+// else why not (a string literal: it goes into a log line)
+const char* ask_rtkit(long process, int thread, int wanted) {
   struct stat namespace_of {};
   if (::stat("/proc/self/ns/pid", &namespace_of) != 0 || namespace_of.st_ino != kHostPidNamespace)
-    return "rtkit cannot name the RT thread from a private PID namespace";
+    return "rtkit cannot name a thread from a private PID namespace";
   const std::vector<std::string> rtkit{"org.freedesktop.RealtimeKit1", "/org/freedesktop/RealtimeKit1",
                                        "org.freedesktop.RealtimeKit1"};
   std::string answer;
-  int highest = 0;
-  long long rttime_max = 0;
-  auto ask = rtkit;
-  ask.insert(ask.begin(), "get-property"), ask.insert(ask.end(), {"MaxRealtimePriority", "RTTimeUSecMax"});
-  if (!busctl(ask, answer) || std::sscanf(answer.c_str(), "i %d x %lld", &highest, &rttime_max) != 2 || highest < 1 ||
-      rttime_max < 2)
-    return "no rtkit answered on the system bus";
+  std::unique_lock lock(ladder.mutex);
+  if (ladder.highest < 1) {
+    lock.unlock();
+    auto ask = rtkit;
+    ask.insert(ask.begin(), "get-property"), ask.insert(ask.end(), {"MaxRealtimePriority", "RTTimeUSecMax"});
+    int highest = 0;
+    long long rttime_max = 0;
+    if (!busctl(ask, answer) || std::sscanf(answer.c_str(), "i %d x %lld", &highest, &rttime_max) != 2 ||
+        highest < 1 || rttime_max < 2)
+      return "no rtkit answered on the system bus";
+    lock.lock();
+    ladder.highest = highest, ladder.rttime_max = rttime_max;
+  }
+  const int highest = ladder.highest;
+  const auto rttime_max = static_cast<rlim_t>(ladder.rttime_max);
+  lock.unlock();
+  const bool own = process == ::getpid();
   rlimit limit{};
-  ::getrlimit(RLIMIT_RTTIME, &limit);
-  const rlim_t hard = std::min<rlim_t>(limit.rlim_max, static_cast<rlim_t>(rttime_max));
-  const rlimit budget{limit.rlim_cur < hard ? limit.rlim_cur : hard / 2, hard};
-  if (::setrlimit(RLIMIT_RTTIME, &budget) != 0) return "RLIMIT_RTTIME could not be set";
-  ask = rtkit;
+  if (::prlimit(static_cast<pid_t>(process), RLIMIT_RTTIME, nullptr, &limit) != 0)
+    return "RLIMIT_RTTIME could not be read";
+  const rlim_t hard = std::min<rlim_t>(limit.rlim_max, rttime_max);
+  const rlim_t soft = own || hard < 2 * kOtherSoftBelowUs ? hard / 2 : hard - kOtherSoftBelowUs;
+  const rlimit budget{limit.rlim_cur < hard ? limit.rlim_cur : soft, hard};
+  if (::prlimit(static_cast<pid_t>(process), RLIMIT_RTTIME, &budget, nullptr) != 0)
+    return "RLIMIT_RTTIME could not be set";
+  auto ask = rtkit;
   ask.insert(ask.begin(), "call");
-  ask.insert(ask.end(), {"MakeThreadRealtimeWithPID", "ttu", std::to_string(::getpid()), std::to_string(thread),
+  ask.insert(ask.end(), {"MakeThreadRealtimeWithPID", "ttu", std::to_string(process), std::to_string(thread),
                          std::to_string(std::min(wanted, highest))});
-  busctl(ask, answer);
-  return realtime(thread) ? nullptr : "rtkit refused the RT thread";
+  busctl(ask, answer, process);
+  return realtime(thread) ? nullptr : "rtkit refused";
+}
+
+// One thread to SCHED_RR `priority`: by itself when the process may (an rtprio limit), else through rtkit.
+bool make_realtime(long process, int thread, int priority) {
+  const sched_param wanted{std::max(1, priority)};
+  return (process == ::getpid() && ::sched_setscheduler(thread, SCHED_RR | SCHED_RESET_ON_FORK, &wanted) == 0) ||
+         ask_rtkit(process, thread, wanted.sched_priority) == nullptr;
+}
+
+char state_of(long process, int thread) {  // /proc's state letter ('R': running or runnable), '?' when gone
+  char path[96], line[512] = {};
+  std::snprintf(path, sizeof path, "/proc/%ld/task/%d/stat", process, thread);
+  const int fd = ::open(path, O_RDONLY | O_CLOEXEC);
+  if (fd < 0) return '?';
+  const ssize_t got = ::read(fd, line, sizeof line - 1);
+  ::close(fd);
+  const char* after = got > 0 ? std::strrchr(line, ')') : nullptr;
+  return after != nullptr && after[1] == ' ' ? after[2] : '?';
+}
+
+// Every realtime thread of `process` (`running`: only those in state R) but `except` back to SCHED_OTHER, found in
+// /proc, a grant no list knows of included (raw node round 6); the threads demoted, after `on` saw each.
+template <class On>
+int sweep(long process, int except, bool running, On on) {
+  int demoted = 0;
+  if (DIR* tasks = ::opendir(("/proc/" + std::to_string(process) + "/task").c_str())) {
+    while (const dirent* task = ::readdir(tasks)) {
+      const int thread = std::atoi(task->d_name);
+      sched_param param{};
+      if (thread <= 0 || thread == except || !realtime(thread) || ::sched_getparam(thread, &param) != 0 ||
+          (running && state_of(process, thread) != 'R') || !demote(thread))
+        continue;
+      ++demoted;
+      on(thread, param.sched_priority);
+    }
+    ::closedir(tasks);
+  }
+  return demoted;
+}
+int sweep(long process) {
+  return sweep(process, 0, false, [](int, int) {});
+}
+
+// lk_stop: the calls in flight for `processes`, answered within kSettleNs or SIGKILLed, and reaped
+void settle(const std::vector<long>& processes) {
+  const auto ours = [&](const std::pair<pid_t, long>& call) {
+    return call.first != 0 && std::count(processes.begin(), processes.end(), call.second) != 0;
+  };
+  const auto none = [&] { return std::none_of(ladder.calls.begin(), ladder.calls.end(), ours); };
+  std::unique_lock lock(ladder.mutex);
+  if (ladder.reaped.wait_for(lock, std::chrono::nanoseconds(kSettleNs), none)) return;
+  for (const auto& call : ladder.calls)  // listed, so not reaped yet: the pid is still that busctl
+    if (ours(call)) ::kill(call.first, SIGKILL);
+  ladder.reaped.wait_for(lock, std::chrono::milliseconds(500), none);
+}
+
+void watch() {  // the sentinel (see above), on its own thread until lk_stop
+  const long self = ::getpid();
+  for (;;) {
+    pollfd ready[2] = {{ladder.signal_fd, POLLIN, 0}, {ladder.stop_fd, POLLIN, 0}};
+    const int woken = ::poll(ready, 2, 1000);
+    if (ready[1].revents != 0) return;
+    if (woken > 0 && (ready[0].revents & POLLIN)) {
+      signalfd_siginfo info{};
+      while (::read(ladder.signal_fd, &info, sizeof info) == static_cast<ssize_t>(sizeof info)) {
+      }
+      sweep(self, ladder.sentinel_tid.load(), true, [](int thread, int priority) {  // first: a few syscalls each
+        ++ladder.demoted.try_emplace(thread, priority, 0).first->second.second;
+        for (std::size_t slot = 0; slot < ladder.threads.size(); ++slot)
+          if (ladder.threads[slot].load(std::memory_order_acquire) == thread)
+            ladder.demotions[slot].fetch_add(1, std::memory_order_release);
+      });
+      ::setrlimit(RLIMIT_RTTIME, &ladder.budget);
+      ladder.last_sigxcpu = mono_ns();
+      continue;
+    }
+    if (ladder.last_sigxcpu == 0 || mono_ns() - ladder.last_sigxcpu < kRepromoteAfterNs) continue;
+    for (auto& [thread, demoted] : ladder.demoted) {
+      auto& [priority, times] = demoted;
+      if (times != 1) continue;
+      times = 2;  // decided, once: demoted again after this, it stays SCHED_OTHER
+      if (state_of(self, thread) != '?' && !realtime(thread))
+        ask_rtkit(self, thread, priority);  // a listed call: lk_stop waits for it, or it is never sent
+    }
+  }
 }
 
 }  // namespace
@@ -583,13 +741,13 @@ void Box::climb() {
   while (rt_stage.load(std::memory_order_acquire) == 0) rt_stage.wait(0, std::memory_order_acquire);
   const int thread = rt_tid.load(std::memory_order_relaxed);
   try {
-    const char* refused = place.fifo > 0 && fifo_refused != 0 ? ask_rtkit(thread, place.fifo) : nullptr;
+    const char* refused = place.fifo > 0 && fifo_refused != 0 ? ask_rtkit(::getpid(), thread, place.fifo) : nullptr;
     if (refused != nullptr)
       write_log(system, 30, "SCHED_FIFO %g refused, and %s: the RT thread runs SCHED_OTHER", place.fifo, refused);
     else if (place.fifo > 0 && fifo_refused != 0)
       write_log(system, 20, "SCHED_FIFO %g refused: rtkit granted SCHED_RR under RLIMIT_RTTIME", place.fifo);
     if (realtime(thread)) {  // enlisted for on_sigxcpu, whatever granted it
-      std::lock_guard guard(ladder.mutex);
+      std::unique_lock lock(ladder.mutex);
       ::getrlimit(RLIMIT_RTTIME, &ladder.budget);
       for (std::size_t slot = 0; slot < ladder.threads.size() && ladder_slot.load() < 0; ++slot) {
         if (ladder.threads[slot].load() != 0) continue;
@@ -602,12 +760,74 @@ void Box::climb() {
         sigemptyset(&action.sa_mask);
         ::sigaction(SIGXCPU, &action, &ladder.previous);
       }
+      // CONTRACT §15 A35: a dedicated host blocked SIGXCPU in every thread; its sentinel starts here, once, and gets
+      // its grant right after the RT thread's (the grant order). It inherits the mask, so it never takes a signal.
+      sigset_t blocked;
+      ::pthread_sigmask(SIG_BLOCK, nullptr, &blocked);
+      if (sigismember(&blocked, SIGXCPU) == 1 && !ladder.sentinel.joinable()) {
+        sigset_t xcpu;
+        sigemptyset(&xcpu), sigaddset(&xcpu, SIGXCPU);
+        ladder.signal_fd = ::signalfd(-1, &xcpu, SFD_CLOEXEC | SFD_NONBLOCK);
+        ladder.stop_fd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+        ladder.demoted.clear(), ladder.last_sigxcpu = 0;
+        ladder.sentinel = std::thread([] {
+          ::pthread_setname_np(::pthread_self(), "lk-sentinel");
+          ladder.sentinel_tid.store(static_cast<int>(::gettid())), ladder.sentinel_tid.notify_all();
+          watch();
+        });
+        ladder.sentinel_tid.wait(0), sentinel = true;
+        lock.unlock();
+        sched_param param{};
+        ::sched_getparam(thread, &param);
+        make_realtime(::getpid(), ladder.sentinel_tid, param.sched_priority);
+      }
     }
   } catch (const std::exception&) {  // never fatal: the thread runs on whatever it has
   }
   mono0 = mono_ns(), epoch0 = epoch_s();  // after the ladder: tick 0 is not already late
   rt_stage.store(2, std::memory_order_release);
   rt_stage.notify_all();
+}
+
+int Box::raise(long process, int thread, int below) {
+  const long self = ::getpid(), target = process == 0 ? self : process;
+  for (auto& slot : io_threads) {  // enlisted whatever it gets: io_sched_policy says what the host's threads run on
+    int seen = 0;
+    if (target != self || slot.compare_exchange_strong(seen, thread) || seen == thread) break;
+  }
+  const int rt = rt_tid.load(std::memory_order_acquire);
+  sched_param param{};
+  if (rt == 0 || !realtime(rt) || ::sched_getparam(rt, &param) != 0) return 0;  // below the RT thread, or not at all
+  if (realtime(thread)) return 1;
+  if (target != self) {
+    std::lock_guard guard(ladder.mutex);
+    if (std::count(raised.begin(), raised.end(), target) == 0) raised.push_back(target);
+  }
+  return make_realtime(target, thread, param.sched_priority - below) ? 1 : 0;
+}
+
+int Box::lower(long process, bool final) {
+  const long target = process == 0 ? ::getpid() : process;
+  if (final) {
+    std::lock_guard guard(ladder.mutex);
+    ladder.ended.push_back(target);
+  }
+  int demoted = sweep(target);
+  if (final) settle({target}), demoted += sweep(target);
+  return demoted;
+}
+
+void Box::sent(std::uint32_t port, bool went) {
+  if (port >= outs.size()) return;
+  Outlet& outlet = *outs[port];
+  sends_reported.store(true, std::memory_order_relaxed);
+  if (!went) {
+    outlet.refused.fetch_add(1, std::memory_order_relaxed);
+    return;
+  }
+  const std::int64_t at = mono_ns(), last = outlet.sent_ns.exchange(at, std::memory_order_relaxed);
+  if (last != 0 && at - last > outlet.gap_max_ns.load(std::memory_order_relaxed))
+    outlet.gap_max_ns.store(at - last, std::memory_order_relaxed);
 }
 
 bool Box::start(const lk_place& placed, std::string& error) {
@@ -692,11 +912,24 @@ void Box::run() {
 }
 
 void Box::stop() {
+  // CONTRACT §15 A35: realtime ends with the run. From here no rtkit call is sent for this process (when it runs the
+  // sentinel: a dedicated host's) or for a process the box raised; what is realtime there now is demoted, the
+  // components hand back, then the calls in flight are waited for and everything is swept again.
+  std::vector<long> ending;
+  if (!std::exchange(realtime_over, true)) {
+    std::lock_guard guard(ladder.mutex);
+    ending = raised;
+    if (sentinel) ending.push_back(::getpid());
+    ladder.ended.insert(ladder.ended.end(), ending.begin(), ending.end());
+  }
   if (running.exchange(false)) {
     arrivals.fetch_add(1, std::memory_order_release);
     arrivals.notify_all();
   }
   if (rt.joinable()) rt.join();
+  for (const long process : ending) sweep(process);
+  for (auto& slot : io_threads)  // a host thread it raised in a process it shares (no sentinel): that one only
+    if (const int thread = slot.load(); !sentinel && thread != 0 && realtime(thread)) demote(thread);
   if (ladder_slot.load() >= 0) {  // the last box of this runtime puts SIGXCPU back as it found it
     std::lock_guard guard(ladder.mutex);
     struct sigaction current {};
@@ -705,7 +938,18 @@ void Box::stop() {
       ::sigaction(SIGXCPU, &ladder.previous, nullptr);
     ladder_slot = -1;
   }
-  deactivate_all();  // CONTRACT §5.7: reverse order; idempotent
+  deactivate_all();  // CONTRACT §5.7: reverse order; idempotent. WHY before the wait below: the hand-back is due now
+  if (!ending.empty()) {
+    settle(ending);
+    for (const long process : ending) sweep(process);
+  }
+  if (sentinel && ladder.sentinel.joinable()) {  // it re-promotes nothing for an ended process
+    const std::uint64_t one = 1;
+    (void)!::write(ladder.stop_fd, &one, sizeof one);
+    ladder.sentinel.join();
+    ::close(ladder.signal_fd), ::close(ladder.stop_fd);
+    ladder.sentinel_tid.store(0);
+  }
 }
 
 namespace {
@@ -791,7 +1035,10 @@ int Box::take(std::uint32_t port, ArrowArray* out) {
   if (port < outs.size()) {
     Outlet& outlet = *outs[port];
     if (!outlet.triple.fresh()) return 0;
-    outlet.wire->encode(outlet.slots[outlet.triple.front].value.data(), out);
+    const Slot& slot = outlet.slots[outlet.triple.front];
+    // CONTRACT §15 A35: the publishes between the last take and this one were superseded in the slot, never sent
+    outlet.superseded.fetch_add(slot.seq - outlet.taken.exchange(slot.seq) - 1, std::memory_order_relaxed);
+    outlet.wire->encode(slot.value.data(), out);
     return 1;
   }
   const std::size_t which = port - outs.size();
@@ -891,7 +1138,8 @@ void Box::facilities(int which) {
   if (const int slot = ladder_slot.load(); slot >= 0) {  // CONTRACT §15 A19: what on_sigxcpu did, said here
     const std::uint32_t demoted = ladder.demotions[static_cast<std::size_t>(slot)].load(std::memory_order_acquire);
     if (demoted != std::exchange(demotions_seen, demoted)) {
-      entry = {kBoxLog, 30, "the RT thread ran past RLIMIT_RTTIME's soft limit (SIGXCPU): demoted to SCHED_OTHER",
+      // WHY not "it ran past": with a sentinel (A35) a running RT thread is demoted whichever thread ran past
+      entry = {kBoxLog, 30, "a SIGXCPU (RLIMIT_RTTIME's soft limit) demoted the RT thread to SCHED_OTHER",
                {},      {}, epoch_s(),
                0};
       take_in();
@@ -951,6 +1199,29 @@ void Box::facilities(int which) {
         thread != 0 && ::sched_getparam(thread, &param) == 0) {
       box.emplace_back("sched_policy", ::sched_getscheduler(thread) & ~SCHED_RESET_ON_FORK);
       box.emplace_back("sched_priority", param.sched_priority);
+    }
+    // CONTRACT §15 A35: what the host's I/O threads run under, the weakest of them read live; and, when the host
+    // reports its sends, per exposed Out the steps that never went out (strings over the arena, superseded in the
+    // slot, refused by the transport; of the publishes since the last take all but the newest are superseded
+    // already; an Out its host never takes has no reader to lose them to) and the worst gap between two sends.
+    // WHY (consumer-018): over dora 2-3 % of the states were lost at a subscriber and nothing counted them.
+    int io_policy = -1, io_rank = 0;
+    for (const auto& slot : io_threads) {
+      const int thread = slot.load(std::memory_order_relaxed);
+      if (thread == 0 || ::sched_getparam(thread, &param) != 0) continue;  // exited (TX, once joined)
+      const int policy = ::sched_getscheduler(thread) & ~SCHED_RESET_ON_FORK;
+      const int rank = policy == SCHED_FIFO || policy == SCHED_RR ? param.sched_priority : 0;
+      if (io_policy < 0 || rank < io_rank) io_policy = policy, io_rank = rank;
+    }
+    if (io_policy >= 0) box.emplace_back("io_sched_policy", io_policy), box.emplace_back("io_sched_priority", io_rank);
+    for (const auto& outlet : outs) {
+      if (!sends_reported.load(std::memory_order_relaxed)) break;
+      const std::uint64_t taken = outlet->taken.load(std::memory_order_relaxed);
+      const std::uint64_t published = taken == 0 ? 0 : outlet->published.load(std::memory_order_relaxed);
+      box.emplace_back("drops." + outlet->name,
+                       static_cast<double>(outlet->drops.load() + outlet->superseded.load() + outlet->refused.load() +
+                                           (published > taken + 1 ? published - taken - 1 : 0)));
+      box.emplace_back("send_gap_max_s." + outlet->name, 1e-9 * static_cast<double>(outlet->gap_max_ns.load()));
     }
     publish("", box);
   }

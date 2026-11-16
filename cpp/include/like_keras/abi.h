@@ -14,6 +14,20 @@
  * queue is emptied.
  * An optional queue input (§15 A23) gates a step (§5.2) only once its host has pushed to it, a retraction included:
  * a host retracts each queue input it wires before lk_start, and one it leaves unwired reads NULL and gates nothing.
+ *
+ * A native host's boundary (CONTRACT §15 A35), after lk_start and only in real time:
+ * lk_raise puts thread `thread` of process `process` (0: this one) on the box's scheduling ladder, at rtkit's
+ * SCHED_RR `below` the RT thread's priority, and only while the RT thread is realtime: a thread of this process is a
+ * host I/O thread (the box record's io_sched_policy and io_sched_priority read the weakest, live), another process
+ * gets RLIMIT_RTTIME soft < hard first. 1: realtime now. A host that blocks SIGXCPU in every thread before any exists
+ * (a dedicated process) gets a sentinel thread that demotes a realtime thread past the soft limit instead of letting
+ * the hard limit kill the process.
+ * lk_lower demotes every realtime thread of `process` now; `final` 1: and none is raised again, the rtkit calls in
+ * flight for it are waited for (1 s, then ended) and it is swept again. lk_stop does that itself for this process
+ * (with a sentinel) and every process lk_raise raised: no grant outlives the stop.
+ * lk_sent reports that the value just taken from exposed Out `out_port` went out (1) or was refused (0); from the
+ * first report the box record carries drops.<exposed name> (the box's steps that never went out) and
+ * send_gap_max_s.<exposed name> (the worst gap between two sends).
  */
 #ifndef LIKE_KERAS_ABI_H
 #define LIKE_KERAS_ABI_H
@@ -64,6 +78,9 @@ int lk_take(lk_box* box, uint32_t out_port, struct ArrowArray* out);         /* 
 int lk_wait(lk_box* box, int timeout_ms); /* I/O threads: 1 = an exposed Out has news */
 void lk_stop(lk_box* box);                /* stop the RT thread, deactivate */
 void lk_destroy(lk_box* box);
+int lk_raise(lk_box* box, int process, int thread, int below); /* hosts only, see above (§15 A35) */
+int lk_lower(lk_box* box, int process, int final);
+void lk_sent(lk_box* box, uint32_t out_port, int sent);
 
 #ifdef __cplusplus
 }

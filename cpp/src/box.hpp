@@ -84,6 +84,7 @@ struct Slot {  // one message: its view's bytes and the array it views into (rel
   ArrowArray owner{};               // for a converted input (In<T, Converted>): its Held, which release() deletes
   const void* converted = nullptr;  // that Held's value: what the reader sees instead of `value`
   double stamp = 0.0;
+  std::uint64_t seq = 0;  // an exposed Out's: which of its publishes this is (CONTRACT §15 A35)
   bool empty = true;
   std::vector<char> arena;  // an exposed Out's strings
   const void* data() const { return converted != nullptr ? converted : value.data(); }
@@ -128,9 +129,15 @@ struct Inlet {  // an exposed In: the host pushes (any thread, one at a time), t
 struct Outlet {  // an exposed Out: the RT thread publishes a copy, a host thread takes it as a fresh Arrow array
   Port* port;
   const Wire* wire;
+  std::string name;  // its exposed name
   std::array<Slot, 3> slots;
   Triple triple;
-  std::atomic<std::uint64_t> drops{0};
+  std::atomic<std::uint64_t> drops{0};      // the RT thread's: a step whose strings overflowed the arena
+  std::atomic<std::uint64_t> published{0};  // the RT thread's: publishes, the seq of the newest
+  // CONTRACT §15 A35, the host's side: what never went out (superseded in the slot before a take, refused by the
+  // transport) and the worst gap between two sends (lk_sent)
+  std::atomic<std::uint64_t> taken{0}, superseded{0}, refused{0};
+  std::atomic<std::int64_t> sent_ns{0}, gap_max_ns{0};
 };
 
 struct Plumbing {  // where a published Out also goes beyond its in-box readers
@@ -193,6 +200,9 @@ struct Box {
   void run();            // the RT thread
   bool start(const lk_place& placed, std::string& error);
   void climb();  // host: the RT thread's scheduling ladder before its first step (CONTRACT §15 A19)
+  int raise(long process, int thread, int below);  // host: lk_raise, a host or transport thread (§15 A35)
+  int lower(long process, bool final);             // host: lk_lower
+  void sent(std::uint32_t port, bool went);        // host: lk_sent
   void stop();
   bool send(Port& out, double at);
   void retire(ArrowArray& owner);  // RT: hand a consumed input to a host thread
@@ -231,6 +241,12 @@ struct Box {
   int fifo_refused = 0;              // the RT thread's pthread_setschedparam answer (0: granted)
   std::atomic<int> ladder_slot{-1};  // its place among the threads a SIGXCPU demotes (rt.cpp's Ladder)
   std::uint32_t demotions_seen = 0;
+  // CONTRACT §15 A35: the host threads lk_raise put on the ladder (io_sched_policy reads them), the other processes
+  // it raised threads in (lk_stop lowers them for good), and whether this box runs the process's sentinel
+  std::array<std::atomic<int>, 16> io_threads{};
+  std::vector<long> raised;  // under the ladder's mutex
+  bool sentinel = false, realtime_over = false;
+  std::atomic<bool> sends_reported{false};  // its host calls lk_sent: the box record counts every exposed Out's sends
   std::atomic<bool> running{false};
   std::atomic<std::uint32_t> arrivals{0};
   lk_place place{};

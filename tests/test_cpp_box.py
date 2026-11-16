@@ -38,4 +38,5 @@ def test_a_component_exports_the_c_abi_and_nothing_else():
     for library in (BUILD / "liblinks_static.so", ROOT / "build" / "kpi" / "libempty.so"):
         listed = subprocess.run(["nm", "-D", "--defined-only", str(library)], capture_output=True, text=True, check=True)
         names = [line.split()[-1] for line in listed.stdout.splitlines() if line.strip()]
-        assert len(names) == 10 and all(name.startswith("lk_") for name in names), (library.name, names)
+        # 13: abi.h's ten, and lk_raise, lk_lower, lk_sent for native hosts (CONTRACT §15 A35)
+        assert len(names) == 13 and all(name.startswith("lk_") for name in names), (library.name, names)

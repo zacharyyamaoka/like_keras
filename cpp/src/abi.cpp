@@ -693,4 +693,22 @@ LKX_API int lk_wait(lk_box* box, int timeout_ms) {
 
 LKX_API void lk_stop(lk_box* box) { box->stop(); }
 
+LKX_API int lk_raise(lk_box* box, int process, int thread, int below) {  // CONTRACT §15 A35, hosts only
+  try {
+    return box->raise(process, thread, below);
+  } catch (const std::exception&) {
+    return 0;
+  }
+}
+
+LKX_API int lk_lower(lk_box* box, int process, int final) {
+  try {
+    return box->lower(process, final != 0);
+  } catch (const std::exception&) {
+    return 0;
+  }
+}
+
+LKX_API void lk_sent(lk_box* box, uint32_t out_port, int sent) { box->sent(out_port, sent != 0); }
+
 LKX_API void lk_destroy(lk_box* box) { delete box; }

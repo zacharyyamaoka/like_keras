@@ -30,7 +30,8 @@ MUTANTS = {
     "no_sigxcpu_handler": ("::sigaction(SIGXCPU, &action, &ladder.previous);", ";", -signal.SIGXCPU),
     "handler_demotes_nothing": ("if (thread != 0 && realtime(thread) && demote(thread))", "if (false)",
                                 -signal.SIGKILL),
-    "soft_equals_hard": ("limit.rlim_cur < hard ? limit.rlim_cur : hard / 2", "hard", -signal.SIGKILL),
+    "soft_equals_hard": ("const rlimit budget{limit.rlim_cur < hard ? limit.rlim_cur : soft, hard};",
+                         "const rlimit budget{hard, hard};", -signal.SIGKILL),
 }
 
 
