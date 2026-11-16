@@ -74,3 +74,7 @@ From lane CORE while building M1 (`src/like_keras/{__init__,component,system,dep
   - **Seam:** `backends/inproc.py:NativeGroup` loads the `.so` with `ctypes` (CDLL for create, start, wait and stop; PyDLL for the never-blocking push, take and step, per §6.3), calls `lk_create` so a parameter error surfaces at `start()`, then refuses with "lands at M2".
   - `lk.native()` reads `lk_abi_version()` and `lk_describe()` today, so every native check of §4.3 already runs.
 - **`[project.scripts] lk`.** It waits for `cli.py` (lane dora): an `lk` on PATH that cannot import would shadow `python -m like_keras.cli` in `kpi/support/lk.py`.
+
+## Resolution (2026-11-15, dispatcher)
+
+See CONTRACT.md §15 (amendments A1-A7). Decided: A2 (stub ratified), A1 (ruler moves the dora imports), A4 (bound amended), A6 (readings ratified).

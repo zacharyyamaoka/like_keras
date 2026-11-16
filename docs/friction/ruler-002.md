@@ -46,3 +46,7 @@ From lane CORE at M1, measured against the frozen ruler at `b76d5b2`. `kpi/` was
   The fix is unchanged: mark the speed half `timing`, or use `time.process_time()` in the default tier. Give it its own test id, so a slow run cannot hide the determinism half.
 - **Item 2.** `cell.py:15`'s module-level dora import is still the blocker. The fix is unchanged: move it into the function that builds the dora deployment. See contract-004.
 - **Item 4.** The exact fix: at `kpi/surface.py:185`, record a class's signature as `f"{name}.__init__"` rather than `name`, so the `.__init__` exclusion at line 200 matches. `widest_signature` then scores 1.0 rather than 0.667.
+
+## Resolution (2026-11-15, dispatcher)
+
+See CONTRACT.md §15 (amendments A1-A7). Decided: A7, the ruler lane fixes it in the M0.1 commit.

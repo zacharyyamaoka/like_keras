@@ -60,3 +60,7 @@ The C++ runtime is on `build/v0` (`fe60099`). Where the contract was silent, the
   - Exporting A2's 7 × 1000 plan as Arrow C Data takes about 100 µs p50 on the planner's thread here. It is zero-copy, but it walks 28 nodes, about half of them the empty `limits`, `channels` and `meta` subtrees the frozen layout requires.
   - `lk_push` itself takes 2 µs.
   - This is not the timing tier, and A2's budget is 0.1 ms. If the timing tier misses it, the next lever is to skip the Python walk for null subtrees.
+
+## Resolution (2026-11-15, dispatcher)
+
+See CONTRACT.md §15 (amendments A1-A7). Decided: A5 (targets stay; compaction milestone M4), A6 (§2-5 readings ratified).

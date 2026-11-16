@@ -19,3 +19,7 @@ CONTRACT §11, criterion 2, says to pin the A/B to cores 20-21 (`kpi/bench_overh
 - Two graphs (`test_validgraphs.py:138`, `:152`) skip when `build/kpi/libfake_native_ok.so` is not built. If they skip, criterion 12 can still score 1.0 with those graphs never checked.
 - cmake always builds that `.so`, so in practice the risk is small. But it contradicts the README's line that "a test that skips, errors or is missing counts as failed".
 - **Suggested fix:** count a valid graph that does not pass as a false positive, or freeze the list of `validgraphs` ids in `score.py`.
+
+## Resolution (2026-11-15, dispatcher)
+
+See CONTRACT.md §15 (amendments A1-A7). Decided: A7, the ruler lane fixes it in the M0.1 commit.

@@ -40,3 +40,7 @@ From lane CORE, M1. `kpi/` was not touched; the ruler lane owns any fix.
 ## Related
 
 - ruler-002 item 1 is the same class of defect in `kpi/twin`: a wall-clock ≥ 10× check in the default tier.
+
+## Resolution (2026-11-15, dispatcher)
+
+See CONTRACT.md §15 (amendments A1-A7). Decided: A7, the ruler lane fixes it in the M0.1 commit.

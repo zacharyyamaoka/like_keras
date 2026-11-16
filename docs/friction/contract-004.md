@@ -44,3 +44,7 @@ An independent verifier ran M1 (`84c1e21`) and found these. Lane core re-measure
   - **Recommendation:** ratify the capability-only stub at M1. That is one file lane dora replaces whole.
   - **Cleaner alternative:** the ruler moves the module-level imports into functions: `cell.py:15`, the eight `swaps/*/*/deploy.py:4`. Then core deletes the stub. `kpi/validgraphs/test_validgraphs.py:124` and `:148` already import inside their graph functions, but the tests call those, so they need the module either way.
 - **View size (§7.4, not blocking).** See contract-003 item 4. The frozen ruler's C++ pins the layout, so the bound is the part to amend.
+
+## Resolution (2026-11-15, dispatcher)
+
+See CONTRACT.md §15 (amendments A1-A7). Decided: A1 (criterion 3 judged at M2), A3 (lk ls moves to M3), A2 (stub ratified).

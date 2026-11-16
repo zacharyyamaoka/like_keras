@@ -36,3 +36,7 @@ Two frozen tests cannot pass on a correct runtime. Both fixes are one line in `k
 - On the loaded host (rack powered, cores 22-23) a 45-57 ms stall of that thread made the JTC skip ahead past `guard.runaway_rad` (0.5 rad). The guard latched its hold for the rest of the run, and every later plan "missed its start".
 - In a 6 s run without such a stall, every plan started on the first tick at or after its stamp, and was at the law's 0.01 s sample one tick later (`a2_which.py`).
 - **So the timing tier must grant rtprio** (`ulimit -r 99`, or CAP_SYS_NICE) before A2 or T3 can say anything.
+
+## Resolution (2026-11-15, dispatcher)
+
+See CONTRACT.md §15 (amendments A1-A7). Decided: A7, the ruler lane fixes it in the M0.1 commit.
