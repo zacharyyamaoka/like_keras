@@ -12,7 +12,6 @@ import pathlib
 import signal
 
 import like_keras as lk
-from like_keras.backends import dora
 
 from kpi.tasks.arm_cell.arm_controller_py import ArmControllerPy
 from kpi.tasks.arm_cell.planner import PickPlanner
@@ -34,6 +33,10 @@ def pick_cell(arm: lk.Component, targets: str | pathlib.Path = TARGETS, repeat: 
 
 
 def target(config=CONFIG, *, realtime=True, cpus=(20,), targets=TARGETS, repeat=False) -> lk.Deployment:
+    # WHY here, not at module level: importing this file (for CONFIG, or for the inproc builders) must not import
+    # the dora backend, which kpi/blackbox blocks (CONTRACT §15 A1; ruler-002 §2).
+    from like_keras.backends import dora
+
     cell = pick_cell(lk.native(LIBRARY, config=config), targets, repeat)
     dep = lk.Deployment(cell, backend=dora, realtime=realtime)
     dep.place(cell.arm, process="arm-controller", hz=100, cpus=list(cpus), fifo=80)

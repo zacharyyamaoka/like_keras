@@ -51,7 +51,7 @@ def test_wire_is_owned_by_like_keras(tmp_path):
                     raise ImportError(name + " is blocked")
         sys.meta_path.insert(0, Blocker())
         import like_keras as lk
-        from kpi.golden.test_golden import emitter
+        from kpi.golden.instances import emitter
         s = lk.System("wire")
         s.add(emitter(lk, "sensor/JointState")(), "emit")
         dep = lk.Deployment(s, realtime=False)

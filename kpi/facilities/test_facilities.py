@@ -112,16 +112,36 @@ def test_metrics(facility, combination):
     assert steps == sorted(steps) and steps[-1] >= 50
 
 
-@pytest.mark.parametrize("combination", COMBINATIONS)
-def test_health(facility, combination):
-    """health: a DiagnosticRecord at 1 Hz, mode from the lifecycle, level ok, expected_period_s 1.0; STALE is never
-    sent (an observer derives it)."""
+def operational_health(facility: Facility) -> list[dict]:
+    """The subject's health records over a 2.6 s run, after the checks every tier makes: at 1 Hz,
+    expected_period_s 1.0, STALE never sent (an observer derives it). Returns the operational ones."""
     run_with_sinks(facility)
     found = mine(rows(facility.path_of("health.jsonl")), facility)
     assert len(found) >= 2, f"{len(found)} health records"
     assert all(row["expected_period_s"] == 1.0 for row in found)
     assert all(row["level"] in ("unknown", "ok", "warn", "error") for row in found), "STALE was sent"
-    assert any(row["mode"] == "operational" and row["level"] == "ok" for row in found)
+    return [row for row in found if row["mode"] == "operational"]
+
+
+@pytest.mark.parametrize("combination", COMBINATIONS)
+def test_health(facility, combination):
+    """health: a DiagnosticRecord at 1 Hz, mode from the lifecycle, level ok, expected_period_s 1.0; STALE is never
+    sent (an observer derives it). WHY warn/Overrun also passes here: on the powered rig a niced 50 Hz thread on
+    two shared cores really misses deadlines, and CONTRACT §8 makes that period warn with code Overrun; reporting it
+    is the facility working (ruler-003). Any other warn, error or unknown still fails. The ok-when-unloaded half is
+    test_health_ok_when_unloaded, in the timing tier."""
+    operational = operational_health(facility)
+    assert any(row["level"] == "ok" or (row["level"] == "warn" and row["code"] == "Overrun") for row in operational), \
+        [(row["level"], row["code"]) for row in operational]
+
+
+@pytest.mark.timing
+@pytest.mark.parametrize("combination", COMBINATIONS)
+def test_health_ok_when_unloaded(facility, combination):
+    """Timing tier (rack unpowered or the fixed cloud VM): an empty step at 50 Hz on an unloaded host has at least
+    one operational period with level ok."""
+    operational = operational_health(facility)
+    assert any(row["level"] == "ok" for row in operational), [(row["level"], row["code"]) for row in operational]
 
 
 @pytest.mark.parametrize("combination", COMBINATIONS)

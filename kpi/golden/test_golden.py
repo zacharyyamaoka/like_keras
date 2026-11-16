@@ -15,24 +15,11 @@ import numpy as np
 import pytest
 
 from kpi.golden import arrow_oracle, lkf, make_golden
+from kpi.golden.instances import build, emitter
 from kpi.support import mcap
 from kpi.support.lk import like_keras, recorded
 
 TYPES = sorted(make_golden.INSTANCES)
-
-
-def build(type_name: str, message: dict):
-    """The robot_msgs object for an instance dict."""
-    import robot_msgs
-
-    cls = robot_msgs.message_types()[type_name]
-    values = {}
-    for field in lkf.SCHEMAS[type_name]:
-        value = message[field.name]
-        if field.kind == "struct" and value is not None:
-            value = build(field.of, value)
-        values[field.name] = value
-    return cls(**values)
 
 
 def as_dict(type_name: str, message) -> dict:
@@ -93,21 +80,7 @@ def test_schema_table_matches_robot_msgs(type_name):
 
 
 # ---------------------------------------------------------------- like_keras (public API only)
-
-
-def emitter(lk, type_name: str):
-    cls = __import__("robot_msgs").message_types()[type_name]
-    instance = build(type_name, make_golden.INSTANCES[type_name])
-
-    class Emit(lk.Component):
-        value = lk.Out(cls)
-
-        def forward(self):
-            sent = getattr(self, "_sent", False)
-            self._sent = True
-            return None if sent else instance
-
-    return Emit
+# The emitting component, `emitter`, is in kpi/golden/instances.py (no pyarrow there; ruler-002 §3).
 
 
 @pytest.mark.parametrize("type_name", TYPES)

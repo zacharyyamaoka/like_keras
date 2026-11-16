@@ -212,10 +212,12 @@ def test_A2_same_planner_in_one_process(tmp_path):
     try:
         time.sleep(60.0)
         python_threads = _python_thread_ids()
+        # WHY listed here, while the deployment runs: stop() joins the RT thread, so a list taken after it holds
+        # only threads that outlived the deployment, whatever they are (ruler-004 §2)
+        native = [int(task) for task in os.listdir("/proc/self/task") if int(task) not in python_threads]
     finally:
         dep.stop()
         ran_python = stop_probe()
-    native = [int(task) for task in os.listdir("/proc/self/task") if int(task) not in python_threads]
     assert not (ran_python - python_threads - {threading.main_thread().native_id}), "a native thread ran Python"
     assert native, "no native thread found (the C++ chain must run on its own thread)"
     gaps = _gaps(tmp_path)

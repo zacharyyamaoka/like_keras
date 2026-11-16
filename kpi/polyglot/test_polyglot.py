@@ -23,6 +23,9 @@ from kpi.support import cells, mcap
 from kpi.support.lk import BUILD, KPI, REPO, backend, like_keras, native_library
 
 PER_JOINT = {"sensor/JointState": "joint_state", "control/ServoState": "servo_state", "control/ServoCommand": "servo_command"}
+# WHY the T10 tests expose the echo box's other inputs: each test feeds one of these four, and an input left unbound
+# is refused unless it is exposed (CONTRACT §4.3 check 1, ruler-004 §1).
+ECHO_INPUTS = ("joint_state_in", "servo_state_in", "servo_command_in", "trajectory")
 
 
 def rows(path) -> list[dict]:
@@ -100,12 +103,14 @@ def test_T10_codec_roundtrip(type_name, tmp_path):
     """The golden instance goes Python -> C++ (a fixed-capacity view) -> Python and is recorded: the bytes are the
     golden bytes. The recording of what Python sent is the golden bytes too (both directions, one test)."""
     lk = like_keras()
-    from kpi.golden.test_golden import emitter
+    from kpi.golden.instances import emitter
 
     prefix = PER_JOINT[type_name]
+    fed = f"{prefix}_in"
     s = lk.System("t10")
     emit = s.add(emitter(lk, type_name)(), "emit")
-    box = s.add(lk.native(native_library("echo"), config={"unused": 0}), "box", **{f"{prefix}_in": emit.value})
+    box = s.add(lk.native(native_library("echo"), config={"unused": 0}), "box", **{fed: emit.value})
+    s.expose(*[getattr(box, name) for name in ECHO_INPUTS if name != fed])
     dep = lk.Deployment(s, realtime=False)
     dep.place(s.emit, hz=10)
     dep.place(s.box, hz=10)
@@ -122,12 +127,14 @@ def test_T10_trajectory_view(tmp_path):
     """The C++ JointTrajectory view reads the right buffers: t, positions (NaN payload included), the stamp,
     N, J and velocities arrive bit for bit."""
     lk = like_keras()
-    from kpi.golden.test_golden import emitter
+    from kpi.golden.instances import emitter
     from kpi.support.lk import recorded
 
+    fed = "trajectory"
     s = lk.System("t10")
     emit = s.add(emitter(lk, "trajectory/JointTrajectory")(), "emit")
-    box = s.add(lk.native(native_library("echo"), config={"unused": 0}), "box", trajectory=emit.value)
+    box = s.add(lk.native(native_library("echo"), config={"unused": 0}), "box", **{fed: emit.value})
+    s.expose(*[getattr(box, name) for name in ECHO_INPUTS if name != fed])
     dep = lk.Deployment(s, realtime=False)
     dep.place(s.emit, hz=10)
     dep.place(s.box, hz=10)

@@ -20,19 +20,26 @@ REPO = pathlib.Path(__file__).resolve().parents[1]
 JUNIT = REPO / "build" / "kpi" / "junit"
 
 
+def namespaced(argv: list[str]) -> list[str]:
+    """argv in a private network and PID namespace: the line every suite runs under, and kpi/bench_overhead.py
+    too (kpi/score.py), so its private dora may start (ruler-001 §1)."""
+    bwrap = shutil.which("bwrap")
+    if bwrap is None:
+        return argv
+    return [bwrap, "--dev-bind", "/", "/", "--unshare-net", "--unshare-pid", "--proc", "/proc", "--die-with-parent",
+            "--chdir", str(REPO), "--", *argv]
+
+
 def command(suite: str, extra: list[str]) -> list[str]:
     JUNIT.mkdir(parents=True, exist_ok=True)
     basetemp = REPO / "build" / "kpi" / "tmp" / suite.replace("/", "_")  # kpi writes nothing outside the repo
     pytest = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", f"kpi/{suite}",
               f"--junitxml={JUNIT / (suite.replace('/', '_') + '.xml')}", f"--basetemp={basetemp}", *extra]
-    bwrap = shutil.which("bwrap")
-    if bwrap is None:
-        return pytest
-    return [bwrap, "--dev-bind", "/", "/", "--unshare-net", "--unshare-pid", "--proc", "/proc", "--die-with-parent",
-            "--chdir", str(REPO), "--", *pytest]
+    return namespaced(pytest)
 
 
-def run(suite: str, extra: list[str] | None = None, timeout_s: float | None = None) -> int:
+def environment() -> dict[str, str]:
+    """The environment of a namespaced kpi run: this venv first on PATH, src and the repo importable."""
     env = dict(os.environ)
     env["PATH"] = os.pathsep.join([str(pathlib.Path(sys.executable).parent), env.get("PATH", "")])
     env["PYTHONPATH"] = os.pathsep.join([str(REPO / "src"), str(REPO)])
@@ -40,8 +47,12 @@ def run(suite: str, extra: list[str] | None = None, timeout_s: float | None = No
     (REPO / "build" / "kpi" / "tmp").mkdir(parents=True, exist_ok=True)
     for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
         env.setdefault(name, "1")
+    return env
+
+
+def run(suite: str, extra: list[str] | None = None, timeout_s: float | None = None) -> int:
     try:
-        return subprocess.run(command(suite, extra or []), cwd=REPO, env=env, timeout=timeout_s).returncode
+        return subprocess.run(command(suite, extra or []), cwd=REPO, env=environment(), timeout=timeout_s).returncode
     except subprocess.TimeoutExpired:
         return 124
 

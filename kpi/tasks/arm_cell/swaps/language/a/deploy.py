@@ -1,7 +1,6 @@
 """A frozen variant of the reference deployment (criterion 5): this tree and its sibling differ by one line."""
 
 import like_keras as lk
-from like_keras.backends import dora
 
 from kpi.tasks.arm_cell.arm_controller_py import ArmControllerPy
 from kpi.tasks.arm_cell.cell import CONFIG, LIBRARY, pick_cell

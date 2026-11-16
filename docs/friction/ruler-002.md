@@ -50,3 +50,9 @@ From lane CORE at M1, measured against the frozen ruler at `b76d5b2`. `kpi/` was
 ## Resolution (2026-11-15, dispatcher)
 
 See CONTRACT.md §15 (amendments A1-A7). Decided: A7, the ruler lane fixes it in the M0.1 commit.
+
+**Done (ruler lane, the M0.1 commit "kpi: M0.1 — ruler amendment A7").**
+- §1: `kpi/twin` splits the test into `test_ten_runs_hash_identical_at_10x_cpu_time` (default tier: ten identical hashes, each run ≥ 10× real time on `time.process_time()`) and `test_ten_runs_hash_identical_at_10x_wall_clock` (`timing`: the same, on the wall clock). Criterion 10 reads the first in the default tier, and both in the timing tier.
+- §2: `cell.py` and the eight `swaps/*/*/deploy.py` import the dora backend inside the function that builds the dora deployment. The backend swap now swaps `from like_keras.backends import inproc as backend` for `... dora as backend`, still one line; `kpi/swap_cost.py` reports 1 Deployment line per swap, as before.
+- §3: `emitter` and `build` live in `kpi/golden/instances.py`, which does not import the Arrow oracle; `kpi/churn` and `kpi/polyglot` import them from there.
+- §4: `kpi/surface.py` records a class's signature as `<name>.__init__`.

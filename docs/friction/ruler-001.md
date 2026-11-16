@@ -23,3 +23,5 @@ CONTRACT §11, criterion 2, says to pin the A/B to cores 20-21 (`kpi/bench_overh
 ## Resolution (2026-11-15, dispatcher)
 
 See CONTRACT.md §15 (amendments A1-A7). Decided: A7, the ruler lane fixes it in the M0.1 commit.
+
+**Done (ruler lane, the M0.1 commit "kpi: M0.1 — ruler amendment A7").** §1-2: `kpi/score.py:run_bench` runs `kpi/bench_overhead.py` through `kpi/run.py`'s `namespaced()` line and `environment()`, the ones the suites use, with `--pin 20,21` when `KPI_TIER=timing` (`--no-cross-process` otherwise). §3: `score.py` freezes the 15 `validgraphs` ids (`VALID_GRAPHS`); any of them that skips, errors or is missing counts as a false positive.

@@ -9,7 +9,9 @@ and PID namespace). The denominators are frozen lists of test ids below: a test 
 counts as failed, so the empty repo scores 0 and a skip can never raise a score.
 
 Timing numbers (criterion 2, and the timing tests of criterion 1) count only in the timing tier (KPI_TIER=timing,
-rack unpowered or the fixed cloud VM); elsewhere they are reported, labelled, and scored 0.
+rack unpowered or the fixed cloud VM); elsewhere they are reported, labelled, and scored 0. Criteria 9 and 10 read a
+timing-marked twin as well in the timing tier: health ok when unloaded, and >= 10x real time on the wall clock
+(the default tier reads warn/Overrun as honest and >= 10x on CPU time; ruler-002 §1, ruler-003).
 """
 
 from __future__ import annotations
@@ -46,6 +48,10 @@ COMBINATIONS = ["python-inproc", "python-dora", "cpp-inproc", "cpp-dora"]
 ATTACH = ["test_list_ports_within_1s", "test_attach_receive_and_write", "test_clients_cannot_hurt_the_node",
           "test_attach_needs_an_explicit_address"]
 SWAPS = ["process", "language", "backend", "host"]
+VALID_GRAPHS = [("test_valid_graph_accepted", name) for name in (
+    "cross_group_cycle", "exposed_input_unwired", "fan_out", "fifo_on_python_ignored", "gather", "lagged_cycle", "linear",
+    "multi_process_dora", "native_group", "native_own_process_dora", "nested_system", "no_place",
+    "python_object_in_process", "rateless_queue")] + [("test_reference_cell_describes", None)]
 BLOCKED_STEPS = {"arm_cell.PickPlanner", "arm_cell.TargetFile", "arm_cell.MoteusBusPy", "arm_cell.JtcPy",
                  "arm_cell.GuardPy", "empty.Empty", "empty.Talker", "relay.Count", "relay.Double", "relay.Save",
                  "pipeline.Count", "pipeline.Double", "pipeline.Save"}
@@ -62,8 +68,8 @@ def lower_is_better(x: float | None, target: float, zero: float) -> float:
 # ---------------------------------------------------------------- running things
 
 
-def run_json(command: list[str], timeout: float = 1800.0) -> dict:
-    env = dict(os.environ, PYTHONPATH=f"{REPO / 'src'}:{REPO}")
+def run_json(command: list[str], timeout: float = 1800.0, env: dict[str, str] | None = None) -> dict:
+    env = env or dict(os.environ, PYTHONPATH=f"{REPO / 'src'}:{REPO}")
     try:
         result = subprocess.run(command, cwd=REPO, env=env, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
@@ -91,6 +97,18 @@ def run_suites(suites: list[str], timeout: float) -> dict[str, dict[str, list[st
         runner.run(suite, [], timeout_s=timeout)
         results[suite] = parse_junit(junit)
     return results
+
+
+def run_bench(timing: bool) -> dict:
+    """kpi/bench_overhead.py through kpi/run.py's private network and PID namespace, the line the suites run under:
+    in the shared namespace the production dora answers on 127.0.0.1:6012 and the private dora of the cross-process
+    A/B refuses, so that quarter of criterion 2 could never score (ruler-001 §1). The timing tier pins the A/B to
+    cores 20-21 (CONTRACT §11 criterion 2; ruler-001 §2)."""
+    from kpi import run as runner
+
+    arguments = ["--pin", "20,21"] if timing else ["--no-cross-process"]
+    return run_json(runner.namespaced([sys.executable, str(KPI / "bench_overhead.py"), *arguments]), timeout=20000,
+                    env=runner.environment())
 
 
 def parse_junit(path: pathlib.Path) -> dict[str, list[str]]:
@@ -278,26 +296,38 @@ def reach(junit: dict) -> dict:
     return {"score": sum(parts.values()) / 5, "parts": parts}
 
 
-def facilities(junit: dict, surface: dict) -> dict:
+def facilities(junit: dict, surface: dict, timing: bool) -> dict:
     found = junit.get("facilities", {})
     per = {name: all(passed(found, f"test_{name}", combo) for combo in COMBINATIONS) for name in FACILITIES}
+    if timing:  # WHY: the default tier's test_health accepts an honest warn/Overrun; unloaded, it must say ok (ruler-003)
+        unloaded_ok = all(passed(found, "test_health_ok_when_unloaded", combo) for combo in COMBINATIONS)
+        per["health"] = per["health"] and unloaded_ok
     share = ((surface.get("size") or {}).get("facility") or {}).get("share")
     count = sum(per.values())
     score = 0.0 if share is not None and share > 0.30 else clamp((count - 3) / (7 - 3))
     return {"score": score, "measured": f"{count}/7", "facilities": per, "facility_sloc_share": share}
 
 
-def testability(junit: dict) -> dict:
+def testability(junit: dict, timing: bool) -> dict:
     twin = junit.get("twin", {})
+
+    def deterministic_10x(placement: str) -> bool:
+        # WHY two ids: ">= 10x real time" reads CPU time in the default tier, where the wall clock measures the
+        # scheduler's starvation of a niced process (ruler-002 §1), and the wall clock as well in the timing tier.
+        cpu = passed(twin, "test_ten_runs_hash_identical_at_10x_cpu_time", placement)
+        if not timing:
+            return cpu
+        return cpu and passed(twin, "test_ten_runs_hash_identical_at_10x_wall_clock", placement)
+
     parts = {
         "twin_swap": passed(twin, "test_twin_swap_is_one_config_line"),
-        "deterministic_10x": passed(twin, "test_ten_runs_hash_identical_at_10x", "fallback"),
+        "deterministic_10x": deterministic_10x("fallback"),
         "replay": passed(twin, "test_replay_reproduces_the_run"),
         "isolation": passed(twin, "test_component_alone"),
     }
     no_sleep = passed(junit.get("blackbox", {}), "test_no_wall_clock_sleep_in_twin_tests")
     return {"score": sum(parts.values()) / 4 if no_sleep else 0.0, "parts": parts, "no_wall_clock_sleep": no_sleep,
-            "same_box_deterministic": passed(twin, "test_ten_runs_hash_identical_at_10x", "same_box")}
+            "same_box_deterministic": deterministic_10x("same_box")}
 
 
 def attach(junit: dict) -> dict:
@@ -313,6 +343,10 @@ def wiring_checks(junit: dict) -> dict:
     caught = sum(passed(miswire, "test_miswire_rejected", name) for name in CASES)
     valid = junit.get("validgraphs", {})
     false_positives = [test for test, outcomes in valid.items() if any(o.endswith("failed") for o in outcomes)]
+    # WHY every frozen id: a valid graph that skips, errors or is missing was never shown to be accepted, so it counts
+    # as a false positive like a refused one (ruler-001 §3; the README's "a skip can never raise a score").
+    false_positives += [f"{test}[{param}]" if param else test for test, param in VALID_GRAPHS
+                        if not passed(valid, test, param)]
     accepted_any = any(o.endswith("passed") for outcomes in valid.values() for o in outcomes)
     share = caught / len(CASES)
     score = 0.0 if false_positives or not accepted_any else clamp((share - 0.5) / 0.5)
@@ -353,8 +387,7 @@ def main(argv: list[str] | None = None) -> int:
     static = run_json([sys.executable, str(KPI / "blackbox.py")])
     surface = run_json([sys.executable, str(KPI / "surface.py"), "--api", "--tasks", "--size"])
     swaps = run_json([sys.executable, str(KPI / "swap_cost.py")])
-    bench = run_json([sys.executable, str(KPI / "bench_overhead.py")] + ([] if timing else ["--no-cross-process"]),
-                     timeout=20000)
+    bench = run_bench(timing)
     linter = import_linter()
     board_gates = gates(junit, arguments)
     criteria = {
@@ -366,8 +399,8 @@ def main(argv: list[str] | None = None) -> int:
         "6_dora_insulation": dora_insulation(junit),
         "7_compactness": compactness(surface),
         "8_reach": reach(junit),
-        "9_facilities": facilities(junit, surface),
-        "10_testability": testability(junit),
+        "9_facilities": facilities(junit, surface, timing),
+        "10_testability": testability(junit, timing),
         "11_attach": attach(junit),
         "12_wiring_checks": wiring_checks(junit),
     }

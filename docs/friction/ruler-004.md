@@ -40,3 +40,5 @@ Two frozen tests cannot pass on a correct runtime. Both fixes are one line in `k
 ## Resolution (2026-11-15, dispatcher)
 
 See CONTRACT.md §15 (amendments A1-A7). Decided: A7, the ruler lane fixes it in the M0.1 commit.
+
+**Done (ruler lane, the M0.1 commit "kpi: M0.1 — ruler amendment A7").** §1: both T10 tests expose the echo box's other inputs (`ECHO_INPUTS` in `kpi/polyglot/test_polyglot.py`, the line given above). §2: A2 lists the native threads inside the `try` block, while the deployment runs.

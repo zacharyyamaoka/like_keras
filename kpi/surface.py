@@ -182,7 +182,10 @@ for name in top:
                 pass
     if callable(obj):
         try:
-            signatures.append((name, inspect.signature(obj.__init__ if inspect.isclass(obj) else obj)))
+            # WHY "<name>.__init__": the `.__init__` exclusion below must see a class's constructor as one, or the
+            # contract's own Component(**params) (the Params fields, CONTRACT §4.1) counts as an option bag (ruler-002 §4)
+            signatures.append((f"{name}.__init__" if inspect.isclass(obj) else name,
+                               inspect.signature(obj.__init__ if inspect.isclass(obj) else obj)))
         except (TypeError, ValueError):
             pass
 backends = []

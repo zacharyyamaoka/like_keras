@@ -20,13 +20,14 @@ nice -n 19 ionice -c3 cmake --build /home/bam/like_keras/build -j 2
 ```
 
 - **`kpi/run.py <suite>`** runs pytest in a private network and PID namespace (`bwrap --unshare-net --unshare-pid`). The dora suites start their own dora 0.5.0 coordinator and daemon there, never the production one on 127.0.0.1:6012. If a dora fixture finds anything listening on 6012, it refuses and skips. The run writes `build/kpi/junit/<suite>.xml`.
-- **`kpi/score.py`** writes `kpi/scoreboard.json` (gitignored): the four gates, the 12-number vector and the total. It compares them with the committed `kpi/baseline.json` (the empty repo, all 0).
+- **`kpi/score.py`** writes `kpi/scoreboard.json` (gitignored): the four gates, the 12-number vector and the total. It compares them with the committed `kpi/baseline.json` (the empty repo, all 0). It runs `kpi/bench_overhead.py` in the same private namespace as the suites (`--pin 20,21` in the timing tier), so the cross-process A/B gets its private dora.
 - **What counts as a pass:**
   - Every denominator is a frozen list of test ids, so a test that skips, errors or is missing counts as failed. A test id counts only if every one of its parametrizations passes.
   - A placement or a backend is a parametrization, so a test passes only if it passes on every placement and every backend it names.
 - **Two tiers:**
   - The default tier runs everywhere.
   - Timing assertions (pytest marker `timing`, criterion 2, A1, A2, T2, T3, T4, T9's per-edge cost) run only with `KPI_TIER=timing`: with the rack unpowered, or on the fixed cloud VM. Elsewhere they skip and score 0.
+  - Two checks have a default-tier form and a `timing` twin (M0.1). Criterion 10's ≥ 10× real time is measured on CPU time by default and on the wall clock as well in the timing tier. Criterion 9's `health` accepts an honest `warn`/`Overrun` by default, and must also say `ok` when unloaded in the timing tier.
   - `kpi/load.py` refuses more than 2 spinners outside the timing tier, because the rack is powered all day and the live-rig cap applies.
 - **Where kpi writes:** nothing outside the repo. Temporary files go to `build/kpi/tmp` and the private dora's working directory is `build/kpi/dora-<pid>`.
 

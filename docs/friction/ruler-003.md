@@ -44,3 +44,5 @@ From lane CORE, M1. `kpi/` was not touched; the ruler lane owns any fix.
 ## Resolution (2026-11-15, dispatcher)
 
 See CONTRACT.md §15 (amendments A1-A7). Decided: A7, the ruler lane fixes it in the M0.1 commit.
+
+**Done (ruler lane, the M0.1 commit "kpi: M0.1 — ruler amendment A7").** `test_health` accepts `ok`, or `warn` with code `Overrun`, in an operational period; any other `warn`, `error` or `unknown` still fails it. The new `test_health_ok_when_unloaded` (`timing`) asserts `ok`. In the timing tier, criterion 9's `health` needs both.
