@@ -8,7 +8,11 @@ as lk-dora-host is: SIGXCPU blocked in every thread, so the box runs its sentine
 - a host thread that runs past RLIMIT_RTTIME's soft limit is demoted by the sentinel and the process lives;
 - lk_stop while a grant for the daemon is in flight (a slow busctl stand-in holds rtkit's call): after the host has
   exited, the daemon has no realtime thread;
-- lk_stop while the sentinel's re-promotion is in flight (held the same way): no thread of the host is realtime after.
+- lk_stop while the sentinel's re-promotion is in flight (held the same way): no thread of the host is realtime after;
+- lk_stop while a raise for the daemon is held right before its rtkit call is decided (tests/cpp/hold_prlimit.c,
+  LD_PRELOADed), the raise going on after the stop: no call goes out for a process realtime has ended for, so after
+  the host has exited the daemon has no realtime thread. WHY (library verifier, the round after A31-A42): a mutant
+  of busctl() without its ladder.ended check passed the other scenarios.
 Each runs on the runtime as built and on a mutant of cpp/src/rt.cpp that must fail it. It needs rtkit's route (the
 host's PID namespace, rtkit on the system bus, no rtprio limit; kpi/blackbox/rt_ladder_child.py --oracle), else it
 skips naming why. No timing is asserted (the rack is powered on this host). rtkit's per-user limits are shared with
@@ -52,6 +56,8 @@ MUTANTS = {
     "stop_waits_for_others_only": ("    return call.first != 0 && std::count(",
                                    "    return call.first != 0 && call.second != ::getpid() && std::count(",
                                    "repromote_at_stop"),
+    "ended_not_checked": ("    if (std::count(ladder.ended.begin(), ladder.ended.end(), process) == 0 && free != ",
+                          "    if (true && free != ", "raise_after_stop"),
 }
 
 
@@ -68,9 +74,10 @@ def rtkit_route():
 
 @pytest.fixture(scope="module")
 def spinner():
-    """tests/cpp's libspinner.so (tests/test_rt_ladder.py builds the same target)."""
+    """tests/cpp's libspinner.so (tests/test_rt_ladder.py builds the same target), and the hold beside it."""
     for command in (["cmake", "-S", str(ROOT / "tests" / "cpp"), "-B", str(BUILD), "-DCMAKE_BUILD_TYPE=Release"],
-                    ["nice", "-n", "19", "cmake", "--build", str(BUILD), "--target", "spinner", "-j", "1"]):
+                    ["nice", "-n", "19", "cmake", "--build", str(BUILD), "--target", "spinner", "hold_prlimit", "-j",
+                     "1"]):
         done = subprocess.run(command, capture_output=True, text=True, timeout=900, check=False)
         assert done.returncode == 0, done.stdout[-3000:] + done.stderr[-3000:]
     return BUILD / "libspinner.so"
@@ -83,6 +90,9 @@ def probe(library: pathlib.Path, scenario: str, directory: pathlib.Path) -> tupl
     env = subprocess_env() | {"PATH": f"{directory}{os.pathsep}{os.environ.get('PATH', os.defpath)}",
                               "LK_SLOW_MARK": str(directory / "held"), "LK_SLOW_S": str(SLOW_S),
                               "LK_SLOW_PID": "0", "LK_SLOW_TID": "0"}
+    if scenario == "raise_after_stop":
+        env |= {"LD_PRELOAD": str(BUILD / "libhold_prlimit.so"), "LK_HOLD_MARK": str(directory / "raise_held"),
+                "LK_HOLD_RELEASE": str(directory / "raise_released")}
     done = subprocess.run([python(), str(ROOT / "tests" / "io_ladder_probe.py"), str(library), str(kpi_cpus()[0]),
                            scenario], cwd=ROOT, env=env, capture_output=True, text=True, timeout=120)
     lines = [line for line in done.stdout.splitlines() if line.startswith("{")]
@@ -110,9 +120,11 @@ def failures(scenario: str, code: int, found: dict) -> list[str]:
             wrong.append("the sentinel's re-promotion never started (no call held)")
         if (found.get("spinner", {}).get("after_stop") or [1])[0] != os.SCHED_OTHER:
             wrong.append(f"a re-promotion in flight at lk_stop outlived it: {found.get('spinner')}")
+    if tried and scenario == "raise_after_stop" and not found.get("raise_held"):
+        wrong.append("the daemon's raise was never held before its rtkit call (no hold)")
     if tried and scenario == "stop_while_raising" and not found.get("raise_in_flight"):
         wrong.append("the daemon's grant was never in flight (no call held)")
-    if scenario == "stop_while_raising":
+    if scenario in ("stop_while_raising", "raise_after_stop"):
         daemon = found.get("daemon")
         if daemon:
             time.sleep(SLOW_S + 1.0)
@@ -142,7 +154,7 @@ def judged_probe(library: pathlib.Path, scenario: str, directory: pathlib.Path, 
     return judged(attempt)
 
 
-@pytest.mark.parametrize("scenario", ["io_spin", "stop_while_raising", "repromote_at_stop"])
+@pytest.mark.parametrize("scenario", ["io_spin", "stop_while_raising", "repromote_at_stop", "raise_after_stop"])
 def test_the_ladder_holds(scenario, rtkit_route, spinner, tmp_path):
     assert judged_probe(spinner, scenario, tmp_path, lambda wrong, found: wrong) == []
 

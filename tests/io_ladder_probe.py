@@ -11,6 +11,9 @@ sentinel. tests/cpp/spinner.cpp's box starts at 100 Hz with fifo=80 (it never sp
                      lk_stop comes while it is in flight, and this process exits at once, as lk-dora-host does
   repromote_at_stop  io_spin's thread, demoted, waits for the sentinel's re-promotion 10 s later; the slow stand-in
                      holds that call, and lk_stop comes while it is in flight
+  raise_after_stop   a stand-in daemon's raise is held right before its rtkit call is decided (tests/cpp/hold_prlimit.c,
+                     LD_PRELOADed: LK_HOLD_PID, LK_HOLD_MARK, LK_HOLD_RELEASE); lk_stop comes, sweeps and settles, then
+                     the raise goes on and returns, and this process exits: no call may go out for that daemon
 It prints one JSON line: what each thread ran under when, every realtime thread of this process after lk_stop, the
 stand-in daemon's pid, this probe's; it exits 0 when it lived. The slow stand-in holds the call for LK_SLOW_PID /
 LK_SLOW_TID, which this probe sets once only that call is still to come (tests/test_io_ladder.py writes the stand-in).
@@ -122,6 +125,25 @@ def main(library_path: str, cpu: int, scenario: str) -> None:
         report["raise_in_flight"] = mark.exists()
         library.lk_stop(box)
         report["daemon_after_stop"] = policy(daemon.pid)
+    elif scenario == "raise_after_stop":
+        daemon = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"], start_new_session=True,
+                                  stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        report["daemon"] = daemon.pid
+        mark, release = pathlib.Path(os.environ["LK_HOLD_MARK"]), pathlib.Path(os.environ["LK_HOLD_RELEASE"])
+        os.environ["LK_HOLD_PID"] = str(daemon.pid)  # the hold takes this raise's RLIMIT_RTTIME, before its call
+        returned: dict = {}
+        raising = threading.Thread(
+            target=lambda: returned.update(raised=library.lk_raise(box, daemon.pid, daemon.pid, 15)), daemon=True)
+        raising.start()
+        deadline = time.monotonic() + 10.0
+        while not mark.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        report["raise_held"] = mark.exists()
+        library.lk_stop(box)  # realtime ends for the daemon: swept, settled, nothing in flight for it
+        report["daemon_after_stop"] = policy(daemon.pid)
+        release.touch()
+        raising.join(10.0)  # the raise goes on: a call it sends goes out and is answered before this process exits
+        report["raise_returned"] = returned.get("raised")
     report["realtime_after_stop"] = realtime_threads()
     print(json.dumps(report), flush=True)
     os._exit(0)  # as lk-dora-host: _exit right after the stop, a request still in flight left to its fate
