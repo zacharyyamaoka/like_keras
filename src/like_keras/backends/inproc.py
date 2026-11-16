@@ -272,7 +272,6 @@ class NativeGroup:
             (self.hot.lk_take, [pointer, ctypes.c_uint32, pointer], ctypes.c_int),
         ):
             function.argtypes, function.restype = argtypes, restype
-        self.taken = _arrow().Array()  # where lk_take moves each output (it is copied out and released at once)
 
     def activate(self, now: float) -> None:
         import ctypes
@@ -356,7 +355,12 @@ class NativeGroup:
     def _drain(self, sent: float, end: int, begin: int = 0) -> None:
         import ctypes
 
-        taken, facility = ctypes.addressof(self.taken), len(self.outs) - len(FACILITY_PORTS)
+        # WHY a destination per call, never one per group: the pump thread (loop) and the facilities thread (publish)
+        # drain at once, and a shared struct let one thread's lk_take overwrite the other's message between its take
+        # and its release: a double release, heap-use-after-free under ASan, and the always-on node's startup
+        # SIGSEGV (6 in 102 starts at 8f09ce7, rack powered, cores 22-23).
+        received = _arrow().Array()  # where lk_take moves each output (it is copied out and released at once)
+        taken, facility = ctypes.addressof(received), len(self.outs) - len(FACILITY_PORTS)
         for port in range(begin, end):
             name = self.outs[port]
             if port >= facility and name != "log" and not self.sinks[name]:
