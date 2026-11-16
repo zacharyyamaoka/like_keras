@@ -46,3 +46,16 @@ A related reading of A6 that also cost a workaround: `lk_describe()` constructs 
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A31-A36); its frozen test comes in ruler M0.5 (A38).
+
+## Verified by the consumer (2026-11-16, adapting to A31-A37)
+
+Resolved by A33. `guard_timeout_s` defaults to NaN (off) again in `ChainParams`, in the Python peer's `Params` and in `node_ini.params()`, which no longer turns the INI's NaN into 0; 0 is still off.
+
+- The repro of this note now loads (built against adbac3b):
+  ```
+  "params": {"guard_timeout_s": NaN}}
+  lk.native ok; default guard_timeout_s = nan
+  ```
+- `lk/tests/test_features.py::test_guard_timeout_nan_or_zero_is_off`: the `.so`'s own default reads back through `lk_describe()` and `lk.native()` as NaN, and with `guard_timeout_s` NaN or 0 a guard that goes silent mid-plan stops nothing in either placement (the plan runs to its end, the same commands). Every cell placement now passes NaN through JSON to `lk_create` and to `lk-dora-host` (T1 target).
+- Not addressed by A33, and still how the port works: a factory that refuses an empty joint table makes `lk_describe()` list no ports, so that check stays in `activate()`. Found meanwhile and filed as consumer-020: a native box's `describe()` shows only the params its config gave, so the test reads the defaults through `lk_describe()` itself.
+- bam_ws `claude/cpp-controller-nodes-f9a521` @ `ed5b76c96`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`, built and run against a `git archive` of like_keras `adbac3b` (the live checkout was being edited by the A35 lane); `lk/tests` green 3 of 3 back to back in the lane's sandbox, 32 passed and 1 skipped (a timing-tier test) each, rack powered, cores 22-23, load 14-37, not the timing tier.

@@ -33,3 +33,24 @@ Nothing ships that needs both. The twin config keeps the deadman off (`guard_tim
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A31-A36); its frozen test comes in ruler M0.5 (A38).
+
+## Verified by the consumer (2026-11-16, adapting to A31-A37)
+
+Resolved by A36. The always-on form now runs a guard as its own attach client (`lk/attached_guard.py`: it confirms every state it judged on `verdict`) beside the planner (`lk/attached_planner.py`, on `trajectory`), each in its own process, both recording their proxy's health.
+
+`lk/tests/test_target.py::test_always_on_planner_and_guard_lapse_independently` (dora, `guard_timeout_s` 1.0 s), 3 of 3:
+
+```
+  1. planner + guard: 490 moving commands, 0 guard_silent stops; LeaseHeld refusals: {'guard-1': 0, 'planner': 0, 'guard-2': 0}
+  2. guard killed: guard_silent stop 0.97 s after the kill; then 0 moving commands; plans_refused 3.0 -> 7.0 (refused_reason [15.0]); guard_age_s 2.51-4.51 s
+  3. guard back: the arm moved again 0.56 s after it attached
+  4. planner killed: 0 moving commands after the running plan; guard_age_s max 0.030 s; plans_adopted [23.0]; 0 guard_silent stops
+```
+
+(run 1; runs 2 and 3: 473 and 490 moving commands; the stop 0.97 s after the kill both times; the arm moved again 0.54 and 0.55 s after the new guard attached; `guard_age_s` max 0.030 and 0.040 s with the planner gone.)
+
+- Killing the guard lapses `verdict` only: the deadman stops the running plan, and the planner's plans keep landing and are refused by the deadman (reason 15, guard_silent), never by the lease.
+- Killing the planner lapses `trajectory` only: the arm holds once the running plan ends, and the guard's confirmations keep arriving.
+- Neither client's writes were ever refused.
+- Why 1.0 s and not the raw node's 0.3 s: this lane's dora boundary still delays states by up to ~0.3 s (consumer-018, A35 not in adbac3b). This is a lease test, not a deadman timing test.
+- bam_ws `claude/cpp-controller-nodes-f9a521` @ `ed5b76c96`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`, built and run against a `git archive` of like_keras `adbac3b` (the live checkout was being edited by the A35 lane); `lk/tests` green 3 of 3 back to back in the lane's sandbox, 32 passed and 1 skipped (a timing-tier test) each, rack powered, cores 22-23, load 14-37, not the timing tier.

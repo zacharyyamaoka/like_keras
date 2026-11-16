@@ -53,3 +53,11 @@ It works. The attribute `lk.native()` and `attach` already set is honoured by `s
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A31-A36); its frozen test comes in ruler M0.5 (A38).
+
+## Verified by the consumer (2026-11-16, adapting to A31-A37)
+
+Resolved by A32. `verdict = lk.In(DiagnosticRecord, fresh=True, optional=True)` in `lk/arm_controller_py.py`; the private-attribute helper `_optional()` is deleted, and `forward(self, trajectory, verdict)` takes `verdict` with no default, so the fallback now relies on the library passing `None` for the unwired input.
+
+- Unwired (the cell, T1, the swap tests): the fallback passes `describe()` and runs; T1's 850 commands and 13 log lines are the same in target, same_box and fallback to 1e-9 rad.
+- Wired to a guard (`test_features.py`: a silent guard stops the plan at 1.08 s, 100 ms after the last confirmed state; Stop and Brake requests): both placements give the same commands.
+- bam_ws `claude/cpp-controller-nodes-f9a521` @ `ed5b76c96`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`, built and run against a `git archive` of like_keras `adbac3b` (the live checkout was being edited by the A35 lane); `lk/tests` green 3 of 3 back to back in the lane's sandbox, 32 passed and 1 skipped (a timing-tier test) each, rack powered, cores 22-23, load 14-37, not the timing tier.

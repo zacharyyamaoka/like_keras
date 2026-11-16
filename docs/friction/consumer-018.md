@@ -62,3 +62,9 @@ Nothing in the library's place: the controller cannot reach `lk-dora-host`'s thr
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A31-A36); its frozen test comes in ruler M0.5 (A38).
+
+## Status from the consumer (2026-11-16, adapting to A31-A37)
+
+Not verified yet: A35 is not in like_keras `adbac3b`, the sha this adaptation built against (its lane was editing `cpp/hosts` and `cpp/src` in the live checkout during the run). The A/B was not re-run, because without A35 it would only repeat M3′'s numbers. The port needs no change for A35 (the RT thread, the boundary threads and the accounting are the library's), so the next step is `lk/ab_compare.py --seconds 30` on the A35 sha, which ruler M0.5's `consumer::test_A35_boundary_within_noise_of_raw_dora` also runs.
+
+One reading for A35's lane, from the A1 runs of this adaptation (60 s each, the same test as M3′): the planner's hand-off p99 was 0.118, 1.128 and 1.608 ms at load 20-23, 14-18 and 30-37, against M3′'s 2.0-5.6 ms (the RT thread's worst round p99 lateness 1.7, 1.2 and 12.6 ms; 0, 0 and 2 overruns). A late start against the stamp happened in 1 run of 3 (2 plans, worst 51.7 ms, at load 30-37). Load-labelled, not judged.

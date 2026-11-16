@@ -51,3 +51,17 @@ A second finding, a pattern rather than a defect, is for the docs. A17 says a co
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A31-A36); its frozen test comes in ruler M0.5 (A38).
+
+## Verified by the consumer (2026-11-16, adapting to A31-A37)
+
+Resolved by A31. `PlanIn::from(const rm::JointTrajectory&, const MoteusChain&)` reads the chain's own `config()` and `plan_samples()`, both set by the constructor and `activate()`. The process-wide `g_admission` pointer, the "one moteus chain per process" refusal and the port's own "the chain is not active" path are deleted: like_keras refuses a push outside `activate()`..`deactivate()` itself (`Box::admit`), and `deactivate()` waits for a conversion in flight, so the unsolved race of this note is gone too. `lk/arm_controller.cpp` lost 16 SLOC.
+
+- `lk/tests/test_lifecycle.py::test_two_chains_in_one_process_each_convert_against_their_own_config` (replaces `test_a_second_chain_in_the_process_is_refused`): two boxes of the one `.so` in one process (same_box, lockstep). Chain A has the twin's 7 joints and `plan_samples` 4096; chain B has 3 boards renamed `b_j1`, `b_w1`, `b_claw` and `plan_samples` 100. Each run, 3 of 3:
+  ```
+  chain a (7 joints): ['plan 1 adopted 0 s after its stamp', 'trajectory refused: column 0 names no joint of this chain', 'plan 2 adopted -2.22045e-16 s after its stamp']; each joint moved 0.050000 rad
+  chain b (3 joints): ['plan 1 adopted 0 s after its stamp', 'trajectory refused: column 0 names no joint of this chain', 'trajectory refused: 200 samples, more than plan_samples']; each joint moved 0.050000 rad
+  ```
+  Each refuses the plan naming the other's joint, and the 200-sample plan is adopted by A and refused by B.
+- The RT-path probe (`test_rt_path.py`, A2's load) still reads, 3 of 3: `0 allocations and 0 locks after 2.0 s ... 117-119 plans adopted, converted on the RT thread 0.0, copied there 0.0`; the copy mutant is still caught (66 allocations, 13 plans copied).
+- Left (filed as consumer-021): a push the window refuses, or one whose conversion throws, is counted nowhere.
+- bam_ws `claude/cpp-controller-nodes-f9a521` @ `ed5b76c96`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`, built and run against a `git archive` of like_keras `adbac3b` (the live checkout was being edited by the A35 lane); `lk/tests` green 3 of 3 back to back in the lane's sandbox, 32 passed and 1 skipped (a timing-tier test) each, rack powered, cores 22-23, load 14-37, not the timing tier.

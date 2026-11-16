@@ -1,0 +1,37 @@
+# consumer-021: a push whose conversion throws, or that comes outside A31's activate/deactivate window, is refused and counted nowhere (controllers lane, adapting to A31-A37, 2026-11-16)
+
+**The ask.** Count every push the box refuses, per input, in the box's metrics in both hosts (a `refused.<input>` beside `drops.<input>`, or the attach socket's `refused_writes.<input>` name), and log the first refusal of each kind on the box's `log` port, with the exception's `what()` when the conversion threw. The raw node's plan mailbox counts every plan it drops or refuses, and its exit report says why.
+
+## What I tried
+
+A31 lets `PlanIn::from` take its chain, so the controller's process-wide config pointer is gone, and with it the port's own "trajectory refused: the chain is not active" path: like_keras now refuses a push outside `activate()`..`deactivate()` itself (`cpp/src/rt.cpp` `Box::admit`). I checked what a deployer sees of such a refusal, and of the other one `admit()` makes: a conversion that throws ("Converted::from refused it (validation): counted as a refused push", `cpp/src/rt.cpp:736` at adbac3b).
+
+## Contract sections
+
+§15 A17 and A31 (the conversion and its window), §8 (metrics: `drops.<port>` for queues), §6.3 (`lk_push` returns -1 when refused).
+
+## Repro
+
+`lk/friction_repro/refused_conversion.cpp` (a box whose `Checked::from` throws on a negative stamp) and `refused_conversion.py` (20 plans at 10 Hz, real time, inproc; every other one has a negative stamp), like_keras adbac3b:
+
+```
+$SBX ~/like_keras/.venv/bin/python $PKG/lk/friction_repro/refused_conversion.py <build>/librefused_conversion.so <x>.mcap
+refused.box refused a JointTrajectory on trajectory          <- stderr, the first refusal only (inproc.py _push)
+sent 20 plans, 10 refused by the conversion
+last metrics round of refused.box: {'steps': 335.0, ..., 'overruns': 21.0, 'drops.log': 0.0, 'unreleased': 0.0}
+last metrics round of refused.box.taker: {'steps': 335.0, ..., 'input_age_s.trajectory': 1.56, 'taken': 10.0}
+log lines: []
+```
+
+- Ten refusals, no counter: the box record has `drops.log` and `unreleased`, the child record `input_age_s.trajectory`. `Box::admit` returns false and `Box::push` returns -1; nothing is bumped on that path (the "counted" in the comment at `rt.cpp:736` is not true).
+- The one line inproc prints is the host's own Python log of the box, not the box's `log` port, so a recording and an attach client never see it, and it is printed once per box whatever follows.
+- Under dora, `cpp/hosts/dora_host.cpp:417` and `:526` (adbac3b) call `push` and drop its return value: no line at all.
+
+## What I did instead
+
+The controller's conversion never throws. It returns a `PlanIn` whose `refusal` says why (unknown joint, named twice, shape, too long, and `mcn::fill_plan`'s checks), and the RT thread logs the line and counts `plans_dropped` (`lk/arm_controller.cpp` `MoteusChain::admit`). That keeps the raw node's accounting, but every component with a converting input has to rebuild it, and a push the window refuses (a plan arriving during a stop, or while a restarted node activates) still leaves no trace.
+
+## Proposal
+
+- **Library fix.** `Box::push` bumps a per-input refused counter on every `-1`, published in the box record as `refused.<input>` in both hosts; the first refusal per input and reason is logged on the box's `log` port off the RT thread (the exception's `what()`, or "outside activate/deactivate"). The comment at `rt.cpp:736` then holds.
+- **New ruler test.** A conversion that throws on every other push: the box's metrics count exactly the refused ones, in inproc and dora, and a recording of `log` has a line naming the reason.

@@ -48,3 +48,12 @@ In my first version of the test I expected `start()` to raise. When it did not, 
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A31-A36); its frozen test comes in ruler M0.5 (A38).
+
+## Verified by the consumer (2026-11-16, adapting to A31-A37)
+
+Resolved by A34 and A39. In target, a refused activate is final, and `start()` raises naming it:
+
+- `test_T7_a_second_node_is_refused_target` now expects the raise. 3 of 3: `start()` of the second deployment raised after 1.01, 0.65 and 1.57 s with `a dora node refused: arm-controller: activate refused: moteus_arm.chain.activate(): REFUSED: another rack process holds the bus lock ...`; the second node was started once (one "activate refused" line in its log; before: 90-290 restarts in 3 s) and sent 0 frames, while the first sent 366-449 commands in the 3 s after.
+- New, `test_a_real_bus_is_refused_target`: `transport = fdcanusb` refused in `activate()` (the port is hold-only on a real bus) makes `start()` raise after 1.14, 1.31 and 0.88 s with `... transport fdcanusb refused: the like_keras port drives the twin only; hold-only: ...`; the node started once; no bus lock or state directory was made.
+- The stop-by-PID fix in the port's `dora_private.PrivateDora.stop()` stays.
+- bam_ws `claude/cpp-controller-nodes-f9a521` @ `ed5b76c96`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`, built and run against a `git archive` of like_keras `adbac3b` (the live checkout was being edited by the A35 lane); `lk/tests` green 3 of 3 back to back in the lane's sandbox, 32 passed and 1 skipped (a timing-tier test) each, rack powered, cores 22-23, load 14-37, not the timing tier.
