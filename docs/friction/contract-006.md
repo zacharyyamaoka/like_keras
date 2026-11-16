@@ -56,3 +56,7 @@ From lane DORA while building M3 (`src/like_keras/backends/dora/`, `cpp/hosts/`,
 11. **Under dora lockstep a native group needs `hz`.** lk-dora-host steps the box on its ticks. A rate-less native group is refused at `start()` with that fix. The same goes for two native groups in one process.
 12. **The attach server's own records.** The socket publishes health and metrics under the System's own path, which has no facility ports of its own: `refused_writes.<input>` (§9.3), `clients`, and `InputStale` for an exposed Out that stopped arriving for five periods of its producing group (T4: "InputStale visible on lk top during the stall"). `lk top` shows them with the components' records.
 13. **dataflow.yml is written as JSON.** JSON is YAML 1.2, so dora reads it, and like_keras needs no YAML library (the lean core). `kpi/churn::test_nodes_only` reads it with `yaml.safe_load`.
+
+## Resolution (2026-11-16, dispatcher)
+
+CONTRACT.md §15 A11 (items 1-3: lane core makes the three changes; the seam is `run.subscribe(leaf, port, sink)`), A12 (items 4-13 ratified), A13 (the init watchdog stays 2 s).
