@@ -901,9 +901,12 @@ class Run:
         elif state.mode == "initialization":
             level = "unknown"
         # CONTRACT §15 A22, as the C++ runtime: the worse of the component's own health(level, code) and the
-        # facility's; on a tie the component's code says more, but an Exception always wins (it no longer runs)
+        # facility's; on a tie the component's code says more, but an Exception always wins (it no longer runs).
+        # WHY a tie keeps the facility's message (health() carries none): the attach proxy's LeaseHeld names the
+        # holder only through its log.error line (CONTRACT §4.5; fix round 1 after the first consumer, item 4)
         if state.own is not None and code != "Exception" and SEVERITY[state.own[0]] >= max(SEVERITY[level], 1):
-            (level, code), message = state.own, ""
+            message = message if SEVERITY[state.own[0]] == SEVERITY[level] else ""
+            level, code = state.own
         return diagnostic(
             header=header(stamp=now),
             path=path(box.component),

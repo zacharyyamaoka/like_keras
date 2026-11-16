@@ -8,6 +8,7 @@
 #include <sched.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cstring>
@@ -39,7 +40,7 @@ ArrowArray encoded(double position) {
 }
 
 struct HealthRow {
-  std::string path, level, code, mode;
+  std::string path, level, code, mode, message;
 };
 
 std::vector<HealthRow> health_round(Box& box) {
@@ -48,7 +49,8 @@ std::vector<HealthRow> health_round(Box& box) {
   while (box.take(facility_port(box, 1), &array) == 1) {
     rm::DiagnosticRecord view{};
     EXPECT_TRUE(lk::detail::find_wire(rm::DiagnosticRecord::kHash)->decode(array, &view));
-    round.push_back({std::string(view.path), std::string(view.level), std::string(view.code), std::string(view.mode)});
+    round.push_back({std::string(view.path), std::string(view.level), std::string(view.code), std::string(view.mode),
+                     std::string(view.message)});
     lk::detail::release(array);
   }
   return round;
@@ -268,16 +270,21 @@ TEST(Health, HeldTheWorseOfTheComponentsAndTheFacilitysAndAnExceptionWins) {
   Box box{std::move(s)};
   std::string error;
   ASSERT_TRUE(box.start(kStepped, error)) << error;
-  std::vector<std::pair<std::string, std::string>> rounds;
+  std::vector<std::array<std::string, 3>> rounds;
   for (int round = 0; round < 6; ++round) {
     box.step(round * 0.02);
     const auto health = health_round(box);
     ASSERT_EQ(health.size(), 1u);
-    rounds.emplace_back(health[0].level, health[0].code);
+    rounds.push_back({health[0].level, health[0].code, health[0].message});
   }
-  const std::vector<std::pair<std::string, std::string>> expected{{"warn", "Degraded"}, {"warn", "Degraded"},
-                                                                  {"warn", "Degraded"}, {"error", "ErrorLogged"},
-                                                                  {"error", "Braked"},  {"error", "Exception"}};
+  // fix round 1 after the first consumer, item 4: on a tie the component's code wins and the facility's message
+  // stays (the component's health() carries none); a level worse than the facility's clears it
+  const std::vector<std::array<std::string, 3>> expected{{"warn", "Degraded", ""},
+                                                         {"warn", "Degraded", ""},
+                                                         {"warn", "Degraded", "a warning, same level"},
+                                                         {"error", "ErrorLogged", "refused: joint at 3"},
+                                                         {"error", "Braked", ""},
+                                                         {"error", "Exception", "broken"}};
   EXPECT_EQ(rounds, expected);
   const auto lines = log_round(box);
   EXPECT_NE(std::find(lines.begin(), lines.end(), "refused: joint at 3"), lines.end()) << "a %s argument";

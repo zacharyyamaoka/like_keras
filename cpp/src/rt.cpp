@@ -973,11 +973,14 @@ void Box::facilities(int which) {
         record.level = "unknown";
       }
       // CONTRACT §15 A22: the worse of the component's own health(level, code) and the facility's; on a tie the
-      // component's code says more, but an Exception always wins (the component no longer runs to say otherwise)
+      // component's code says more, but an Exception always wins (the component no longer runs to say otherwise).
+      // WHY a tie keeps the facility's message (health() carries none): as in Python, where the attach proxy's
+      // LeaseHeld names the holder only through its log.error line (§4.5; fix round 1, item 4)
       const auto [own_level, own_code] = own_health(child);
       if (own_level != nullptr && record.code != "Exception" &&
           severity(own_level) >= std::max(severity(record.level), 1)) {
-        record.level = own_level, record.code = own_code != nullptr ? own_code : "", message.clear();
+        if (severity(own_level) > severity(record.level)) message.clear();
+        record.level = own_level, record.code = own_code != nullptr ? own_code : "";
       }
       child.warning.clear(), child.logged_error.clear();
       record.header.stamp = at, record.path = name_of(index), record.message = message, record.mode = kModes[mode];

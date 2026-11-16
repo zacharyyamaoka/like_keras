@@ -80,9 +80,12 @@ class Refused(lk.Component):
     class Params:
         code: str = "LeaseHeld"
         then_raise: bool = False
+        holder: str = ""  # each step from 0.25 s logs the proxy's refusal naming it, as attach's proxy does
 
     def forward(self):
         if self.now() >= 0.25:
+            if self.params.holder:
+                self.log.error(f"write refused: the lease is held by {self.params.holder} (lease held)")
             self.health("error", self.params.code)  # CONTRACT §15 A22, replacing A11's internal state.code
         if self.params.then_raise and self.now() >= 1.25:
             raise RuntimeError("forward failed after the refusal")
@@ -126,7 +129,7 @@ def test_an_input_not_marked_optional_is_still_refused_unbound():
 # ---------------------------------------------------------------- (b) health.code from the component's state
 
 
-def health_of(params: dict) -> list:
+def health_of(params: dict, message: bool = False) -> list:
     s = lk.System("coded")
     subject = s.add(Refused(**params), "subject")
     sink = s.add(KeepHealth(), "sink", value=subject.health)
@@ -135,7 +138,7 @@ def health_of(params: dict) -> list:
     dep.place(sink)
     dep.start(until=2.5)  # facilities at 0, 1 and 2
     dep.stop()
-    return [(row.header.stamp, row.level, row.code) for row in sink.rows]
+    return [(row.header.stamp, row.level, row.code, *((row.message,) if message else ())) for row in sink.rows]
 
 
 def test_health_code_is_the_components_own():
@@ -143,6 +146,18 @@ def test_health_code_is_the_components_own():
         (0.0, "ok", ""),
         (1.0, "error", "LeaseHeld"),
         (2.0, "error", "LeaseHeld"),
+    ]
+
+
+def test_lease_held_names_the_holder():
+    """CONTRACT §4.5: a refused proxy's health goes error, code LeaseHeld, naming the holder. Its log.error line (the
+    facility's ErrorLogged) ties with its own error, so the code is the proxy's and the message the line's (fix round 1
+    after the first consumer, item 4: A22's tie rule had cleared it)."""
+    held = "write refused: the lease is held by planner-a (lease held)"
+    assert health_of({"code": "LeaseHeld", "holder": "planner-a"}, message=True) == [
+        (0.0, "ok", "", ""),
+        (1.0, "error", "LeaseHeld", held),
+        (2.0, "error", "LeaseHeld", held),
     ]
 
 

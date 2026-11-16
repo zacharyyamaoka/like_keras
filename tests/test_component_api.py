@@ -115,7 +115,7 @@ class Diagnoses(lk.Component):
         self.rows = []
 
     def forward(self, value):
-        self.rows.append((round(value.header.stamp, 6), value.level, value.code))
+        self.rows.append((round(value.header.stamp, 6), value.level, value.code, value.message))
 
 
 def test_health_rounds_combine_the_components_level_with_the_facilitys():
@@ -127,13 +127,15 @@ def test_health_rounds_combine_the_components_level_with_the_facilitys():
     dep.place(sink)
     dep.start(until=6.5)
     dep.stop()
+    # fix round 1 after the first consumer, item 4: on a tie the component's code wins and the facility's message
+    # stays (health() carries none); a level worse than the facility's clears it
     assert sink.rows[1:] == [
-        (1.0, "warn", "Degraded"),
-        (2.0, "error", "ErrorLogged"),
-        (3.0, "warn", "Degraded"),  # held: no call in between
-        (4.0, "warn", "WarningLogged"),
-        (5.0, "error", "Braked"),
-        (6.0, "error", "Exception"),
+        (1.0, "warn", "Degraded", "a warning beside the component's own warn"),
+        (2.0, "error", "ErrorLogged", "an error logged while the component says warn"),
+        (3.0, "warn", "Degraded", ""),  # held: no call in between
+        (4.0, "warn", "WarningLogged", "a warning once the component says ok"),
+        (5.0, "error", "Braked", ""),
+        (6.0, "error", "Exception", "RuntimeError: forward failed while braked"),
     ], sink.rows
 
 
