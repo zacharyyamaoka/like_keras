@@ -242,7 +242,12 @@ class Server:
             return
         client.inbox += chunk
         for kind, payload in frames(client.inbox):
-            self._handle(client, kind, payload)
+            try:
+                self._handle(client, kind, payload)
+            except (ValueError, KeyError, IndexError, struct.error) as refused:  # a bad frame costs its client only
+                print(f"like_keras attach {self.sheet['system']}: dropped {client.name}: {refused}", file=sys.stderr)
+                self._drop(client)
+                return
 
     def _handle(self, client: _Client, kind: int, payload: bytes) -> None:
         from like_keras.backends import address
@@ -250,9 +255,14 @@ class Server:
         if kind == HELLO:
             hello = json.loads(payload or b"{}")
             client.name, client.lease_s = str(hello.get("client", "?")), float(hello.get("lease_s", 0.25))
-            reply = {"like_keras": self.sheet["like_keras"], "abi": self.sheet["abi"], "system": self.sheet["system"],
-                     "backend": self.sheet["backend"], "describe": self.sheet["hash"], "address": address(
-                         self.sheet["system"])}
+            reply = {
+                "like_keras": self.sheet["like_keras"],
+                "abi": self.sheet["abi"],
+                "system": self.sheet["system"],
+                "backend": self.sheet["backend"],
+                "describe": self.sheet["hash"],
+                "address": address(self.sheet["system"]),
+            }
             self._send(client, frame(HELLO, json.dumps(reply).encode()))
         elif kind == DESCRIBE:
             self._send(client, frame(DESCRIBE, json.dumps(self.sheet, default=str).encode()))
@@ -267,8 +277,9 @@ class Server:
         elif kind in (WRITE, LEASE):
             self._write(client, payload if kind == WRITE else None)
         elif kind == CONTROL:
-            self._send(client, frame(REFUSED, json.dumps({"reason": "CONTROL is not served in v0", "holder": None})
-                                     .encode()))
+            self._send(
+                client, frame(REFUSED, json.dumps({"reason": "CONTROL is not served in v0", "holder": None}).encode())
+            )
 
     def _write(self, client: _Client, payload: bytes | None) -> None:
         from like_keras import codec
@@ -279,15 +290,22 @@ class Server:
             (index,) = struct.unpack_from("<H", payload)
             name = self.names[index] if index < len(self.names) else None
             if name is None or self.ports[name]["dir"] != "in" or not self.writable:
-                self._send(client, frame(REFUSED, json.dumps({"reason": f"port {index} is not a writable input",
-                                                              "holder": None}).encode()))
+                self._send(
+                    client,
+                    frame(
+                        REFUSED,
+                        json.dumps({"reason": f"port {index} is not a writable input", "holder": None}).encode(),
+                    ),
+                )
                 return
         now = time.monotonic()
         if self.holder is not None and self.holder is not client and now <= self.expires:
             if name is not None:
                 self.refused[name] += 1
-            self._send(client, frame(REFUSED, json.dumps({"reason": "lease held", "holder": self.holder.name,
-                                                          "port": name}).encode()))
+            self._send(
+                client,
+                frame(REFUSED, json.dumps({"reason": "lease held", "holder": self.holder.name, "port": name}).encode()),
+            )
             return
         self.holder, self.expires = client, now + client.lease_s
         if name is None:
@@ -313,8 +331,11 @@ class Server:
 
     def _send(self, client: _Client, data: bytes) -> None:
         if len(client.outbox) >= QUEUE_FRAMES:
-            print(f"like_keras attach {self.sheet['system']}: dropped {client.name}: {QUEUE_FRAMES} frames unread",
-                  file=sys.stderr, flush=True)
+            print(
+                f"like_keras attach {self.sheet['system']}: dropped {client.name}: {QUEUE_FRAMES} frames unread",
+                file=sys.stderr,
+                flush=True,
+            )
             self._drop(client)  # a slow client is dropped; the deployment never waits on one
             return
         client.outbox.append(data)
@@ -358,18 +379,32 @@ class Server:
         for name, heard in self.heard.items():
             leaf, port = self.sheet["exposed"][name].rsplit(".", 1)
             # WHY these ages: five periods of the producing group, or a facility's STALE rule (5 s, CONTRACT §8)
-            limit = 5.0 if port in FACILITY_PORTS else max(5.0 / self.rates[leaf], 0.1) if self.rates.get(leaf) else None
+            limit = (
+                5.0 if port in FACILITY_PORTS else max(5.0 / self.rates[leaf], 0.1) if self.rates.get(leaf) else None
+            )
             if limit is not None and now - heard > limit:
                 stale.append(name)
         level, code = ("warn", "InputStale") if stale else ("ok", "")
         system = self.sheet["system"]
-        self.news.append((None, DiagnosticRecord(header=Header(stamp=stamp), path=system, level=level, code=code,
-                                                 message=f"stale: {', '.join(stale)}" if stale else "",
-                                                 mode="operational", stale_inputs=tuple(stale))))
+        self.news.append(
+            (
+                None,
+                DiagnosticRecord(
+                    header=Header(stamp=stamp),
+                    path=system,
+                    level=level,
+                    code=code,
+                    message=f"stale: {', '.join(stale)}" if stale else "",
+                    mode="operational",
+                    stale_inputs=tuple(stale),
+                ),
+            )
+        )
         names = [f"refused_writes.{name}" for name, port in self.ports.items() if port["dir"] == "in"]
         values = [float(self.refused[name.split(".", 1)[1]]) for name in names] + [float(len(self._clients()))]
-        self.news.append((None, Metrics(header=Header(stamp=stamp), path=system, names=(*names, "clients"),
-                                        values=values)))
+        self.news.append(
+            (None, Metrics(header=Header(stamp=stamp), path=system, names=(*names, "clients"), values=values))
+        )
         self._drain_wake()
 
 
@@ -469,8 +504,10 @@ class _Link:
 
     def _connect(self) -> socket.socket:
         _, self.sheet, connection = request(self.address)
-        connection.sendall(frame(HELLO, json.dumps({"client": self.name, "lease_s": self.lease_s}).encode())
-                           + frame(SUB, json.dumps(list(self.outs)).encode()))
+        connection.sendall(
+            frame(HELLO, json.dumps({"client": self.name, "lease_s": self.lease_s}).encode())
+            + frame(SUB, json.dumps(list(self.outs)).encode())
+        )
         connection.settimeout(None)
         return connection
 

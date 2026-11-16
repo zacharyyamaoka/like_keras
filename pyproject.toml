@@ -24,8 +24,10 @@ dora = ["dora-rs==0.5.0", "pyarrow"]
 test = ["pytest>=8", "pyperf>=2.6", "pyarrow", "dora-rs==0.5.0", "dora-rs-cli==0.5.0", "import-linter>=2.1", "ruff>=0.8"]
 
 # CORE: like_keras is a package (src layout); `uv sync` installs it editable into /home/bam/like_keras/.venv.
-# [project.scripts] gains `lk = "like_keras.cli:main"` with the CLI (lane dora, CONTRACT §9.3), not before: an `lk`
-# on PATH that cannot import would shadow `python -m like_keras.cli` in kpi/support/lk.py.
+# DORA: the `lk` CLI (CONTRACT §9.3), now that like_keras.cli exists (kpi/support/lk.py prefers it on PATH).
+[project.scripts]
+lk = "like_keras.cli:main"
+
 [build-system]
 requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"

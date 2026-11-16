@@ -40,8 +40,11 @@ class Gateway:
         if document["exposed"]:
             from like_keras.attach import Server
 
-            inputs = {name: [types.SimpleNamespace(write=self._writer(spec["source"]))]
-                      for name, spec in document["exposed"].items() if spec["dir"] == "in"}
+            inputs = {
+                name: [types.SimpleNamespace(write=self._writer(spec["source"]))]
+                for name, spec in document["exposed"].items()
+                if spec["dir"] == "in"
+            }
             for slot in (slot for slots in inputs.values() for slot in slots):
                 slot.push = slot.write
             self.server = Server(document["datasheet"], inputs, clock=time.time, writable=not self.lockstep)
@@ -101,7 +104,7 @@ def main(argv: list[str]) -> int:
         link = Link(document, GATEWAY)
         try:
             gateway = Gateway(document, link)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - it cannot serve or record here: say so once, never loop silently
             traceback.print_exc()
             fail(document, GATEWAY, f"cannot serve or record: {type(error).__name__}: {error}", 1)
         link.wait_ready()

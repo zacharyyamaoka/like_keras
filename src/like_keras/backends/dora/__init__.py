@@ -42,7 +42,11 @@ def cli() -> str:
 def call(*arguments: str, timeout: float, cwd: str | None = None) -> tuple[int, str]:
     """Run the dora CLI; on timeout kill its whole process group (a child holding the pipe would hang us)."""
     process = subprocess.Popen(
-        [cli(), *arguments], cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        [cli(), *arguments],
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
         start_new_session=True,
     )
     try:
@@ -86,22 +90,31 @@ class Run:
         code, listing = call("list", timeout=30)
         if code == 0 and any(line.split()[1:3] == [self.name, "Running"] for line in listing.splitlines()[1:]):
             raise RuntimeError(f"a dataflow named {self.name!r} is running already: stop it (dora stop --name ...)")
-        code, output = call("start", "dataflow.yml", "--name", self.name, "--detach", timeout=120,
-                            cwd=str(self.directory))
+        code, output = call(
+            "start", "dataflow.yml", "--name", self.name, "--detach", timeout=120, cwd=str(self.directory)
+        )
         found = re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", output)
         if code != 0 or not found:
             raise RuntimeError(f"dora start refused {self.directory / 'dataflow.yml'}:\n{output[-2000:]}")
         self.uuid = found.group(0)
         try:
             if self.plan.realtime:  # WHY wait: start() returns with every group stepping, as inproc's does
-                emit.wait_markers(document["markers"], "started|refused", list(document["nodes"]), 30.0, quiet=True,
-                                  failures_raise=True)
+                emit.wait_markers(
+                    document["markers"],
+                    "started|refused",
+                    list(document["nodes"]),
+                    30.0,
+                    quiet=True,
+                    failures_raise=True,
+                )
             if until is None:
                 return
             if self.plan.realtime:
                 time.sleep(until)
             else:  # lockstep: every node marks when it has stepped to `until` (the gateway: received all of it)
-                emit.wait_markers(document["markers"], "done", list(document["nodes"]), timeout_s=max(120.0, 20 * until))
+                emit.wait_markers(
+                    document["markers"], "done", list(document["nodes"]), timeout_s=max(120.0, 20 * until)
+                )
         except BaseException:
             self.stop()  # the Deployment never saw this run: stop the dataflow here, never leave it running
             raise

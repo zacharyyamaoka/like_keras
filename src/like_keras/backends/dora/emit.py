@@ -36,12 +36,12 @@ def directory_of(system: str) -> pathlib.Path:
 
 def write(plan, until: float | None) -> tuple[pathlib.Path, dict]:
     """Write the dataflow, plan.json and the native processes' .host files; returns (directory, plan document)."""
-    sheet, system = plan.datasheet, plan.datasheet["system"]
+    system = plan.datasheet["system"]
     if not plan.realtime and any(group.language == "native" and not group.hz for group in plan.groups):
         raise ValueError("dora lockstep steps a native group on its hz ticks: give the native group hz=...")
     natives = [group.process for group in plan.groups if group.language == "native"]
     if len(natives) != len(set(natives)):
-        raise ValueError(f"under dora a process runs one native .so (lk-dora-host): give each its own process=")
+        raise ValueError("under dora a process runs one native .so (lk-dora-host): give each its own process=")
     directory = directory_of(system)
     import shutil
     import uuid
@@ -74,8 +74,10 @@ def write(plan, until: float | None) -> tuple[pathlib.Path, dict]:
         queue = (lambda size: size) if plan.realtime else (lambda size: LOCKSTEP_QUEUE)
         entry["inputs"] = {
             **{f"{HELLO}.{peer}": {"source": f"{peer}/{HELLO}", "queue_size": 16} for peer in node["peers"]},
-            **{name: {"source": spec["source"], "queue_size": queue(spec["queue"])} for name, spec in
-               node["inputs"].items()},
+            **{
+                name: {"source": spec["source"], "queue_size": queue(spec["queue"])}
+                for name, spec in node["inputs"].items()
+            },
         }
         nodes.append(entry)
     # WHY JSON: it is YAML 1.2, so dora reads it, and json writes it exactly (no YAML library in like_keras)
@@ -91,10 +93,13 @@ def plan_document(plan, until: float | None, directory: pathlib.Path) -> dict:
     process_of = {path(leaf): group.process for group in plan.groups for leaf in group.leaves}
     nodes: dict[str, dict] = {}
     for group in plan.groups:
-        node = nodes.setdefault(group.process, {"role": group.language, "host": group.host, "groups": [],
-                                                "inputs": {}, "outputs": {}, "peers": set()})
-        node["groups"].append({"hz": group.hz, "cpus": group.cpus, "fifo": group.fifo,
-                               "order": [path(leaf) for leaf in group.order]})
+        node = nodes.setdefault(
+            group.process,
+            {"role": group.language, "host": group.host, "groups": [], "inputs": {}, "outputs": {}, "peers": set()},
+        )
+        node["groups"].append(
+            {"hz": group.hz, "cpus": group.cpus, "fifo": group.fifo, "order": [path(leaf) for leaf in group.order]}
+        )
     gateway = bool(plan.graph.exposed_out or plan.graph.exposed_in or plan.recordings)
     if gateway:
         nodes[GATEWAY] = {"role": "gateway", "host": None, "groups": [], "inputs": {}, "outputs": {}, "peers": set()}
@@ -106,11 +111,17 @@ def plan_document(plan, until: float | None, directory: pathlib.Path) -> dict:
         """Route leaf.port to node `reader` (once), delivering to (leaf, port) there; returns the output id."""
         output, writer = f"{leaf}.{port}", process_of[leaf]
         nodes[writer]["outputs"].setdefault(output, port_type(leaf, port))
-        spec = nodes[reader]["inputs"].setdefault(output, {
-            "source": f"{writer}/{output}", "type": port_type(leaf, port), "deliver": [], "queue": 1,
-            # a native box names its inner components; the reader prefixes the box's own path (abi.h)
-            "prefix": leaf if port in FACILITY_PORTS and sheet["components"][leaf]["language"] == "native" else "",
-        })
+        spec = nodes[reader]["inputs"].setdefault(
+            output,
+            {
+                "source": f"{writer}/{output}",
+                "type": port_type(leaf, port),
+                "deliver": [],
+                "queue": 1,
+                # a native box names its inner components; the reader prefixes the box's own path (abi.h)
+                "prefix": leaf if port in FACILITY_PORTS and sheet["components"][leaf]["language"] == "native" else "",
+            },
+        )
         spec["queue"] = max(spec["queue"], queue)
         if deliver is not None:
             spec["deliver"].append(deliver)
@@ -127,16 +138,27 @@ def plan_document(plan, until: float | None, directory: pathlib.Path) -> dict:
             connect(source, edge.src_port, process_of[target], [target, edge.dst_port], queue)
     exposed = {}
     for name, ref in plan.graph.exposed_out.items():
-        exposed[name] = {"dir": "out", "source": connect(path(ref.owner), ref.name, GATEWAY),
-                         "type": port_type(path(ref.owner), ref.name)}
+        exposed[name] = {
+            "dir": "out",
+            "source": connect(path(ref.owner), ref.name, GATEWAY),
+            "type": port_type(path(ref.owner), ref.name),
+        }
     for name, refs in plan.graph.exposed_in.items():
         output = f"{system}.{name}"
         nodes[GATEWAY]["outputs"][output] = port_type(path(refs[0].owner), refs[0].name)
         exposed[name] = {"dir": "in", "source": output, "type": nodes[GATEWAY]["outputs"][output]}
         for ref in refs:
             reader, leaf = process_of[path(ref.owner)], path(ref.owner)
-            spec = nodes[reader]["inputs"].setdefault(output, {"source": f"{GATEWAY}/{output}", "type": exposed[
-                name]["type"], "deliver": [], "queue": 1, "prefix": ""})
+            spec = nodes[reader]["inputs"].setdefault(
+                output,
+                {
+                    "source": f"{GATEWAY}/{output}",
+                    "type": exposed[name]["type"],
+                    "deliver": [],
+                    "queue": 1,
+                    "prefix": "",
+                },
+            )
             spec["deliver"].append([leaf, ref.name])
             spec["queue"] = max(spec["queue"], type(ref.owner)._lk_ports[ref.name].queue or 1)
             nodes[reader]["peers"].add(GATEWAY)
@@ -147,8 +169,14 @@ def plan_document(plan, until: float | None, directory: pathlib.Path) -> dict:
                 connect(leaf, port, GATEWAY, queue=FACILITY_QUEUE)
     recordings = []
     for file, channels in plan.recordings:
-        rows = [{"input": connect(path(leaf), port, GATEWAY, queue=RECORD_QUEUE), "topic": topic,
-                 "type": port_type(path(leaf), port)} for leaf, port, topic in channels]
+        rows = [
+            {
+                "input": connect(path(leaf), port, GATEWAY, queue=RECORD_QUEUE),
+                "topic": topic,
+                "type": port_type(path(leaf), port),
+            }
+            for leaf, port, topic in channels
+        ]
         os.makedirs(os.path.dirname(os.path.abspath(file)), exist_ok=True)  # the gateway writes it, elsewhere
         recordings.append({"file": os.path.abspath(file), "channels": rows})
     for node in nodes.values():
@@ -158,8 +186,12 @@ def plan_document(plan, until: float | None, directory: pathlib.Path) -> dict:
     components = {}
     for leaf, entry in sheet["components"].items():
         impl = entry["impl"] if entry["language"] == "python" else os.path.abspath(entry["impl"])
-        components[leaf] = {"impl": impl, "language": entry["language"], "params": entry["params"],
-                            "process": process_of[leaf]}
+        components[leaf] = {
+            "impl": impl,
+            "language": entry["language"],
+            "params": entry["params"],
+            "process": process_of[leaf],
+        }
     return {
         "system": system,
         "directory": str(directory),
@@ -201,8 +233,10 @@ def host_lines(document: dict, process: str) -> str:
     lines = [
         f"so {component['impl']}",
         f"path {leaf}",
-        f"place {group['hz'] or 0} {group['fifo'] or 0} {0 if document['realtime'] else 1} "
-        f"{','.join(map(str, group['cpus'] or [])) or '-'}",
+        (
+            f"place {group['hz'] or 0} {group['fifo'] or 0} {0 if document['realtime'] else 1} "
+            f"{','.join(map(str, group['cpus'] or [])) or '-'}"
+        ),
         f"until {document['until'] if document['until'] is not None else '-'}",
         f"versions {document['versions']['like_keras']} {document['versions']['dora']}",
         f"markers {document['markers']}",
@@ -219,8 +253,10 @@ def host_lines(document: dict, process: str) -> str:
             if len(spec["deliver"]) > 1:
                 raise ValueError(f"{name} feeds {len(spec['deliver'])} inputs of the native box {leaf}: wire one")
             port_sheet = sheet["ports"][port]
-            lines.append(f"in {ins.index(port)} {name} {spec['source'].split('/')[0]} {port_sheet['hash']} "
-                         f"{port_sheet['queue'] or 0} {document['schemas'][spec['type']]}")
+            lines.append(
+                f"in {ins.index(port)} {name} {spec['source'].split('/')[0]} {port_sheet['hash']} "
+                f"{port_sheet['queue'] or 0} {document['schemas'][spec['type']]}"
+            )
     return "\n".join(lines) + "\n"
 
 
@@ -236,14 +272,18 @@ def python_path() -> list[str]:
     """The launcher's import path minus the interpreter's own: a node rebuilds components from the same modules."""
     own = {os.path.realpath(prefix) for prefix in (sys.prefix, sys.base_prefix)}
     entries = [os.path.abspath(entry or os.getcwd()) for entry in sys.path]
-    return list(dict.fromkeys(
-        entry for entry in entries
-        if os.path.isdir(entry) and not any(os.path.realpath(entry).startswith(prefix) for prefix in own)
-    ))
+    return list(
+        dict.fromkeys(
+            entry
+            for entry in entries
+            if os.path.isdir(entry) and not any(os.path.realpath(entry).startswith(prefix) for prefix in own)
+        )
+    )
 
 
-def wait_markers(markers: str, kind: str, nodes: list[str], timeout_s: float, quiet: bool = False,
-                 failures_raise: bool = True) -> None:
+def wait_markers(
+    markers: str, kind: str, nodes: list[str], timeout_s: float, quiet: bool = False, failures_raise: bool = True
+) -> None:
     """Wait for markers/<kind>.<node> of every node (`kind` may be "started|refused"); raise naming the missing
     ones, or the refusal a node marked failed (unless quiet)."""
     kinds, deadline, markers = kind.split("|"), time.monotonic() + timeout_s, pathlib.Path(markers)
@@ -257,5 +297,6 @@ def wait_markers(markers: str, kind: str, nodes: list[str], timeout_s: float, qu
             break
         time.sleep(0.05)
     if missing and not quiet:
-        raise TimeoutError(f"dora nodes {missing} did not reach {kind} within {timeout_s:.0f} s "
-                           f"(their output: {directory / 'out'})")
+        raise TimeoutError(
+            f"dora nodes {missing} did not reach {kind} within {timeout_s:.0f} s (their output: {directory / 'out'})"
+        )

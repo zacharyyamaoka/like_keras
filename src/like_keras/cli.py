@@ -28,21 +28,27 @@ def ls(address: str | None) -> int:
         from like_keras.backends import address as socket_of
 
         directory = os.path.dirname(attach.socket_path(socket_of("any")))  # where every deployment's socket lives
-        found = sorted(name for name in os.listdir(directory) if name.endswith(".sock")) if os.path.isdir(directory) else []
+        found = (
+            sorted(name for name in os.listdir(directory) if name.endswith(".sock")) if os.path.isdir(directory) else []
+        )
         for name in found:
             print(f"unix:{os.path.join(directory, name)}")
         return 0
-    hello, sheet, connection = attach.request(address)
+    _, sheet, connection = attach.request(address)
     connection.close()
     backend = sheet["backend"]
-    print(f"{sheet['system']}  {address}  like_keras {sheet['like_keras']}  abi {sheet['abi']}  "
-          f"backend {backend['name']} {backend['version']}  describe {sheet['hash'][:16]}")
+    print(
+        f"{sheet['system']}  {address}  like_keras {sheet['like_keras']}  abi {sheet['abi']}  "
+        f"backend {backend['name']} {backend['version']}  describe {sheet['hash'][:16]}"
+    )
     print(f"  transports here: {', '.join(f'{name} {version}' for name, version in _backends().items())}")
     for name, port in attach.exposed_ports(sheet).items():
         policy = f"queue({port['queue']})" if port["queue"] else "latest"
         stale = f" stale={port['stale']}" if port["stale"] else ""
-        print(f"  {name:<20} {port['dir']:<4} {port['type']:<28} {port['hash']}  {policy}{stale}  "
-              f"<- {sheet['exposed'][name]}")
+        print(
+            f"  {name:<20} {port['dir']:<4} {port['type']:<28} {port['hash']}  {policy}{stale}  "
+            f"<- {sheet['exposed'][name]}"
+        )
     return 0
 
 
@@ -56,7 +62,7 @@ def _backends() -> dict[str, str]:
     for module in pkgutil.iter_modules(backends.__path__):
         try:
             versions[module.name] = getattr(backends, module.name).VERSION
-        except Exception:  # a backend that cannot load here is not listed
+        except Exception:  # noqa: BLE001, S112 - a backend that cannot load here is not listed
             continue
     return versions
 
@@ -71,8 +77,8 @@ def _render(sheet: dict, health: dict, metrics: dict, started: float) -> str:
     now = time.monotonic()
     natives = {leaf for leaf, component in sheet["components"].items() if component["language"] == "native"}
     paths = sorted(set(health) | set(metrics) | set(sheet["components"]))
-    lines = [f"{sheet['system']}  {time.strftime('%H:%M:%S')}  backend {sheet['backend']['name']} "
-             f"{sheet['backend']['version']}"]
+    backend = sheet["backend"]
+    lines = [f"{sheet['system']}  {time.strftime('%H:%M:%S')}  backend {backend['name']} {backend['version']}"]
     for name in paths:
         if name in health:
             record = health[name][0]
@@ -89,10 +95,13 @@ def _render(sheet: dict, health: dict, metrics: dict, started: float) -> str:
         lines.append(f"{name}  {status}")
         if name in metrics:
             values = metrics[name][0]
-            lines.append("    " + "  ".join(
-                f"{key}={value:.6g}" if math.isfinite(value) else f"{key}={value}"
-                for key, value in zip(values.names, (float(number) for number in values.values))
-            ))
+            lines.append(
+                "    "
+                + "  ".join(
+                    f"{key}={value:.6g}" if math.isfinite(value) else f"{key}={value}"
+                    for key, value in zip(values.names, (float(number) for number in values.values))
+                )
+            )
     return "\n".join(lines)
 
 
@@ -103,7 +112,9 @@ def top(address: str, once: bool = False) -> int:
     _, sheet, connection = attach.request(address)
     connection.sendall(attach.frame(attach.SUB, b'["' + attach.FACILITIES.encode() + b'"]'))
     connection.setblocking(False)
-    kinds = {codec.schema_hash(message_type(name)): message_type(name) for name in ("std/DiagnosticRecord", "std/Metrics")}
+    kinds = {
+        codec.schema_hash(message_type(name)): message_type(name) for name in ("std/DiagnosticRecord", "std/Metrics")
+    }
     health, metrics, buffer, started = {}, {}, bytearray(), time.monotonic()
     interactive, next_print = sys.stdout.isatty(), time.monotonic() + 1.0
     stopping = []
@@ -124,7 +135,10 @@ def top(address: str, once: bool = False) -> int:
                 if cls is None:
                     continue
                 record = codec.decode(payload[2:], cls)
-                (health if cls.type_name == "std/DiagnosticRecord" else metrics)[record.path] = (record, time.monotonic())
+                (health if cls.type_name == "std/DiagnosticRecord" else metrics)[record.path] = (
+                    record,
+                    time.monotonic(),
+                )
         if time.monotonic() >= next_print:
             next_print += 1.0
             text = _render(sheet, health, metrics, started)

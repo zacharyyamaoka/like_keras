@@ -106,7 +106,9 @@ def arrow_type(node):
             key, item = node.children[0].children
             built = pa.map_(arrow_type(key), pa.field(item.name, arrow_type(item), nullable=item.nullable))
         else:
-            built = pa.struct([pa.field(child.name, arrow_type(child), nullable=child.nullable) for child in node.children])
+            built = pa.struct(
+                [pa.field(child.name, arrow_type(child), nullable=child.nullable) for child in node.children]
+            )
         _TYPES[node] = built
     return _TYPES[node]
 
@@ -170,19 +172,24 @@ class Link:
         self.lock = threading.RLock()
         import faulthandler
 
-        from dora import Node
-
         import dora
+        from dora import Node
 
         # WHY faulthandler, not a timer thread: Node() holds the GIL while it waits for the daemon, so no Python
         # thread could fire; faulthandler's watchdog is a C thread (it dumps the stack, then exits 1)
-        print(f"init_dora_node: a dora {document['versions']['dora']} daemon must answer within "
-              f"{HELLO_TIMEOUT_S} s", file=sys.stderr)
+        print(
+            f"init_dora_node: a dora {document['versions']['dora']} daemon must answer within {HELLO_TIMEOUT_S} s",
+            file=sys.stderr,
+        )
         faulthandler.dump_traceback_later(HELLO_TIMEOUT_S, exit=True, file=sys.stderr)
         self.node = Node()
         faulthandler.cancel_dump_traceback_later()
-        self.versions = {"like_keras": document["versions"]["like_keras"], "abi": document["versions"]["abi"],
-                         "backend": "dora", "dora": getattr(dora, "__version__", "unknown")}
+        self.versions = {
+            "like_keras": document["versions"]["like_keras"],
+            "abi": document["versions"]["abi"],
+            "backend": "dora",
+            "dora": getattr(dora, "__version__", "unknown"),
+        }
         self.ports = {}  # output id -> its schema hash, as robot_msgs computes it here
         from like_keras import codec
         from like_keras.component import message_type
@@ -191,7 +198,9 @@ class Link:
             self.ports[output] = f"{codec.schema_hash(message_type(kind)):016x}"
         self.expected = {}  # (peer, its output id) -> the hash this node computes for the type it reads there
         for input_id, spec in self.node_spec["inputs"].items():
-            self.expected[(spec["source"].split("/")[0], input_id)] = f"{codec.schema_hash(message_type(spec['type'])):016x}"
+            self.expected[(spec["source"].split("/")[0], input_id)] = (
+                f"{codec.schema_hash(message_type(spec['type'])):016x}"
+            )
         self.say_hello()
         self.started = time.monotonic()
         self.rx = threading.Thread(target=self._receive, name=f"lk-rx-{name}", daemon=True)
@@ -209,21 +218,40 @@ class Link:
         if not self.ready.wait(max(0.0, HELLO_TIMEOUT_S - (time.monotonic() - self.started))):
             missing = sorted(self.peers - self.acked)
             mine = f"like_keras {self.versions['like_keras']}, dora {self.versions['dora']}"
-            fail(self.document, self.name, f"no verified lk_hello from {missing} within {HELLO_TIMEOUT_S} s "
-                 f"(this node: {mine}; theirs: unknown, they never answered)", 3, final=False)
+            fail(
+                self.document,
+                self.name,
+                f"no verified lk_hello from {missing} within {HELLO_TIMEOUT_S} s "
+                f"(this node: {mine}; theirs: unknown, they never answered)",
+                3,
+                final=False,
+            )
 
     def _hello(self, peer: str, value) -> None:
         theirs = json.loads(bytes(value.to_numpy(zero_copy_only=False)).decode())
         for key in ("like_keras", "abi", "backend", "dora"):
             if theirs.get(key) != self.versions[key]:
-                fail(self.document, self.name, f"node {peer} runs {key} {theirs.get(key)}, node {self.name} runs "
-                     f"{key} {self.versions[key]}: every node of a deployment runs the same versions", 3)
+                fail(
+                    self.document,
+                    self.name,
+                    f"node {peer} runs {key} {theirs.get(key)}, node {self.name} runs "
+                    f"{key} {self.versions[key]}: every node of a deployment runs the same versions",
+                    3,
+                )
         for (source, output), ours in self.expected.items():
             if source == peer and theirs["ports"].get(output) != ours:
-                fail(self.document, self.name, f"{output}: node {peer} sends schema hash {theirs['ports'].get(output)}"
-                     f", node {self.name} reads it as {ours}: rebuild against the same robot_msgs", 3)
-        print(f"lk_hello from {peer} ({theirs['nonce'][:8]}; names this node: "
-              f"{theirs.get('seen', {}).get(self.name) == self.nonce})", file=sys.stderr)
+                fail(
+                    self.document,
+                    self.name,
+                    f"{output}: node {peer} sends schema hash {theirs['ports'].get(output)}"
+                    f", node {self.name} reads it as {ours}: rebuild against the same robot_msgs",
+                    3,
+                )
+        print(
+            f"lk_hello from {peer} ({theirs['nonce'][:8]}; names this node: "
+            f"{theirs.get('seen', {}).get(self.name) == self.nonce})",
+            file=sys.stderr,
+        )
         changed = self.seen.get(peer) != theirs["nonce"]
         self.seen[peer] = theirs["nonce"]
         if theirs.get("seen", {}).get(self.name) == self.nonce:
@@ -324,18 +352,39 @@ class Host:
 
         self.document, self.process, self.link = document, process, link
         self.lockstep, node = not document["realtime"], document["nodes"][process]
-        leaves = {leaf: rebuild(document["components"][leaf], leaf) for group in node["groups"] for leaf in group["order"]}
+        leaves = {
+            leaf: rebuild(document["components"][leaf], leaf) for group in node["groups"] for leaf in group["order"]
+        }
         placed = [
-            deployment.Group([leaves[leaf] for leaf in group["order"]], process, None, group["hz"], group["cpus"],
-                             group["fifo"], "", [leaves[leaf] for leaf in group["order"]], "python")
+            deployment.Group(
+                [leaves[leaf] for leaf in group["order"]],
+                process,
+                None,
+                group["hz"],
+                group["cpus"],
+                group["fifo"],
+                "",
+                [leaves[leaf] for leaf in group["order"]],
+                "python",
+            )
             for group in node["groups"]
         ]
-        edges = [Edge(leaves[a], port_a, leaves[b], port_b, "", index)
-                 for index, (a, port_a, b, port_b) in enumerate(document["edges"]) if a in leaves and b in leaves]
+        edges = [
+            Edge(leaves[a], port_a, leaves[b], port_b, "", index)
+            for index, (a, port_a, b, port_b) in enumerate(document["edges"])
+            if a in leaves and b in leaves
+        ]
         system = types.SimpleNamespace(_lk=types.SimpleNamespace(name=document["system"], parent=None))
         graph = types.SimpleNamespace(edges=edges, exposed_in={}, exposed_out={})
-        plan = types.SimpleNamespace(system=system, groups=placed, graph=graph, recordings=[], realtime=not self.lockstep,
-                                     crossing={}, datasheet={})
+        plan = types.SimpleNamespace(
+            system=system,
+            groups=placed,
+            graph=graph,
+            recordings=[],
+            realtime=not self.lockstep,
+            crossing={},
+            datasheet={},
+        )
         self.run = run = inproc.Run(plan)
         group_of = {id(leaf): group for group, where in zip(run.groups, placed) for leaf in where.order}
         self.inputs: dict[str, _Input] = {}
@@ -524,7 +573,7 @@ class Host:
             for group in run.groups:
                 group.activate(0.0)
                 activated.append(group)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - §5.7: any refusal in activate stops the process, named
             for group in reversed(activated):
                 group.deactivate()
             fail(self.document, self.process, f"activate refused: {type(error).__name__}: {error}", 1)
@@ -583,7 +632,7 @@ def main(argv: list[str]) -> int:
         link = Link(document, process)
         try:
             host = Host(document, process, link)
-        except Exception as error:  # a component that cannot be rebuilt here never will be: say so, once
+        except Exception as error:  # noqa: BLE001 - a component that cannot be rebuilt here never will be: say so
             traceback.print_exc()
             fail(document, process, f"cannot build its components: {type(error).__name__}: {error}", 1)
         link.wait_ready()
@@ -591,7 +640,7 @@ def main(argv: list[str]) -> int:
             return host.run_lockstep(document["until"])
         try:
             return host.run_realtime()
-        except Exception as error:  # §5.7: activate raising: the process exits non-zero having sent no data frame
+        except Exception as error:  # noqa: BLE001 - §5.7: activate raising: exit non-zero having sent no data frame
             print(f"like_keras {process}: {type(error).__name__}: {error}", file=sys.stderr, flush=True)
             return 1
     finally:
