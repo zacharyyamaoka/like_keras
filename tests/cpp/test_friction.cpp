@@ -80,6 +80,32 @@ std::vector<std::string> metric_names_of_the_box(Box& box) {
   return names;
 }
 
+// ---------------------------------------------------------------- A20: period()
+
+std::atomic<double> period_in_activate{-1.0};
+
+struct PeriodReader : lk::Component {
+  lk::In<rm::JointState> trigger{this, "trigger", {.queue = 1}};
+  void activate() override { period_in_activate = period(); }
+  void forward() override {}
+};
+
+TEST(Period, IsTheGroupsPeriodFromActivateAndZeroRateLessOrEager) {
+  PeriodReader eager;
+  EXPECT_EQ(eager.period(), 0.0) << "no box, no group";
+  for (const double hz : {50.0, 0.0}) {
+    lk::System s{"period"};
+    PeriodReader& reader = s.add<PeriodReader>("reader");
+    s.expose(reader.trigger);
+    Box box{std::move(s)};
+    std::string error;
+    const lk_place place{hz, nullptr, 0, 0, 0, 1};
+    ASSERT_TRUE(box.start(place, error)) << error;
+    EXPECT_DOUBLE_EQ(period_in_activate.load(), hz > 0.0 ? 0.02 : 0.0) << hz << " Hz";
+    box.stop();
+  }
+}
+
 }  // namespace
 
 // ---------------------------------------------------------------- A24: vectors and tables of LK_PARAMS (the C ABI)

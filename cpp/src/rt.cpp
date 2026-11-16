@@ -57,6 +57,10 @@ void Component::Log::error(const char* fmt, double a, double b) {
   if (owner_->box_) owner_->box_->write_log(*owner_, 40, fmt, a, b);
 }
 
+double Component::period() const {  // place is written before the first activate (Box::start)
+  return box_ != nullptr && box_->place.hz > 0.0 ? 1.0 / box_->place.hz : 0.0;
+}
+
 System::System(std::string_view name) { name_ = name; }
 
 System::System(System&& other) noexcept

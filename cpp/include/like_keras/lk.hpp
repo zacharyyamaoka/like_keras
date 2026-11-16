@@ -89,6 +89,7 @@ class Component {
   virtual void forward() = 0;   // RT thread: no allocation, no lock, no blocking call except device I/O it owns
   virtual void deactivate() {}  // non-RT thread; must not throw
   double now() const;           // this step's scheduled time, seconds (CONTRACT §5.6)
+  double period() const;        // the group's period, seconds; 0.0 when rate-less; from activate() on (§15 A20)
   void metric(const char* name, double value);  // name: a string literal; <= 32 per component; no allocation
   struct Log {  // fmt: a string literal; two numbers (%g); copied into a lock-free ring, formatted off the RT thread
     void info(const char* fmt, double a = 0, double b = 0);
