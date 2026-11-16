@@ -44,6 +44,57 @@ Nothing: the port runs on lk's SCHED_OTHER fallback, and A2's numbers in `lk/tes
 - **Or a contract change: an `on_rt_start()` hook.** A Component member that runs once on the RT thread before its first step, may block, and cannot touch ports. The consumer then brings its own ladder.
 - **New ruler test.** In a session without an rtprio limit but with rtkit, `fifo=80` gives the RT thread a realtime policy (SCHED_RR) and says so in metrics. Today it gives SCHED_OTHER.
 
+## Measured since: same_box on lk's SCHED_OTHER thread brakes the twin (fix round 1, 2026-11-16)
+
+**Plainly:** in `same_box` at nice 19, SCHED_OTHER, on cores 22-23 at load about 27-33 (rack powered, not the timing tier), **3 of 7 one-minute real-time runs stopped taking plans**. An independent verifier showed one of them directly to be a **latched TIMEOUT brake**. **`same_box` must not drive the real arm until the RT ladder lands in like_keras** (rtkit SCHED_RR plus the RLIMIT_RTTIME guard, A19; or an on-RT-start hook). Since fix round 1, the port refuses a real bus in `activate()` in every placement, before any device check or bus lock. The raw-dora node drives the arm.
+
+The runs were `lk/tests/rt_probe.py` under A2's load (a 7 × 1000 plan every 0.5 s, the chain at 100 Hz on core 23) on the shipped `config/twin.ini`, where the boards' watchdog is 0.25 s:
+
+| Run (verifier, fix round 1) | Plans adopted (≥ 108 wanted) | What happened |
+|---|---|---|
+| test_rt_path run 1 | 5 | stopped taking plans after 7 hand-offs in the first half |
+| test_rt_path run 2 | 80 | stopped in the second half (59 / 21 hand-offs) |
+| test_rt_path run 3 | 117 | passed |
+| diagnostic 1 (30 s) | 56 | passed, 415 overruns, load 28.2 / 31.9 / 31.7 |
+| diagnostic 2 | 116 | passed, 550 overruns, load 26.0 / 30.8 / 31.3 |
+| diagnostic 3 | 118 | passed, 524 overruns, load 29.0 / 30.2 / 31.0 |
+| diagnostic 4 | 19 | **braked** about 10 s in, 380 overruns, load 27.5 / 29.6 / 30.7 |
+
+Diagnostic 4's log tap:
+
+```
+SCHED_FIFO 80 refused (errno 1): the RT thread runs SCHED_OTHER
+holding (reason 0, joint -1)
+tracking (reason 0, joint -1)
+braked: a human looks first (reason 7, joint 0)
+```
+
+Then `node_state` stayed 4 and `refused_reason` stayed 13 (`braked`). Reason 7 is TIMEOUT. The starved RT thread's next tick came more than 0.25 s after the last command, so the twin's boards lapsed into mode 11 while commanded. The chain brakes on that, and the brake latches by design: a human looks first. Every plan after it is refused.
+
+My own runs since, with the chain's new `worst_period_s` metric (the longest time between two ticks on `now()`'s clock, which is what the boards' watchdog sees):
+
+| Run (controllers lane, fix round 1) | Watchdog | Plans adopted | Overruns | Worst period | lk's worst period-error p99 | Load |
+|---|---|---|---|---|---|---|
+| suite run 1, test_rt_path | 5 s | 117 | 515 | 140 ms | 67.1 ms | 23.0 / 26.5 / 29.3 |
+| suite run 2 | 5 s | 117 | 457 | 90 ms | 92.3 ms | 28.1 / 27.3 / 29.3 |
+| suite run 3 | 5 s | 116 | 204 | 160 ms | 167.8 ms | 26.0 / 26.4 / 28.8 |
+| rt_probe, shipped ini, 1 | 0.25 s | 117 | 117 | 80 ms | 75.5 ms | 22.3 / 25.3 / 28.1 |
+| rt_probe, shipped ini, 2 | 0.25 s | 117 | 21 | 50 ms | 50.3 ms | 27.2 / 26.0 / 28.1 |
+
+```bash
+PKG=~/bam_ws/.claude/worktrees/cpp-controller-nodes-f9a521/src/core/mdp/agent/actuators/moteus_controller_node
+SBX="nice -n 19 ionice -c3 taskset -c 22-23 bwrap --dev-bind / / --ro-bind /archive /archive --dev /dev --bind /dev/shm /dev/shm --bind /run/user/1000 /run/user/1000 -- env BAM_LANE_NO_DEVICES=1"
+$SBX env LD_PRELOAD=$PKG/lk/build/liblk_alloc_shim.so /home/bam/like_keras/.venv/bin/python $PKG/lk/tests/rt_probe.py $PKG/lk/build/libmcn_arm_controller.so 60 2 $PKG/config/twin.ini
+```
+
+A starved tick of 160 ms leaves only 90 ms of margin to the 0.25 s watchdog. The raw node on the same host measured a worst period of 17.2 ms in a 10-minute soak at load 25-45, but with rtkit SCHED_RR 20 and locked memory (its README). The difference is the ladder this note asks for, not the chain.
+
+What the port does about it until A19 lands:
+
+- `lk/tests/test_rt_path.py` takes its strict measurements (0 allocations, 0 locks, the RT thread never runs Python, push cost) on a copy of `twin.ini` with `watchdog_s = 5.0`. Host starvation can no longer latch a brake and empty the measurement. The test also asserts `node_state` never reached 4, and prints the overruns and worst period.
+- `test_same_box_does_not_brake_under_load` is marked `timing` (skipped unless `KPI_TIER=timing`). It runs the same probe on the shipped 0.25 s watchdog and asserts no brake, plus A2's plan count. It is the test A19 must turn green on this host's load.
+- `MoteusChain::activate()` refuses `transport = fdcanusb` until the ladder lands.
+
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).
