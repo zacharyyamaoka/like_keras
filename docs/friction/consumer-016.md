@@ -1,0 +1,44 @@
+# consumer-016: a NaN or infinite LK_PARAMS default breaks `lk.native()`, because `lk_describe()` prints it as `nan`, which no JSON reader takes (controllers lane, re-port onto A24, 2026-11-16)
+
+**The ask.** `lk_describe()` must print every params default as JSON that `lk.native()`'s `json.loads` reads back. Today a `NaN` or `±inf` default comes out as `nan` or `inf`. Either print `NaN` / `Infinity` / `-Infinity` (Python's spelling, which `lk_create`'s `strtod` already parses), or `null`, or refuse such a default at build time with a message.
+
+## What I tried
+
+A24 moved the controller's config from the node's INI into `LK_PARAMS`. In that config, NaN means "off" in three places, all from the raw node's `mcn/config.hpp`:
+
+- `guard_timeout_s` (the deadman);
+- `hold_kp_scale` / `hold_kd_scale` ("the run scale");
+- `path_tolerance_rad` ("no path guard").
+
+The position limits default to `±inf`. With `guard_timeout_s = NaN` as the default, `lk.native()` failed before anything ran.
+
+## Contract sections
+
+§6.1 (`LK_PARAMS`: "JSON → Type"), §15 A24 (vector params, shown in `describe()`), §15 A6 (`lk_describe()` builds from the default params), §4.5 (`native` reads `lk_describe()`).
+
+## Repro
+
+`lk/friction_repro/nan_default.cpp`: one param, `double guard_timeout_s = NaN`. Build it with `cmake -S lk/friction_repro -B <build> -DLIKE_KERAS_ROOT=/home/bam/like_keras`, then:
+
+```
+$SBX ~/like_keras/.venv/bin/python -c "import ctypes, like_keras as lk; \
+  lib = ctypes.CDLL('<build>/libnan_default.so'); lib.lk_describe.restype = ctypes.c_char_p; \
+  print(lib.lk_describe().decode()); lk.native('<build>/libnan_default.so')"
+{"like_keras": "0.1.0", "abi": 1, "system": "nan_default", ... "params": {"guard_timeout_s": nan}}
+json.decoder.JSONDecodeError: Expecting value: line 1 column 275 (char 274)
+```
+
+Cause: `cpp/src/abi.cpp` `number()` uses `std::to_chars`, which writes `nan` and `inf`. The other direction already works. A config that carries `NaN` / `Infinity` (Python's `json.dumps`) reaches `lk_create`, and `strtod` reads it, which is how every joint row of the twin passes its NaN hold scales and infinite limits today.
+
+A related reading of A6 that also cost a workaround: `lk_describe()` constructs the System from the **default** params. So a constructor that refuses an empty joint table, the obvious place to refuse it, makes `lk_describe()` return no ports, with `"error": "params.joints: the chain drives at least one joint"`. The check had to move to `activate()`.
+
+## What I did instead
+
+- Every top-level default is finite. `guard_timeout_s` defaults to `0.0`, meaning off; `0` or `NaN` from a config is also off. The joint rows keep their NaN and inf defaults, because an empty default table never prints a row.
+- The "at least one joint" check moved from `lk_create` to `activate()`. Both changes carry a WHY comment in `lk/arm_controller.cpp`.
+
+## Proposal
+
+- **Library fix.** In `abi.cpp`'s `number()`, write `NaN`, `Infinity` and `-Infinity` (what `strtod` and Python both read), or `null` for NaN. Then a component's natural "NaN = off" default round-trips.
+- **New ruler test.** A component with a NaN and an infinite default passes `lk.native()`, and `describe()` shows both.
+- **Contract (A6).** State that defaults must construct, and that a component should refuse a missing table in `activate()`, not in its constructor. Better: let `lk_describe()` skip running a factory that throws on its defaults and list the ports from a second, documented `describe` path.

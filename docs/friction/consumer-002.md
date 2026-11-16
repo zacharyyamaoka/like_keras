@@ -62,3 +62,11 @@ The raw node's mailbox + retire ring, rebuilt here as a pool on the RT thread, i
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).
+
+## Verified by the consumer (2026-11-16, re-port onto A16-A28 and M3′)
+
+Resolved by A17, with one remainder filed as consumer-014. `trajectory` is `lk::In<rm::JointTrajectory, PlanIn>`. `PlanIn::from` runs on the pushing thread: name map, validation, effort clip and copy (`mcn::fill_plan`, the raw node's). The RT thread swaps the plan's vectors with a pool slot's, so there is no copy and no allocation. The slot's old buffers stay behind in the converted value, which like_keras frees off the RT thread.
+- `lk/tests/test_rt_path.py` (A2's load, 60 s, shipped twin): RT thread 0 allocations and 0 locks after the warm-up, never allocated in its life; `plans_converted_on_rt` 0 and `plans_copied_on_rt` 0. The second is the conversion's buffer pointer, checked on the RT thread.
+- The copy mutant (each plan copied into a fresh Plan on the RT thread) is caught by both probes: 66 allocations and 13-14 copies in 8 s.
+- Remainder (consumer-014): `from` is static, so the config it needs comes through a process-wide pointer, one chain per process.
+- bam_ws `claude/cpp-controller-nodes-f9a521`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`; `lk/tests` green 3 of 3 back to back in the lane's sandbox (rack powered, cores 22-23, not the timing tier).

@@ -53,3 +53,7 @@ kpi's own `kpi/consumer/test_consumer.py` does the same for the reference cell (
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).
+
+## Verified by the consumer (2026-11-16, re-port onto A16-A28 and M3′)
+
+Resolved by A21. The `_facility()` workaround is deleted: the tests read `arm.log`, `arm.metrics` and `arm.health` the same way for the C++ box and the Python `ArmControllerPy` System (`test_swap.py`, `test_features.py`). bam_ws `claude/cpp-controller-nodes-f9a521`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`; `lk/tests` green 3 of 3 back to back in the lane's sandbox (rack powered, cores 22-23, not the timing tier).

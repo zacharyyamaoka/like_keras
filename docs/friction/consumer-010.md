@@ -40,3 +40,7 @@ The swap tests pass because their planners never resend.
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).
+
+## Verified by the consumer (2026-11-16, re-port onto A16-A28 and M3′)
+
+Resolved by A25. `_same_plan()` identity guessing is deleted: `trajectory = lk.In(JointTrajectory, fresh=True)` and `verdict = lk.In(DiagnosticRecord, fresh=True)`. The swap tests hold same_box and fallback commands to 0.0 rad: 3000 commands and 57 or 11 plans over the cell's targets, and 850 commands over the scripted paths. bam_ws `claude/cpp-controller-nodes-f9a521`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`; `lk/tests` green 3 of 3 back to back in the lane's sandbox (rack powered, cores 22-23, not the timing tier).

@@ -38,3 +38,7 @@ Nothing: the port does not touch the export. Measured and reported, not judged; 
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).
+
+## Verified by the consumer (2026-11-16, re-port onto A16-A28 and M3′)
+
+Measured again; A26 helped, and A2's budget is still for the timing tier. The planner's push now includes the plan's conversion (A17, on the planner's thread). `test_rt_path.py` prints, probe off, in the three final runs: p50 0.232 / 0.237 / 0.228 ms, p99 0.734 / 1.153 / 0.447 ms. The M2′ port's push, without conversion, was p50 0.25 and p99 0.44 ms. Load 35.0 / 23.4 / 29.1, not the timing tier, so not judged. bam_ws `claude/cpp-controller-nodes-f9a521`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`; `lk/tests` green 3 of 3 back to back in the lane's sandbox (rack powered, cores 22-23, not the timing tier).

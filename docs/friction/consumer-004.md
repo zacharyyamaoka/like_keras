@@ -98,3 +98,12 @@ What the port does about it until A19 lands:
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).
+
+## Verified by the consumer (2026-11-16, re-port onto A16-A28 and M3′)
+
+Resolved by A19. Everything the port did around SCHED_OTHER is gone: the 5 s "patient twin" watchdog of the RT probe and the timing-only "does not brake" test. The probe now runs 60 s of A2's load on the shipped 0.25 s watchdog.
+- Policy granted: the box record reports SCHED_RR 20 (rtkit, the library's ladder) in the device sandbox. Over 3 × 60 s on the final build: 0 brakes, 0 overruns, 115-117 plans adopted each, at load 23-35.
+- In `target`: `lk-dora-host`'s RT thread runs RR 20 too. Its log line is "SCHED_FIFO 80 refused: rtkit granted SCHED_RR under RLIMIT_RTTIME".
+- The real bus stays refused in `activate()`, now for the interlock gap (`mcn::kInterlockGap`, as the raw node is hold-only), not for the ladder.
+- What A19 does not cover, the boundary threads, is consumer-018.
+- bam_ws `claude/cpp-controller-nodes-f9a521`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`; `lk/tests` green 3 of 3 back to back in the lane's sandbox (rack powered, cores 22-23, not the timing tier).

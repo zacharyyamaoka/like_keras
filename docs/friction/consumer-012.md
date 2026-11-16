@@ -52,3 +52,7 @@ Health and metrics have the same gap: the last partial second is never published
 ## Resolution (2026-11-16, dispatcher)
 
 CONTRACT.md §15 A28 (library fix).
+
+## Verified by the consumer (2026-11-16, re-port onto A16-A28 and M3′)
+
+Resolved by A28. `test_lifecycle.py::test_stop_hands_back_holding` records `arm.log`: deactivate()'s "hand-back: 1 hand-off frame(s) sent, arm-hold resumed 1" reaches the recording in same_box. `test_target.py::test_T1_the_same_commands_in_every_placement`: the log text of target (over dora), same_box and fallback is equal, and target's last line is the hand-back. One expected limit stays: an in-process reader (a tap in another group) does not see the final drain, because its group has stopped. bam_ws `claude/cpp-controller-nodes-f9a521`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`; `lk/tests` green 3 of 3 back to back in the lane's sandbox (rack powered, cores 22-23, not the timing tier).

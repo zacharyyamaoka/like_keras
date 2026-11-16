@@ -52,3 +52,10 @@ Not ported. The twin config runs with the deadman off (`guard_timeout_s` NaN), a
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).
+
+## Verified by the consumer (2026-11-16, re-port onto A16-A28 and M3′)
+
+Resolved by A23 in C++; the Python half is consumer-015. `verdict` is `lk::In<rm::DiagnosticRecord>` with `{.optional = true}`. Its `header.stamp` is the judged state's stamp (the deadman's confirmation, newest wins), level `error` asks for a controlled stop, and code `Brake` brakes. The twin cell leaves it unwired, so the deadman is off by default.
+- `test_features.py::test_a_silent_guard_stops_a_running_plan` (`guard_timeout_s` 0.1): the last confirmed state is at 0.98 s, and the controlled stop (reason guard_silent) comes at the 1.08 s tick, 100 ms later, within `guard_timeout_s` + one tick, in both placements with the same commands.
+- Remainder: the Python peer marks its input optional through a private attribute (consumer-015). In the always-on form a separate guard process cannot write while a planner holds the lease (consumer-019).
+- bam_ws `claude/cpp-controller-nodes-f9a521`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`; `lk/tests` green 3 of 3 back to back in the lane's sandbox (rack powered, cores 22-23, not the timing tier).

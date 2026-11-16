@@ -36,3 +36,7 @@ g++ -std=c++20 -fsyntax-only -I/home/bam/like_keras/cpp/include $PKG/lk/friction
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).
+
+## Verified by the consumer (2026-11-16, re-port onto A16-A28 and M3′)
+
+Resolved by A24, with one remainder filed as consumer-016. The per-joint table is `ChainParams.joints`, a `std::vector<JointParams>` with a nested `TwinParams`; `lk/node_ini.py params()` turns `config/twin.ini` into that mapping for both placements. `test_features.py::test_describe_shows_the_joint_table`: `describe()` shows all 7 rows (name, can_id, sign, limits, twin) for the native box and for the Python chain. Remainder (consumer-016): a NaN default prints as `nan` and breaks `lk.native()`, so every top-level default is finite. bam_ws `claude/cpp-controller-nodes-f9a521`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`; `lk/tests` green 3 of 3 back to back in the lane's sandbox (rack powered, cores 22-23, not the timing tier).

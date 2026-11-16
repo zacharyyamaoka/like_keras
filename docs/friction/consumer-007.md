@@ -58,3 +58,7 @@ The chain will never command the arm again, yet `lk top` and every health observ
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).
+
+## Verified by the consumer (2026-11-16, re-port onto A16-A28 and M3′)
+
+Resolved by A22. The chain calls `health(level, code)` on each state change, the same in both placements: braked `error/Braked`, bus lost `error/BusLost`, refused `error/StartRefused`, controlled stop `warn/ControlledStop`, otherwise `ok`. `test_features.py::test_a_guard_asks_for_a_stop_or_the_brake`: every health record after the request reads `('error', 'Braked')`, or `('warn', 'ControlledStop')`, in same_box and fallback, held, not one round. bam_ws `claude/cpp-controller-nodes-f9a521`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`; `lk/tests` green 3 of 3 back to back in the lane's sandbox (rack powered, cores 22-23, not the timing tier).

@@ -41,3 +41,7 @@ In the port's own CMake (`lk/CMakeLists.txt`, fix round 1): `CMAKE_CXX_VISIBILIT
 ## Resolution (2026-11-16, dispatcher)
 
 CONTRACT.md §15 A28 (library fix).
+
+## Verified by the consumer (2026-11-16, re-port onto A16-A28 and M3′)
+
+Resolved by A28. `lk/c_abi_only.map` and its link option are deleted, as are the hidden-visibility presets. `test_rt_path.py::test_the_library_exports_the_c_abi_only`: `nm -D --defined-only` shows the 10 `lk_*` entry points and nothing else. bam_ws `claude/cpp-controller-nodes-f9a521`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`; `lk/tests` green 3 of 3 back to back in the lane's sandbox (rack powered, cores 22-23, not the timing tier).

@@ -47,3 +47,10 @@ grep -n "joint_names and limits" /home/bam/like_keras/src/like_keras/codec.py
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).
+
+## Verified by the consumer (2026-11-16, re-port onto A16-A28 and M3′)
+
+Resolved by A16. `PlanIn::from` (`lk/arm_controller.cpp`) maps each column by `view.joint_names` with `config.joint_index`, refuses an unknown or twice-named joint, and lets a plan name a subset (the rest keep holding), as the raw node does. The Python peer maps by name in the same order of checks, so it prints the same refusal lines.
+- `lk/tests/test_features.py::test_a_reordered_plan_moves_the_right_boards`: a plan with all seven joints reversed, then one naming `w3, j1`. Every board moves by its own named delta, the others hold to the last bit, in same_box and fallback (worst command gap 0.0).
+- `test_swap.py::test_every_path_of_the_chain_sends_the_same_commands`: a 6-of-7 plan is adopted and a plan naming `elbow` is dropped ("column 0 names no joint of this chain"), in both placements.
+- bam_ws `claude/cpp-controller-nodes-f9a521`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`; `lk/tests` green 3 of 3 back to back in the lane's sandbox (rack powered, cores 22-23, not the timing tier).

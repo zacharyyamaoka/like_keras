@@ -56,3 +56,7 @@ SIGTERM: exit 143; last_targets.json: absent; arm_hold.resume: absent
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).
+
+## Verified by the consumer (2026-11-16, re-port onto A16-A28 and M3′)
+
+Resolved by A18. The strict xfail is gone. `lk/tests/test_lifecycle.py::test_a_signal_hands_back[SIGINT|SIGTERM|SIGHUP]`: a same_box process taking its own twin bus lock writes `last_targets.json` (the hand-back) on each of the three signals. bam_ws `claude/cpp-controller-nodes-f9a521`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`; `lk/tests` green 3 of 3 back to back in the lane's sandbox (rack powered, cores 22-23, not the timing tier).

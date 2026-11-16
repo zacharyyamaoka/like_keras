@@ -31,3 +31,7 @@ prints nothing. The rate lives only in `lk_place.hz`, which a component cannot r
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).
+
+## Verified by the consumer (2026-11-16, re-port onto A16-A28 and M3′)
+
+Resolved by A20. `activate()` refuses when `period()` is 0 (rate-less), then runs the raw node's open-time exchange budget: the p95 of `budget_queries` query-only exchanges must be at most `budget_fraction * period()`. `test_features.py::test_a_bus_too_slow_for_the_tick_is_refused`: a 9 ms exchange is refused at 100 Hz ("exchange budget: ..."), and a 2 ms one runs, in both placements. bam_ws `claude/cpp-controller-nodes-f9a521`, `src/core/mdp/agent/actuators/moteus_controller_node/lk`; `lk/tests` green 3 of 3 back to back in the lane's sandbox (rack powered, cores 22-23, not the timing tier).
