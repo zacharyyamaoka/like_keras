@@ -32,6 +32,9 @@ import uuid
 
 HELLO = "lk_hello"
 HELLO_TIMEOUT_S = 2.0  # CONTRACT §6.4/§9.2: a peer that never says hello is a refusal within 2 s, never a hang
+# WHY a node signalled first outlives its stop (CONTRACT §15 A37, as lk-dora-host's kLingerS): exiting at once, dora
+# would restart it (restart_policy: always) before the launcher's `dora stop`; longer than the launcher's whole drain
+LINGER_S = 15.0
 FOREVER = 1 << 62  # a promise of no more frames, in ns
 
 
@@ -175,6 +178,7 @@ class Link:
         self.seen: dict[str, str] = {}  # peer -> the nonce of its hello this node verified
         self.acked: set[str] = set()  # peers whose latest hello names this node's nonce
         self.ready, self.stopping = threading.Event(), threading.Event()
+        self.ended = threading.Event()  # dora's Stop, or no input left: restarts are disabled from here on
         self.handler, self.buffered = None, []  # frames before the process is built wait here, in order
         self.lock = threading.RLock()
         import faulthandler
@@ -272,6 +276,7 @@ class Link:
         while not self.closed:
             event = self.node.next(timeout=0.1)
             if event is None:
+                self.ended.set()
                 self.stopping.set()
                 return
             kind = event["type"]
@@ -287,6 +292,7 @@ class Link:
                         else:
                             self.handler(ident, event["value"], event["metadata"])
             elif kind in ("STOP", "ALL_INPUTS_CLOSED"):
+                self.ended.set()
                 self.stopping.set()
                 return
 
@@ -412,7 +418,7 @@ class Host:
         self.outbox = {output: collections.deque(maxlen=max(1, readers[output])) for output in node["outputs"]}
         self.frames: list = []  # lockstep: (output, value) sent in the event being stepped
         self.promised = dict.fromkeys(node["outputs"], -1)
-        self.wake = threading.Event()
+        self.wake, self.drained = threading.Event(), threading.Event()
         for output in node["outputs"]:  # run.subscribe: a log port's sinks reach the component's logger too
             leaf, port = output.rsplit(".", 1)
             run.subscribe(leaves[leaf], port, self._sink(output))
@@ -484,7 +490,7 @@ class Host:
             for output, box in self.outbox.items():
                 while box:
                     self.link.send(output, box.popleft())
-            if self.link.stopping.is_set() and not any(self.outbox.values()):
+            if self.drained.is_set() and not any(self.outbox.values()):  # after the final drain only (A37)
                 return
 
     def _drain_backlog(self) -> None:
@@ -504,7 +510,7 @@ class Host:
         except Exception as error:  # §5.7: activate raising: exit non-zero having sent no data frame
             mark(self.document, "refused", self.process, f"{type(error).__name__}: {error}")
             raise
-        mark(self.document, "started", self.process)
+        mark(self.document, "started", self.process, str(os.getpid()))  # the launcher signals this pid on a stop
         self._drain_backlog()
         with self.link.lock:
             self._drain_backlog()
@@ -512,9 +518,15 @@ class Host:
         sender = threading.Thread(target=self._transmit, name=f"lk-tx-{self.process}", daemon=True)
         sender.start()
         self.link.stopping.wait()
-        self.run.stop()
+        self.run.stop()  # deactivate in reverse order: what they log goes out on the log port at once
+        # WHY one more round (CONTRACT §15 A37): the offline health and the last metrics reach live readers and the
+        # recording, as a native node's final drain does (A28)
+        self.run._publish(self.run.epoch0 + time.monotonic() - self.run.mono0)
+        self.drained.set()
         self.wake.set()
         sender.join(timeout=5)
+        mark(self.document, "drained", self.process)
+        self.link.ended.wait(LINGER_S)  # signalled first by the launcher: dora's Stop follows, then no restart
         return 0
 
     # ------------------------------------------------------------ lockstep (CONTRACT §5.5)

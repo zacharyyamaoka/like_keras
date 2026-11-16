@@ -27,7 +27,7 @@ VERSION = "0.5.0"  # CONTRACT §2.2: the one place the dora version is written
 # no mixed_process: a native .so runs in lk-dora-host, a process of its own (CONTRACT §4.3 check 3).
 CAPABILITIES = ("latest", "queue", "lagged", "host", "lockstep", "processes")
 SKEW_TIMEOUT_S = 2.0  # T11: a refusal within 2 s, never a hang
-NATIVE_STOP_S = 10.0  # stop(): how long the native nodes get to deactivate and send their last records
+DRAIN_S = 10.0  # stop(): how long the signalled nodes get, in all, to deactivate and send their last records
 # WHY hidden: dora 0.5.0 builds its version string each time it parses its arguments (binaries/cli/src/lib.rs:23,
 # 62-88), so every call (--version, list, start, stop) first runs `uv pip show dora-rs`, then `pip show dora-rs`,
 # off PATH. Outside a .venv that is pip's start-up, 0.8-2.6 s on the powered rig, and the skew check refused healthy
@@ -141,7 +141,7 @@ class Run:
         from like_keras.backends.dora import emit
 
         if self.plan.realtime:
-            emit.stop_natives(self.document, NATIVE_STOP_S)
+            emit.stop_in_order(self.document, DRAIN_S)
         call("stop", uuid, "--grace-duration", "10s", timeout=60)
         document = self.document
         emit.wait_markers(document["markers"], "exit", list(document["nodes"]), 15.0, quiet=True, failures_raise=False)

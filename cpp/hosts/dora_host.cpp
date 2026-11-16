@@ -59,10 +59,12 @@ namespace {
 constexpr int64_t kForever = int64_t{1} << 62;
 constexpr double kHelloTimeoutS = 2.0;  // CONTRACT §6.4: a hang or a skew is refused within 2 s
 // WHY a node taking a signal outlives its box for a while (fix round 1 after the first consumer, item 2): the launcher
-// stops a dataflow by signalling its native nodes first, then `dora stop`. Exiting at once, the node would be restarted
-// by dora (restart_policy: always) and take over the bus again mid-stop; waiting for dora's Stop, its last records
-// reach live readers and it exits with restarts already disabled. Bounded, for a signal from anyone else.
-constexpr double kLingerS = 5.0;
+// stops a dataflow by signalling its nodes first, upstream first (A30, A37), then `dora stop`. Exiting at once, the
+// node would be restarted by dora (restart_policy: always) and take over the bus again mid-stop; waiting for dora's
+// Stop, its last records reach live readers and it exits with restarts already disabled. Bounded, for a signal from
+// anyone else, at longer than the launcher's whole drain (DRAIN_S, 10 s): a node of its first wave waits while later
+// waves drain (A37).
+constexpr double kLingerS = 15.0;
 
 std::string g_node, g_markers;
 std::atomic<bool> g_initialized{false};

@@ -281,29 +281,53 @@ def python_path() -> list[str]:
     )
 
 
-def stop_natives(document: dict, timeout_s: float) -> None:
-    """Real time, before `dora stop`: SIGTERM each native node of this run on this machine (lk-dora-host, its pid in
-    markers/started.<node>) and wait until it has deactivated its box and sent the last records (markers/drained.<node>).
-    WHY first (fix round 1 after the first consumer, item 2; CONTRACT §15 A28): `dora stop` stops every node at once,
-    so the gateway and the Python readers were gone before lk-dora-host's final drain reached them: no hand-back line
-    in the recording, and health left `operational`. The node then waits for dora's Stop, so it is never restarted."""
+def stop_order(document: dict) -> list[list[str]]:
+    """The waves a real-time stop signals before `dora stop`: every local node, native or Python, whose outputs
+    another component's node reads, upstream first; in a cycle its native nodes first (A30), then the rest. Nodes
+    only the gateway reads (readers, sinks) and the gateway itself are left to dora's Stop."""
+    nodes = document["nodes"]
+    local = {name for name, node in nodes.items() if node["role"] != "gateway" and not node["host"]}
+    feeds: dict[str, set[str]] = {name: set() for name in nodes}  # node -> the local nodes it reads
+    for reader, node in nodes.items():
+        feeds[reader] |= {spec["source"].split("/")[0] for spec in node["inputs"].values()} & local - {reader}
+    left = {name for name in local if any(name in feeds[reader] for reader in nodes if reader != GATEWAY)}
+    waves = []
+    while left:
+        wave = (
+            {name for name in left if not feeds[name] & left}
+            or {name for name in left if nodes[name]["role"] == "native"}
+            or set(left)
+        )
+        waves.append(sorted(wave))
+        left -= wave
+    return waves
+
+
+def stop_in_order(document: dict, timeout_s: float) -> None:
+    """Real time, before `dora stop`: SIGTERM each wave of stop_order (its pid in markers/started.<node>) and wait
+    until it has deactivated its components and sent its last records (markers/drained.<node>), then the next wave.
+    WHY (CONTRACT §15 A28, A30, A37): `dora stop` stops every node at once, so the gateway and the readers were gone
+    before a node's final drain reached them: no hand-back line in the recording, health left `operational`. What
+    a wave sent before `dora stop` reaches every node dora stops after it, in order. A signalled node then waits for
+    dora's Stop, so it is never restarted."""
     import signal
 
-    markers = pathlib.Path(document["markers"])
+    markers, deadline = pathlib.Path(document["markers"]), time.monotonic() + timeout_s
     plan = str(pathlib.Path(document["directory"]) / "plan.json")
-    natives = [name for name, node in document["nodes"].items() if node["role"] == "native" and not node["host"]]
-    signalled = []
-    for name in natives:
-        try:
-            pid = int((markers / f"started.{name}").read_text())
-            argv = pathlib.Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
-            if argv[1:3] == [plan.encode(), name.encode()]:  # a pid is reused once its process is gone: only ours
-                os.kill(pid, signal.SIGTERM)
-                signalled.append(name)
-        except (OSError, ValueError, IndexError):  # it never started, or it has exited: `dora stop` covers it
-            continue
-    # WHY only those signalled: a node that never started (one holding a refusal, A34) waits for `dora stop` itself
-    wait_markers(document["markers"], "drained|exit", signalled, timeout_s, quiet=True, failures_raise=False)
+    for wave in stop_order(document):
+        signalled = []
+        for name in wave:
+            try:
+                pid = int((markers / f"started.{name}").read_text())
+                argv = pathlib.Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
+                if argv[-3:-1] == [plan.encode(), name.encode()]:  # a pid is reused once its process is gone
+                    os.kill(pid, signal.SIGTERM)
+                    signalled.append(name)
+            except (OSError, ValueError, IndexError):  # it never started, or it has exited: `dora stop` covers it
+                continue
+        # WHY only those signalled: a node that never started (one holding a refusal, A34) waits for `dora stop`
+        left = max(0.0, deadline - time.monotonic())
+        wait_markers(document["markers"], "drained|exit", signalled, left, quiet=True, failures_raise=False)
 
 
 def refusal(markers: pathlib.Path, node: str) -> str:
