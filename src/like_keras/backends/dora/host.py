@@ -406,11 +406,9 @@ class Host:
         self.frames: list = []  # lockstep: (output, value) sent in the event being stepped
         self.promised = dict.fromkeys(node["outputs"], -1)
         self.wake = threading.Event()
-        for output in node["outputs"]:
+        for output in node["outputs"]:  # run.subscribe: a log port's sinks reach the component's logger too
             leaf, port = output.rsplit(".", 1)
-            run._box(leaves[leaf]).sinks[port].append(self._sink(output))
-        for box in run.boxes.values():  # the log port's sinks are read once at build: add the transport's
-            box.state.log_sinks = tuple(box.sinks["log"])
+            run.subscribe(leaves[leaf], port, self._sink(output))
         self.backlog: list = []
         self.incoming = collections.deque()  # lockstep: (input id, ns, horizon ns, value or None), from RX
         self.arrived = threading.Event()

@@ -178,7 +178,7 @@ class Group:
                 if self.entered is None:
                     self.entered = box.entered
         except Exception as error:  # §5.7: the group stops; health says why; the process keeps serving
-            box.state.error = f"{type(error).__name__}: {error}"
+            box.state.error, box.state.code = f"{type(error).__name__}: {error}", "Exception"
             box.component.log.error("forward raised; its group stops: %s", error, exc_info=error)
             self.dead = True
             self.deactivate()
@@ -639,7 +639,7 @@ class Run:
         self.outputs = {}  # what an attach client reads: the newest value of each exposed Out
         for name, ref in plan.graph.exposed_out.items():
             self.outputs[name] = Latest()
-            self._box(ref.owner).sinks[ref.name].append(self.outputs[name].write)
+            self.subscribe(ref.owner, ref.name, self.outputs[name].write)
         from like_keras.record import Recorder
 
         self.recorders = []
@@ -647,8 +647,18 @@ class Run:
             self.recorders.append(Recorder(file))
             for leaf, port, topic in channels:
                 kind = message_type(type(leaf)._lk_ports[port].type)
-                self._box(leaf).sinks[port].append(self.recorders[-1].channel(topic, kind))
+                self.subscribe(leaf, port, self.recorders[-1].channel(topic, kind))
         for box in self.boxes.values():
+            box.state.log_sinks = tuple(box.sinks["log"])
+
+    def subscribe(self, leaf, port: str, sink) -> None:
+        """`sink(value, sent)` gets every value `leaf` sends on `port`, a facility port (log, health, metrics) and a
+        native box's included, on the thread that sends it; it must hand the value over and return, never block.
+        WHY one seam (CONTRACT §15 A11): attach, `lk top` and the dora Python host subscribe here, so a rework of
+        the boxes (M4) keeps them working."""
+        box = self._box(leaf)
+        box.sinks[port].append(sink)
+        if port == "log" and isinstance(box, Box):  # a Python logger reads its sinks from its state (component._Log)
             box.state.log_sinks = tuple(box.sinks["log"])
 
     def _box(self, leaf) -> Box | NativeGroup:
@@ -759,8 +769,8 @@ class Run:
     def _health(self, box: Box, now: float, stale: set[str], overrun: int, warning: str | None):
         state, (header, diagnostic, _) = box.state, self.records
         level, code, message = "ok", "", ""
-        if state.error:
-            level, code, message = "error", "Exception", state.error
+        if state.error:  # the component's own code when it set one (attach: LeaseHeld, CONTRACT §15 A11)
+            level, code, message = "error", state.code or "Exception", state.error
         elif stale:
             level, code, message = "warn", "InputStale", f"stale: {', '.join(sorted(stale))}"
         elif overrun:

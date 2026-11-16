@@ -414,10 +414,10 @@ def serve(run) -> Server:
     plan = run.plan
     server = Server(plan.datasheet, run.inputs, clock=lambda: run.epoch0 + time.monotonic() - run.mono0)
     for name, ref in plan.graph.exposed_out.items():
-        run._box(ref.owner).sinks[ref.name].append(lambda value, sent, name=name: server.publish(name, value))
+        run.subscribe(ref.owner, ref.name, lambda value, sent, name=name: server.publish(name, value))
     for leaf in plan.graph.leaves:
         for port in ("health", "metrics"):
-            run._box(leaf).sinks[port].append(lambda value, sent: server.facility(value))
+            run.subscribe(leaf, port, lambda value, sent: server.facility(value))
     return server
 
 

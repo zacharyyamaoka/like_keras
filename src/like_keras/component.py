@@ -59,6 +59,9 @@ class _Port(Generic[T]):
     ) -> None:
         self.type, self.output, self.queue, self.stale, self.lagged = kind, output, queue, stale, lagged
         self.name, self.hash = "", None  # hash: what a native .so declared (CONTRACT §6.3), checked against ours
+        # WHY optional (CONTRACT §15 A11): an attach proxy mirrors every exposed In before anyone knows whether this
+        # client writes; such an input may stay unwired, gets no slot, and its forward never sees it.
+        self.optional = False
 
     def __set_name__(self, owner: type, name: str) -> None:
         self.name = name
@@ -134,6 +137,7 @@ class ComponentState:
         self.ages: dict[str, float] = {}
         self.warning: str | None = None
         self.error: str | None = None
+        self.code: str | None = None  # health.code while `error` is set (attach: LeaseHeld); None reads Exception
         self.custom: dict[str, float] = {}
         self.log_sinks: tuple = ()
 
