@@ -31,3 +31,7 @@ The same arm, the same config: the Python chain's datasheet has all 24 keys, the
 
 - **Library fix.** `native()` keeps `lk_describe()`'s `params` and the datasheet shows them overlaid with the config (nested rows as given: a vector's default is empty). One dictionary merge; no new name.
 - **New ruler test.** For a box with a Python twin (the reference cell's), `describe()` with the same partial config lists the same keys and values in both languages, NaN included.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A41/A42); its frozen test comes in ruler M0.7 (A43).

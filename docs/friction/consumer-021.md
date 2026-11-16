@@ -35,3 +35,7 @@ The controller's conversion never throws. It returns a `PlanIn` whose `refusal` 
 
 - **Library fix.** `Box::push` bumps a per-input refused counter on every `-1`, published in the box record as `refused.<input>` in both hosts; the first refusal per input and reason is logged on the box's `log` port off the RT thread (the exception's `what()`, or "outside activate/deactivate"). The comment at `rt.cpp:736` then holds.
 - **New ruler test.** A conversion that throws on every other push: the box's metrics count exactly the refused ones, in inproc and dora, and a recording of `log` has a line naming the reason.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A41/A42); its frozen test comes in ruler M0.7 (A43).
