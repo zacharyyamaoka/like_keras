@@ -10,6 +10,13 @@ thread policies are sampled every 20 ms throughout. Then:
 It runs on lk-dora-host as built and on a mutant that never watches its sibling nodes, which must fail (dora 0.5
 closes no input for a peer it restarts, so only the watch sees it leave).
 
+A shared daemon is never touched (A35): the same daemon also runs a foreign dataflow (one plain dora node, not
+like_keras: tests/foreign_dora_node.py), the reference arm runs in lk-dora-host on it, and the daemon's threads are
+sampled every 20 ms from before the start until after the stop: none is ever realtime, while lk-dora-host's own RT
+thread is. It runs on lk-dora-host as built and on a mutant whose private_daemon() takes any `dora daemon` for
+private, which must fail (library verifier, the round after A31-A42: that mutant passed every kpi and lane test;
+its scenario, test_lkv_a35.py::test_shared_daemon_*, credit).
+
     env -u VIRTUAL_ENV uv run --frozen --directory /home/bam/like_keras --extra test pytest -q tests/test_dora_boundary.py
 
 It needs a private network namespace in the host's PID namespace (`bwrap --unshare-net`: the private dora, and rtkit
@@ -39,12 +46,16 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 DORA_CXX = pathlib.Path(os.environ.get("LK_DORA_CXX_DIR", ROOT / "build" / "dora-cxx-0.5.0"))
 REALTIME = (os.SCHED_FIFO, os.SCHED_RR)
 RAISED_WITHIN_S, STOP_AFTER_S = 15.0, 4.0
+LOOKS_PASSED_S = 6.0  # past the elevator's looks at the daemon (0 s, 1 s and 3 s after the boundary is raised)
 # WHY 21 s between runs: rtkit allows a user 25 requests per 20 s (its burst limit), one run asks about 18 (the RT
 # thread, the sentinel, six I/O threads, five daemon threads, five again after the departure), and every lane shares
 # the budget (the raw node paces its dataflow tests the same way, fix round 6)
 PACE_S = 21.0
 last_run = [0.0]
 NEVER_WATCHES = ("    if (!paused && siblings.left()) {", "    if (false) {")  # never watches its siblings
+# private_daemon() takes any `dora daemon` for private, whatever its other nodes run
+TAKES_ANY_DAEMON = ('           (argv[at + 1] == "daemon" && !nodes.empty() && std::all_of(',
+                    '           (argv[at + 1] == "daemon") || (!nodes.empty() && std::all_of(')
 
 
 @pytest.fixture(scope="module")
@@ -235,3 +246,102 @@ def test_a_host_that_never_watches_its_peers_fails(rtkit_route, private_dora, tm
 
     assert judged(attempt) == []
 
+
+# ------------------------------------------------------------------ a shared daemon (A35: never touched)
+
+
+def foreign_dataflow(private_dora, directory: pathlib.Path) -> None:
+    """One foreign dora node (not like_keras) started detached on the private daemon, which is then SHARED."""
+    from kpi.support import procs
+
+    directory.mkdir(parents=True, exist_ok=True)
+    # WHY /usr/bin/env: with the venv's python (a symlink to /usr/bin/python3.12) as its path, dora ran the node
+    # without the venv (ModuleNotFoundError: dora); it died at once and the daemon was private again
+    flow = {"nodes": [{"id": "foreign", "path": "/usr/bin/env",
+                       "args": f"{python()} {ROOT / 'tests' / 'foreign_dora_node.py'}",
+                       "inputs": {"tick": "dora/timer/millis/200"}}]}
+    (directory / "foreign.yml").write_text(json.dumps(flow))
+    done = subprocess.run([private_dora.cli, "start", str(directory / "foreign.yml"), "--name", "foreign", "--detach"],
+                          cwd=private_dora.workdir, env=subprocess_env(), capture_output=True, text=True, timeout=120)
+    assert done.returncode == 0, done.stdout + done.stderr
+    procs.wait_for(lambda: foreign_nodes(private_dora.daemon_pid), 30.0, "the foreign node on the private daemon")
+
+
+def foreign_nodes(daemon: int) -> list[int]:
+    found = []
+    for task in os.listdir(f"/proc/{daemon}/task"):
+        for child in pathlib.Path(f"/proc/{daemon}/task/{task}/children").read_text().split():
+            try:
+                if b"foreign_dora_node.py" in pathlib.Path(f"/proc/{child}/cmdline").read_bytes():
+                    found.append(int(child))
+            except OSError:
+                continue
+    return found
+
+
+def shared_run(tmp_path, private_dora) -> dict:
+    """The arm in lk-dora-host on a private daemon that also runs a foreign dataflow; what was seen, as data."""
+    from kpi.support import procs
+
+    daemon = private_dora.daemon_pid
+    name = f"shared_lane_{os.getpid()}"
+    dep = arm_cell(name, tmp_path, metrics=False)
+    seen: dict = {"ours": [daemon]}
+    paced()
+    foreign_dataflow(private_dora, tmp_path / "foreign")
+    sampler = Sampler(daemon)
+    sampler.start()
+    try:
+        dep.start()
+        try:
+            seen["ours"] += procs.pids_with("lk-dora-host", name)
+            procs.wait_for(lambda: len((tmp_path / "states.jsonl").read_text().splitlines()) >= 100
+                           if (tmp_path / "states.jsonl").exists() else None, 60.0, "states at the subscriber")
+            time.sleep(LOOKS_PASSED_S)
+            seen["host"] = policies(procs.pids_with("lk-dora-host", name)[0])
+            seen["foreign_at_end"] = foreign_nodes(daemon)
+        finally:
+            dep.stop()
+    finally:
+        subprocess.run([private_dora.cli, "stop", "--name", "foreign"], cwd=private_dora.workdir, env=subprocess_env(),
+                       capture_output=True, text=True, timeout=60)
+        procs.wait_for(lambda: not foreign_nodes(daemon), 30.0, "the foreign node gone")
+        time.sleep(1.0)
+        samples = sampler.done()
+    seen["samples"] = len(samples)
+    seen["daemon_realtime"] = [(round(at, 2), rt) for at, rt in samples if rt]
+    return seen
+
+
+def shared_failures(seen: dict) -> list[str]:
+    wrong = [] if seen["foreign_at_end"] else ["the foreign node did not live through the run: the daemon was not shared"]
+    host = sorted(priority for policy, priority in seen["host"].values() if policy in REALTIME)
+    if host.count(20) < 1:
+        wrong.append(f"{GRANT}lk-dora-host's RT thread was never raised (rtkit), so its ladder was not tried: {host}")
+    if seen["daemon_realtime"]:
+        wrong.append(f"a SHARED daemon was raised in {len(seen['daemon_realtime'])} of {seen['samples']} samples: "
+                     f"{seen['daemon_realtime'][:5]}")
+    return wrong
+
+
+def test_a_shared_daemon_is_never_raised(rtkit_route, private_dora, tmp_path):
+    def attempt(index: int):
+        seen = shared_run(tmp_path / f"attempt{index}", private_dora)
+        print({key: value for key, value in seen.items() if key != "daemon_realtime"}, seen["daemon_realtime"][:5])
+        return shared_failures(seen), seen["ours"]
+
+    assert judged(attempt) == []
+
+
+def test_a_host_that_raises_a_shared_daemon_fails(rtkit_route, private_dora, tmp_path, monkeypatch):
+    mutant_host(tmp_path, TAKES_ANY_DAEMON, monkeypatch)
+
+    def attempt(index: int):
+        seen = shared_run(tmp_path / f"run{index}", private_dora)
+        wrong = shared_failures(seen)
+        print(f"the mutant fails: {wrong}")
+        caught = any("a SHARED daemon was raised" in reason for reason in wrong)
+        return ([] if caught else [f"{GRANT}the mutant that takes any daemon for private was not caught: {wrong}"],
+                seen["ours"])
+
+    assert judged(attempt) == []
