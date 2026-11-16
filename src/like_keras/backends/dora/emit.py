@@ -281,6 +281,28 @@ def python_path() -> list[str]:
     )
 
 
+def stop_natives(document: dict, timeout_s: float) -> None:
+    """Real time, before `dora stop`: SIGTERM each native node of this run on this machine (lk-dora-host, its pid in
+    markers/started.<node>) and wait until it has deactivated its box and sent the last records (markers/drained.<node>).
+    WHY first (fix round 1 after the first consumer, item 2; CONTRACT §15 A28): `dora stop` stops every node at once,
+    so the gateway and the Python readers were gone before lk-dora-host's final drain reached them: no hand-back line
+    in the recording, and health left `operational`. The node then waits for dora's Stop, so it is never restarted."""
+    import signal
+
+    markers = pathlib.Path(document["markers"])
+    plan = str(pathlib.Path(document["directory"]) / "plan.json")
+    natives = [name for name, node in document["nodes"].items() if node["role"] == "native" and not node["host"]]
+    for name in natives:
+        try:
+            pid = int((markers / f"started.{name}").read_text())
+            argv = pathlib.Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
+            if argv[1:3] == [plan.encode(), name.encode()]:  # a pid is reused once its process is gone: only ours
+                os.kill(pid, signal.SIGTERM)
+        except (OSError, ValueError, IndexError):  # it never started, or it has exited: `dora stop` covers it
+            continue
+    wait_markers(document["markers"], "drained|exit", natives, timeout_s, quiet=True, failures_raise=False)
+
+
 def wait_markers(
     markers: str, kind: str, nodes: list[str], timeout_s: float, quiet: bool = False, failures_raise: bool = True
 ) -> None:

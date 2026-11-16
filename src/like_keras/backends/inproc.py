@@ -960,6 +960,14 @@ class Run:
             thread.join()
         if self.server is not None:
             self.server.close()
+        if not self.lockstep:
+            # WHY: a rate-less group steps on every message that reached it before the stop, as it would have a moment
+            # later. In a reader process of a transport backend the stop follows right behind a native node's last
+            # records, before its group has woken for them (fix round 1 after the first consumer, item 2).
+            now = self.epoch0 + time.monotonic() - self.mono0
+            for group in self.groups:
+                while isinstance(group, Group) and group.hz is None and not group.dead and group.step(now):
+                    pass
         for group in reversed(self.groups):
             group.deactivate()
         self._close()

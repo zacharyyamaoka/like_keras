@@ -28,6 +28,10 @@ def logged(path) -> list[str]:
     return [row["message"] for row in recorded(path, "log")]
 
 
+def jsonl(path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+
+
 @pytest.mark.parametrize("realtime", [True, False], ids=["realtime", "lockstep"])
 def test_a_plain_stop_drains_deactivates_line(realtime, tmp_path):
     s = lk.System(f"plain_stop_{'rt' if realtime else 'ls'}")
@@ -59,6 +63,42 @@ def test_sigint_drains_deactivates_line(tmp_path):
         child.stop()
     assert (tmp_path / "handed_back").read_text() == "handed back\n"
     assert "handed back" in logged(tmp_path / "run.mcap"), logged(tmp_path / "run.mcap")
+
+
+def test_a_plain_dora_stop_in_real_time_reaches_live_readers(tmp_path, request):
+    """`target` in real time, ended by Deployment.stop() alone (fix round 1 after the first consumer, item 2): the
+    final drain must reach the readers that are still running, a Python sink in another process and the gateway's
+    recording: deactivate's line and the last health, offline. Before, `dora stop` ended the readers together with
+    lk-dora-host, so neither had the line and the last health read operational (verifier probe a28_drain, 3/3).
+    The node is stopped first and waits for dora's Stop, so dora never restarts it mid-stop (its pid stays)."""
+    request.getfixturevalue("private_dora")
+    from kpi.facilities.parts import HealthLog, LogLog
+    from like_keras.backends import dora
+    from like_keras.backends.dora import emit
+
+    name = f"plain_stop_dora_{os.getpid()}"
+    s = lk.System(name)
+    box = s.add(lk.native(feature_library("hand_back"), config={"path": str(tmp_path / "handed_back")}), "box")
+    s.add(LogLog(path=str(tmp_path / "log.jsonl")), "log_sink", value=box.log)
+    s.add(HealthLog(path=str(tmp_path / "health.jsonl")), "health_sink", value=box.health)
+    dep = lk.Deployment(s, backend=dora)
+    dep.record(tmp_path / "run.mcap", box.log, box.health)
+    dep.place(s.box, process="box", hz=20)
+    dep.place(s.log_sink, s.health_sink, process="sinks")
+    dep.start()
+    try:
+        (started,) = (emit.directory_of(name) / "markers").glob("*/started.box")
+        pid = started.read_text()
+        time.sleep(0.5)
+    finally:
+        dep.stop()
+    assert started.read_text() == pid, "dora restarted the node during the stop"
+    sink = jsonl(tmp_path / "log.jsonl")
+    assert [row["message"] for row in sink] == ["handed back"], sink
+    assert logged(tmp_path / "run.mcap") == ["handed back"]
+    health = jsonl(tmp_path / "health.jsonl")
+    assert health and health[-1]["mode"] == "offline", health[-1:]
+    assert [row["mode"] for row in recorded(tmp_path / "run.mcap", "health")][-1] == "offline"
 
 
 @pytest.mark.parametrize("number", [signal.SIGTERM, signal.SIGHUP, signal.SIGINT], ids=lambda n: signal.Signals(n).name)

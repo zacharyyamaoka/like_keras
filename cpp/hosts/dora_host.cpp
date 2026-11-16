@@ -58,6 +58,11 @@ namespace {
 
 constexpr int64_t kForever = int64_t{1} << 62;
 constexpr double kHelloTimeoutS = 2.0;  // CONTRACT §6.4: a hang or a skew is refused within 2 s
+// WHY a node taking a signal outlives its box for a while (fix round 1 after the first consumer, item 2): the launcher
+// stops a dataflow by signalling its native nodes first, then `dora stop`. Exiting at once, the node would be restarted
+// by dora (restart_policy: always) and take over the bus again mid-stop; waiting for dora's Stop, its last records
+// reach live readers and it exits with restarts already disabled. Bounded, for a signal from anyone else.
+constexpr double kLingerS = 5.0;
 
 std::string g_node, g_markers;
 std::atomic<bool> g_initialized{false};
@@ -197,7 +202,7 @@ struct Host {
   std::mutex sending;  // one OutputSender, two senders (TX and the hello answers on RX)
   std::mutex lock;
   std::condition_variable arrived;
-  bool ready = false, stopping = false, started = false;
+  bool ready = false, stopping = false, started = false, closed = false;  // closed: dora's Stop or no input left
   int signalled = 0;  // SIGTERM, SIGHUP or SIGINT, taken on the sigwait thread (CONTRACT §15 A18)
   std::map<Input*, ArrowArray> held;  // real time, before lk_start: the newest frame of each input
   struct Frame {
@@ -394,7 +399,7 @@ void receive(::DoraNode& node) {
     release(array);
   }
   std::lock_guard guard(host.lock);
-  host.stopping = true;
+  host.stopping = host.closed = true;
   host.arrived.notify_all();
 }
 
@@ -610,7 +615,7 @@ int main(int argc, char** argv) {
     host.held.clear();
     host.started = true;
   }
-  mark("started");
+  mark("started", std::to_string(::getpid()));  // the launcher signals this node first on a stop (item 2)
   int code = 0;
   if (host.stepped) {
     code = run_lockstep(node);
@@ -619,11 +624,14 @@ int main(int argc, char** argv) {
     tx.join();
     box.stop(box.box);  // the RT thread joined, the components deactivated in reverse order
     drain(node, -1, 0.0);
+    mark("drained");
   }
   if (host.signalled != 0) {  // RX may wait in next_event for good: neither joined nor raced by lk_destroy
+    std::unique_lock guard(host.lock);
+    host.arrived.wait_for(guard, std::chrono::duration<double>(kLingerS), [&] { return host.closed; });
     mark("exit");
     std::fflush(nullptr);
-    _exit(128 + host.signalled);
+    _exit(host.closed ? 0 : 128 + host.signalled);  // after dora's Stop: a stop, as without the signal
   }
   rx.join();
   box.destroy(box.box);
