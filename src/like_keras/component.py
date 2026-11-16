@@ -362,17 +362,25 @@ def native(path: str | Any, config: Any = None) -> Component:
     box = cls()
     # WHY the defaults beneath (CONTRACT §15 A41, consumer-020): the datasheet shows every field the box runs with, as
     # a Python component's does, and lk_create gets that same mapping in both hosts
-    box._lk_config = _overlaid(description.get("params", {}), config or {})
+    box._lk_config = _overlaid(description.get("params", {}), config or {}, description.get("row_defaults", {}))
     return box
 
 
-def _overlaid(defaults: dict[str, Any], given: Any) -> dict[str, Any]:
+def _overlaid(defaults: dict[str, Any], given: Any, rows: dict[str, Any], path: str = "") -> dict[str, Any]:
     """`given` laid over `defaults` as LK_PARAMS fills the box: a nested aggregate given in part keeps its other
-    defaults; any other value given (a number, a row table) replaces its default whole."""
+    defaults; a row table given replaces the default rows, each given row laid over the row type's member defaults
+    (`rows`, lk_describe()'s row defaults by table path: "joints", "bus.joints", "joints[].limits"); any other value
+    given replaces its default whole. WHY the member defaults (CONTRACT §15 A44): lk_create fills a given row from
+    them, never from the default table's row at its index, and the datasheet must be what the box runs."""
     shown = dict(defaults)
     for key, value in given.items():
-        nested = isinstance(shown.get(key), dict) and hasattr(value, "keys")
-        shown[key] = _overlaid(shown[key], value) if nested else value
+        at = path + key
+        if isinstance(shown.get(key), dict) and hasattr(value, "keys"):
+            shown[key] = _overlaid(shown[key], value, rows, at + ".")
+        elif at in rows and isinstance(value, (list, tuple)):
+            shown[key] = [_overlaid(rows[at], row, rows, at + "[].") if hasattr(row, "keys") else row for row in value]
+        else:
+            shown[key] = value
     return shown
 
 

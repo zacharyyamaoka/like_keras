@@ -4,7 +4,9 @@
 // RT thread runs (A19), the period of a rate-less box (A20), held health against the facility's own and a %s argument
 // (A22), an optional input that is neither wired nor exposed (A23), the JSON paths of a table's errors (A24),
 // deactivate's last words on the C ABI (A28), non-finite numbers in a vector default and where an int is read
-// (A33), and refused pushes of every kind, counted per input and said at a limited rate (A42).
+// (A33), refused pushes of every kind, counted per input and said at a limited rate (A42), and a given row filled from
+// its row type's member defaults through lk_create itself, in nested tables too (A44).
+#include <dlfcn.h>
 #include <gtest/gtest.h>
 #include <like_keras/abi.h>
 #include <sched.h>
@@ -637,6 +639,103 @@ TEST(NonFiniteParams, ReadBackAsDefaultsPrintThemAndAnIntRefusesThem) {  // CONT
   EXPECT_EQ(created_error(R"({"gains": [NaN, -Infinity], "bounds": [Infinity], "window": 2})"), "");
   EXPECT_EQ(created_error(R"({"window": NaN})"), "params.window: expected an int, got NaN");
   EXPECT_EQ(created_error(R"({"window": -Infinity})"), "params.window: expected an int, got -Infinity");
+}
+
+// ---------------------------------------------------------------- A44: a given row, through lk_create itself
+
+// tests/cpp/row_tables.cpp's .so, driven through its own C ABI only (dlopen, lk_create, lk_step, lk_take): what the
+// box runs, as (leaf path, value). WHY lk_create itself (ruler lane, M0.8): lk.native() gives lk_create every key
+// filled, so a Python-only fill passes the ruler while lk_create's own fill of a partial row stays wrong.
+using Leaves = std::vector<std::pair<std::string, double>>;
+
+struct RowTablesSo {
+  void* library = dlopen(LK_ROW_TABLES_SO, RTLD_NOW | RTLD_LOCAL);
+  template <class Function>
+  Function* entry(const char* name) const {
+    return reinterpret_cast<Function*>(dlsym(library, name));
+  }
+
+  std::string ran(const char* params, Leaves& leaves) const {  // "" when it ran, else why not
+    char error[512] = {};
+    lk_box* box = entry<lk_box*(const char*, char*, size_t)>("lk_create")(params, error, sizeof error);
+    if (box == nullptr) return error;
+    std::string why;
+    if (entry<int(lk_box*, const lk_place*, char*, size_t)>("lk_start")(box, &kStepped, error, sizeof error) != 0)
+      why = error;
+    ArrowArray array{};
+    if (why.empty() && entry<int(lk_box*, double)>("lk_step")(box, 0.0) != 0) why = "lk_step failed";
+    if (why.empty() && entry<int(lk_box*, uint32_t, ArrowArray*)>("lk_take")(box, 0, &array) != 1)
+      why = "the box sent nothing";
+    if (why.empty()) {
+      rm::JointState echo{};
+      if (!lk::detail::find_wire(rm::JointState::kHash)->decode(array, &echo)) why = "the echo did not decode";
+      for (std::size_t leaf = 0; why.empty() && leaf < echo.size; ++leaf)
+        leaves.emplace_back(std::string(echo.name[leaf]), echo.position[leaf]);
+      lk::detail::release(array);
+    }
+    entry<void(lk_box*)>("lk_stop")(box);
+    entry<void(lk_box*)>("lk_destroy")(box);
+    return why;
+  }
+};
+
+TEST(TableParams, AGivenRowRunsItsRowTypesMemberDefaultsNeverTheDefaultRowAtItsIndex) {  // CONTRACT §15 A44
+  const RowTablesSo so;
+  ASSERT_NE(so.library, nullptr) << dlerror();
+  const std::string sheet = so.entry<const char*()>("lk_describe")();
+  // A41's params stay the default tables; the row defaults beside them name each table by path, rows as []
+  EXPECT_NE(
+      sheet.find(R"("params": {"arm": {"joints": [{"name": "shoulder", "offset": 0.25, "limits": [{"low": -3.0, )"
+                 R"("high": 3.0}, {"low": -4.0, "high": 4.0}]}, {"name": "elbow", "offset": -0.5, "limits": []}]}, )"
+                 R"("stops": [{"low": 0.25, "high": 0.75}]})"),
+      std::string::npos)
+      << sheet;
+  EXPECT_NE(sheet.find(R"("row_defaults": {"arm.joints[].limits": {"low": -1.0, "high": 1.0}, "arm.joints": {"name": )"
+                       R"("spare", "offset": 0.125, "limits": [{"low": -2.0, "high": 2.0}]}, "stops": {"low": -1.0, )"
+                       R"("high": 1.0}})"),
+            std::string::npos)
+      << sheet;
+
+  Leaves leaves;
+  // a partial row inside the default table (joint 0), one whose table inside it is given in part (joint 1), a
+  // partial row past the default table (stop 1 is empty): each key left out runs its row type's member default
+  ASSERT_EQ(so.ran(R"({"arm": {"joints": [{"name": "wrist"}, {"offset": 0.5, "limits": [{"low": -0.1}]}]}, )"
+                   R"("stops": [{"high": 0.9}, {}]})",
+                   leaves),
+            "");
+  EXPECT_EQ(leaves, (Leaves{{"arm.joints[0].name=wrist", 0.0},
+                            {"arm.joints[0].offset", 0.125},        // not shoulder's 0.25
+                            {"arm.joints[0].limits[0].low", -2.0},  // Joint{}'s own table, not shoulder's two rows
+                            {"arm.joints[0].limits[0].high", 2.0},
+                            {"arm.joints[1].name=spare", 0.0},  // not elbow
+                            {"arm.joints[1].offset", 0.5},
+                            {"arm.joints[1].limits[0].low", -0.1},
+                            {"arm.joints[1].limits[0].high", 1.0},
+                            {"stops[0].low", -1.0},  // not the default stop's 0.25
+                            {"stops[0].high", 0.9},
+                            {"stops[1].low", -1.0},
+                            {"stops[1].high", 1.0}}));
+
+  const Leaves defaults{{"arm.joints[0].name=shoulder", 0.0},
+                        {"arm.joints[0].offset", 0.25},
+                        {"arm.joints[0].limits[0].low", -3.0},
+                        {"arm.joints[0].limits[0].high", 3.0},
+                        {"arm.joints[0].limits[1].low", -4.0},
+                        {"arm.joints[0].limits[1].high", 4.0},
+                        {"arm.joints[1].name=elbow", 0.0},
+                        {"arm.joints[1].offset", -0.5},
+                        {"stops[0].low", 0.25},
+                        {"stops[0].high", 0.75}};
+  for (const char* absent : {"{}", R"({"arm": {}})"}) {  // a table not given keeps its default rows
+    leaves.clear();
+    ASSERT_EQ(so.ran(absent, leaves), "") << absent;
+    EXPECT_EQ(leaves, defaults) << absent;
+  }
+  leaves.clear();
+  ASSERT_EQ(so.ran(R"({"arm": {"joints": []}, "stops": []})", leaves), "");
+  EXPECT_EQ(leaves, Leaves{}) << "a table given empty runs no rows";
+  EXPECT_EQ(so.ran(R"({"arm": {"joints": [{"limits": [{"hgh": 1}]}]}})", leaves),
+            "params.arm.joints[0].limits[0].hgh: unknown key (known: low, high)");
 }
 
 }  // namespace

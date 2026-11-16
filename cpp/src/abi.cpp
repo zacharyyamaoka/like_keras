@@ -479,12 +479,20 @@ bool enroll_factory(Factory make) {
   return true;
 }
 
-Fields::Fields(const void* json, std::string* out) : json_(json), out_(out) {}
+Fields::Fields(const void* json, std::string* out, RowDefaults* tables) : json_(json), out_(out), tables_(tables) {}
+
+namespace {
+void up(std::string& path) {  // a walker's path one object up: "bus.joints[2].limits" -> "bus.joints[2]"
+  const auto dot = path.rfind('.');
+  path.resize(dot == std::string::npos ? 0 : dot);
+}
+}  // namespace
 
 void Fields::enter(const char* key) {
   if (out_ != nullptr) {
     if (!out_->empty() && out_->back() != '{' && out_->back() != '[') *out_ += ", ";
     *out_ += key ? quoted(key) + ": {" : "{";
+    if (key != nullptr) path_ += path_.empty() ? key : "." + std::string(key);
     return;
   }
   const Json* object = static_cast<const Json*>(json_);
@@ -498,7 +506,10 @@ void Fields::enter(const char* key) {
 }
 
 void Fields::leave() {
-  if (out_ != nullptr) return void(*out_ += "}");
+  if (out_ != nullptr) {
+    *out_ += "}";
+    return up(path_);
+  }
   const auto* object = static_cast<const Json*>(stack_.back());
   const std::size_t mark = marks_.back();
   for (const auto& [name, value] : object != nullptr ? object->members : std::vector<std::pair<std::string, Json>>{}) {
@@ -511,23 +522,27 @@ void Fields::leave() {
                                 ": unknown key (known: " + known + ")");
   }
   seen_.resize(mark), stack_.pop_back(), marks_.pop_back();
-  const auto dot = path_.rfind('.');
-  path_.resize(dot == std::string::npos ? 0 : dot);
+  up(path_);
 }
 
-std::size_t Fields::open_rows(const char* key, std::size_t count) {
+std::size_t Fields::open_rows(const char* key) {
   if (out_ != nullptr) {
     if (out_->back() != '{') *out_ += ", ";
     *out_ += quoted(key) + ": [";
-    return count;
+    rows_.emplace_back(nullptr, key);
+    return kAbsent;
   }
   const auto* array = static_cast<const Json*>(find(key, Json::kArray));
   rows_.emplace_back(array, key);
-  return array != nullptr ? array->members.size() : count;  // absent: the default rows stay
+  return array != nullptr ? array->members.size() : kAbsent;  // absent: the default rows stay
 }
 
 void Fields::enter_row(std::size_t at) {
-  if (out_ != nullptr) return void(*out_ += out_->back() == '[' ? "{" : ", {");
+  if (out_ != nullptr) {
+    *out_ += out_->back() == '[' ? "{" : ", {";
+    path_ += (path_.empty() ? "" : ".") + rows_.back().second + "[]";
+    return;
+  }
   const auto* array = static_cast<const Json*>(rows_.back().first);
   const Json* row = array != nullptr ? &array->members[at].second : nullptr;
   path_ += (path_.empty() ? "" : ".") + rows_.back().second + "[" + std::to_string(at) + "]";
@@ -537,8 +552,20 @@ void Fields::enter_row(std::size_t at) {
 }
 
 void Fields::close_rows() {
-  if (out_ != nullptr) return void(*out_ += "]");
+  if (out_ != nullptr) *out_ += "]";
   rows_.pop_back();
+}
+
+void Fields::note_rows(const char* key, void (*write_row)(Fields&)) {
+  if (tables_ == nullptr) return;
+  const std::string path = path_.empty() ? key : path_ + "." + key;
+  for (const auto& [noted, _] : *tables_)
+    if (noted == path) return;  // a table inside a row: the same for every row
+  std::string row;
+  Fields writer(nullptr, &row, tables_);  // its own tables are noted under this one's rows: "joints[].limits"
+  writer.path_ = path + "[]";
+  write_row(writer);
+  tables_->emplace_back(path, std::move(row));
 }
 
 const void* Fields::find(const char* key, int kind) {
@@ -621,7 +648,7 @@ std::string Box::sheet() const {  // lk_describe(): the exposed ports, in expose
 // ---------------------------------------------------------------- the C ABI (CONTRACT §6.3)
 
 namespace {
-lk_box* build(const char* params_json, std::string* defaults) {
+lk_box* build(const char* params_json, std::string* defaults, lk::detail::RowDefaults* tables = nullptr) {
   using lk::detail::Json;
   if (lk::detail::exported == nullptr) throw std::invalid_argument("this .so has no LK_EXPORT(factory)");
   Json root;
@@ -633,7 +660,7 @@ lk_box* build(const char* params_json, std::string* defaults) {
   } else {
     root.kind = Json::kObject;
   }
-  lk::detail::Fields fields(defaults ? nullptr : &root, defaults);
+  lk::detail::Fields fields(defaults ? nullptr : &root, defaults, tables);
   return new lk_box(lk::detail::exported(fields));
 }
 }  // namespace
@@ -647,9 +674,12 @@ LKX_API const char* lk_describe(void) {
   // construction without activate, so no device opens and no thread starts (CONTRACT §4.5 forbids I/O here).
   static const std::string sheet = [] {
     try {
-      std::string params;
-      const std::unique_ptr<lk_box> box(build(nullptr, &params));
-      return box->sheet() + ", \"params\": " + params + "}";
+      std::string params, rows;
+      lk::detail::RowDefaults tables;
+      const std::unique_ptr<lk_box> box(build(nullptr, &params, &tables));
+      // CONTRACT §15 A44: a given row is filled from its table's row defaults, so lk.native() needs them
+      for (const auto& [path, row] : tables) rows += (rows.empty() ? "" : ", ") + lk::detail::quoted(path) + ": " + row;
+      return box->sheet() + ", \"params\": " + params + ", \"row_defaults\": {" + rows + "}}";
     } catch (const std::exception& error) {
       return "{\"like_keras\": \"0.1.0\", \"abi\": 1, \"ports\": {}, \"error\": " + lk::detail::quoted(error.what()) +
              "}";

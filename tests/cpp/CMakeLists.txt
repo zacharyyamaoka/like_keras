@@ -17,7 +17,13 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/like_keras.cmake)
 find_package(GTest REQUIRED)
 add_executable(box_tests test_box.cpp test_friction.cpp)
 target_include_directories(box_tests PRIVATE ${LIKE_KERAS_ROOT}/cpp/src)
-target_link_libraries(box_tests PRIVATE like_keras::rt GTest::gtest GTest::gtest_main)
+target_link_libraries(box_tests PRIVATE like_keras::rt GTest::gtest GTest::gtest_main ${CMAKE_DL_LIBS})
+
+# CONTRACT §15 A44: nested tables given in part, driven through the .so's own C ABI by box_tests (dlopen) and through
+# lk.native by tests/test_native_params.py
+lk_component(row_tables row_tables.cpp)
+add_dependencies(box_tests row_tables)
+target_compile_definitions(box_tests PRIVATE LK_ROW_TABLES_SO="$<TARGET_FILE:row_tables>")
 
 # CONTRACT §15 A28 (consumer-013): a component that links a static library compiled with default visibility, as the
 # consumer's mcn_core: lk_component must still export the lk_* C ABI and nothing else (tests/test_component_exports.py).

@@ -301,10 +301,15 @@ void System::expose(std::string_view as, P& port) {
 
 namespace detail {
 
+// Each params table's row defaults for lk_describe: (the table's path, a value-initialized row as JSON). The path names
+// a row of any table as `[]`: "joints", "bus.joints", "joints[].limits".
+using RowDefaults = std::vector<std::pair<std::string, std::string>>;
+
 // LK_PARAMS' walker: JSON into a Params aggregate at lk_create, or its defaults out as JSON for lk_describe.
 class Fields {
  public:
-  explicit Fields(const void* json, std::string* out = nullptr);  // json: abi.cpp's parsed JSON; out: write defaults
+  // json: abi.cpp's parsed JSON; out: write the defaults; tables: also each table's row defaults (CONTRACT §15 A44)
+  explicit Fields(const void* json, std::string* out = nullptr, RowDefaults* tables = nullptr);
   void operator()(const char* key, double& value);
   void operator()(const char* key, int& value);
   void operator()(const char* key, bool& value);
@@ -318,9 +323,11 @@ class Fields {
  private:
   void enter(const char* key);
   void leave();
-  std::size_t open_rows(const char* key, std::size_t count);  // reading: the array's length (`count` when absent)
-  void enter_row(std::size_t at);                             // its object; the path an error names: key[at]
+  static constexpr std::size_t kAbsent = static_cast<std::size_t>(-1);
+  std::size_t open_rows(const char* key);  // reading: the array's length (kAbsent: no such key, the default rows stay)
+  void enter_row(std::size_t at);          // its object; the path an error names: key[at]
   void close_rows();
+  void note_rows(const char* key, void (*write_row)(Fields&));  // writing: the table's row defaults, once per path
   const void* find(const char* key, int kind);  // reading: the member `key` of the object being filled, or nullptr
   void emit(const char* key, const std::string& json);
   const void* json_ = nullptr;      // reading: the parsed JSON root (cpp/src/abi.cpp's Json)
@@ -329,7 +336,8 @@ class Fields {
   std::vector<std::string> seen_;   // reading: the keys visited, to name an unknown one
   std::vector<std::pair<const void*, std::string>> rows_;  // reading: the arrays of rows being filled, their keys
   std::string* out_ = nullptr;                             // writing: the defaults as JSON
-  std::string path_;                                       // "bus.joints[2]": the key an error names
+  RowDefaults* tables_ = nullptr;                          // writing: each table's row defaults
+  std::string path_;  // reading: "bus.joints[2]", the key an error names; writing: "bus.joints[]"
 };
 
 template <class Nested>
@@ -341,13 +349,21 @@ void Fields::operator()(const char* key, Nested& value) {
 
 template <class Nested>
 void Fields::operator()(const char* key, std::vector<Nested>& rows) {
-  rows.resize(open_rows(key, rows.size()));  // filled at lk_create, never on the RT thread
+  // WHY a given table starts from value-initialized rows (CONTRACT §15 A44): a key a given row leaves out takes the
+  // row type's member default, never the default table's row at the same index, so describe() (which lists each given
+  // row filled the same way) is what the box runs. Filled at lk_create, never on the RT thread.
+  if (const std::size_t given = open_rows(key); given != kAbsent) rows.clear(), rows.resize(given);
   for (std::size_t at = 0; at < rows.size(); ++at) {
     enter_row(at);
     lk_fields(rows[at], *this);
     leave();
   }
   close_rows();
+  if (out_ != nullptr)
+    note_rows(key, [](Fields& writer) {
+      Nested blank{};
+      writer(nullptr, blank);
+    });
 }
 
 template <auto factory, class Params>
