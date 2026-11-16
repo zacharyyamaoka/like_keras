@@ -6,6 +6,8 @@
 // lk_start(stepped = 1), then lk_step on this thread, a 7 x 100 plan pushed every 50 ticks, every output taken.
 // While a tick runs, this binary counts every operator new / malloc family call and every pthread mutex, rwlock or
 // semaphore wait made on this thread (the replacements below interpose on the whole process; -rdynamic exports them).
+// Two runs: the guard as configured (it passes the plans through), and a guard whose runaway_rad makes every plan
+// run away and its hold be released again (CONTRACT §15 A14), so the hold, the release and their log lines step too.
 #include <dlfcn.h>
 #include <gtest/gtest.h>
 #include <pthread.h>
@@ -13,6 +15,7 @@
 #include <unistd.h>
 
 #include <atomic>
+#include <cstdio>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -20,6 +23,7 @@
 #include <new>
 #include <regex>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "golden/lkf_frame.hpp"
@@ -162,9 +166,27 @@ std::vector<std::string> ports(const std::string& description, const std::string
   return found;
 }
 
-}  // namespace
+// What one run of the chain saw: the allocations and locks lk_step made after the warm-up, the guard's log lines
+// (taken from the box's log port), and how often the consumer released the pushed plan.
+struct ChainRun {
+  long allocations = 0, locks = 0, runaway_logs = 0, released_logs = 0;
+  int frames_released = 0;
+};
 
-TEST(RealTimeHotPath, ZeroAllocationsAndNoLocksPerTick) {
+// The message of a LogRecord taken from the box (std/LogRecord: header, path, tick, level, message; utf8 = validity,
+// int32 offsets, data), or empty when the layout is not that.
+std::string_view log_message(const ArrowArray& record) {
+  if (record.n_children < 5 || record.children[4] == nullptr) return {};
+  const ArrowArray& message = *record.children[4];
+  if (message.n_buffers != 3 || message.buffers[1] == nullptr || message.buffers[2] == nullptr) return {};
+  const auto* offsets = static_cast<const int32_t*>(message.buffers[1]);
+  return {static_cast<const char*>(message.buffers[2]) + offsets[message.offset],
+          static_cast<std::size_t>(offsets[message.offset + 1] - offsets[message.offset])};
+}
+
+// libarm_controller.so through the C ABI: lk_create with `guard` as the guard's params, lk_start(stepped = 1), then
+// kWarmup + kTicks lk_step on this thread, a 7 x 100 plan pushed every 50 ticks, every output taken.
+void run_chain(const std::string& guard, ChainRun& run) {
   const std::string library_path = std::string(KPI_BUILD_DIR) + "/libarm_controller.so";
   void* library = dlopen(library_path.c_str(), RTLD_NOW | RTLD_LOCAL);
   ASSERT_NE(library, nullptr) << dlerror();
@@ -185,11 +207,12 @@ TEST(RealTimeHotPath, ZeroAllocationsAndNoLocksPerTick) {
   uint32_t trajectory_port = 0;
   for (; trajectory_port < inputs.size() && inputs[trajectory_port] != "trajectory"; ++trajectory_port) {}
   ASSERT_LT(trajectory_port, inputs.size()) << "no exposed input `trajectory` in " << description;
+  const auto log_port = static_cast<uint32_t>(outputs.size());  // abi.h: facilities follow the exposed outs, log 1st
 
   const auto scratch = std::filesystem::path(KPI_BUILD_DIR) / ("alloc_probe-" + std::to_string(getpid()));
   std::filesystem::create_directories(scratch);
   const std::string params = R"({"bus": {"twin": true, "exchange_s": 0.0, "joints": 7, "board_file": "", "lock_path": ")" +
-                             (scratch / "bus.lock").string() + R"("}, "guard": {}})";
+                             (scratch / "bus.lock").string() + R"("}, "guard": )" + guard + "}";
   char error[1024] = {0};
   lk_box* box = abi.create(params.c_str(), error, sizeof(error));
   ASSERT_NE(box, nullptr) << error;
@@ -220,12 +243,43 @@ TEST(RealTimeHotPath, ZeroAllocationsAndNoLocksPerTick) {
         if (out.release) out.release(&out);
       }
     }
+    ArrowArray record{};
+    while (abi.take(box, log_port, &record) == 1) {
+      const std::string_view message = log_message(record);
+      run.runaway_logs += message.find("runaway: holding") != std::string_view::npos;
+      run.released_logs += message.find("runaway hold released") != std::string_view::npos;
+      if (record.release) record.release(&record);
+    }
     now += 0.01;
   }
-  EXPECT_EQ(allocations.load() - allocations_seen, 0) << "heap allocations in lk_step over " << kTicks << " ticks";
-  EXPECT_EQ(locks.load() - locks_seen, 0) << "locks or waits taken in lk_step over " << kTicks << " ticks";
+  run.allocations = allocations.load() - allocations_seen;
+  run.locks = locks.load() - locks_seen;
   abi.stop(box);
   abi.destroy(box);
-  EXPECT_GT(frame->released, 0) << "no pushed plan was ever released";
+  run.frames_released = frame->released;
   std::filesystem::remove_all(scratch);
+}
+
+}  // namespace
+
+TEST(RealTimeHotPath, ZeroAllocationsAndNoLocksPerTick) {
+  ChainRun run;
+  run_chain("{}", run);
+  EXPECT_EQ(run.allocations, 0) << "heap allocations in lk_step over 100000 ticks";
+  EXPECT_EQ(run.locks, 0) << "locks or waits taken in lk_step over 100000 ticks";
+  EXPECT_GT(run.frames_released, 0) << "no pushed plan was ever released";
+}
+
+TEST(RealTimeHotPath, ZeroAllocationsThroughTheGuardsRunawayHoldAndRelease) {
+  // WHY runaway_rad 1 mrad: the 7 x 100 plan leaves 0 rad and comes back to it, so every plan runs away from the
+  // two-tick-late fake arm and the guard holds; the plan's end, back within start_tolerance_rad of the held arm,
+  // releases it (CONTRACT §15 A14). That is a hold, a release and two log lines in every 50 ticks.
+  ChainRun run;
+  run_chain(R"({"runaway_rad": 0.001})", run);
+  std::printf("guard: %ld runaway holds and %ld releases logged over %d plans\n", run.runaway_logs, run.released_logs,
+              run.frames_released);
+  EXPECT_EQ(run.allocations, 0) << "heap allocations in lk_step over 100000 ticks of runaway holds and releases";
+  EXPECT_EQ(run.locks, 0) << "locks or waits taken in lk_step over 100000 ticks of runaway holds and releases";
+  EXPECT_GT(run.runaway_logs, 100) << "the guard never held a runaway (the scenario broke)";
+  EXPECT_GT(run.released_logs, 100) << "the guard never released a runaway hold";
 }

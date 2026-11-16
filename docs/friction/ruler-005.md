@@ -69,3 +69,9 @@ The full scratch copy is `/tmp/claude-1000/-home-bam-bam-ws--claude-worktrees-cp
 | fixed runtime (this round) | passed | passed |
 
 The lane's own regression is `tests/test_native_facilities.py`. Before the fix, `test_lockstep_health_is_delivered[cpp]` and `test_lockstep_uptime_is_on_the_step_clock` failed with the refusal above. After the fix, all 4 tests pass.
+
+## Resolution (2026-11-16, dispatcher)
+
+See CONTRACT.md §15, amendment A14. Decided: the ruler lane adds the lockstep half in the M0.2 commit, for every inproc combination (A14's scope; the dora combinations keep their real-time ids only).
+
+**Done (ruler lane, the M0.2 commit "kpi: M0.2 — ruler amendment A14").** `kpi/facilities/test_facilities.py`: `run_with_sinks(..., realtime=)` passes the clock through to the fixture's `deployment(realtime=)` and runs `start(until=seconds)` under lockstep; `test_health_lockstep[python-inproc|cpp-inproc]` asserts the checks of `test_health` and strictly `ok`, with `uptime_s >= 0`, in every tier. `kpi/score.py` counts criterion 9's `health` only when both lockstep ids pass too. Against the pre-fix `libempty.so` (the C++ runtime of `c772777`, rebuilt in scratch) `test_health_lockstep[cpp-inproc]` fails with `0 health records`; against HEAD's it passes.

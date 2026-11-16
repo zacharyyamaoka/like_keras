@@ -1,7 +1,8 @@
 """Criterion 9: the seven facilities on an empty-step component, each language, each backend, zero user lines.
 
-A facility counts only when its test passes in all four combinations (python/cpp x inproc/dora). The components
-are kpi/tasks/empty (empty.py, empty.cpp -> build/kpi/libempty.so). Facility ports are wired like any port.
+A facility counts only when its test passes in all four combinations (python/cpp x inproc/dora); health also needs
+its lockstep half on both inproc combinations (test_health_lockstep, CONTRACT §15 A14). The components are
+kpi/tasks/empty (empty.py, empty.cpp -> build/kpi/libempty.so). Facility ports are wired like any port.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from kpi.support.lk import backend as load_backend
 from kpi.support.lk import decode, like_keras, lk_command, native_library
 
 COMBINATIONS = ["python-inproc", "python-dora", "cpp-inproc", "cpp-dora"]
+INPROC_COMBINATIONS = ["python-inproc", "cpp-inproc"]  # test_health_lockstep's (CONTRACT §15 A14)
 STANDARD_METRICS = {"steps", "step_p50_s", "step_p99_s", "step_max_s", "period_error_p99_s", "overruns"}
 
 
@@ -66,19 +68,24 @@ def facility(request, tmp_path):
     return Facility(lk, s, subject, deployment, language, backend_name, tmp_path)
 
 
-def run_with_sinks(facility: Facility, seconds: float = 2.6, record=None) -> None:
+def run_with_sinks(facility: Facility, seconds: float = 2.6, record=None, realtime: bool = True) -> None:
+    """Real time: start, `seconds` of wall time, stop. Lockstep (realtime=False): `seconds` of logical time at full
+    speed (CONTRACT §4.4, §5.5)."""
     from kpi.facilities.parts import HealthLog, LogLog, MetricsLog
 
     s = facility.system
     s.add(LogLog(path=facility.path_of("log.jsonl")), "log_sink", value=facility.subject.log)
     s.add(HealthLog(path=facility.path_of("health.jsonl")), "health_sink", value=facility.subject.health)
     s.add(MetricsLog(path=facility.path_of("metrics.jsonl")), "metrics_sink", value=facility.subject.metrics)
-    dep = facility.deployment()
+    dep = facility.deployment(realtime=realtime)
     dep.place(s.log_sink, s.health_sink, s.metrics_sink, process="sinks")
     if record is not None:
         record(dep)
-    dep.start()
-    time.sleep(seconds)
+    if realtime:
+        dep.start()
+        time.sleep(seconds)
+    else:
+        dep.start(until=seconds)
     dep.stop()
 
 
@@ -112,10 +119,11 @@ def test_metrics(facility, combination):
     assert steps == sorted(steps) and steps[-1] >= 50
 
 
-def operational_health(facility: Facility) -> list[dict]:
-    """The subject's health records over a 2.6 s run, after the checks every tier makes: at 1 Hz,
-    expected_period_s 1.0, STALE never sent (an observer derives it). Returns the operational ones."""
-    run_with_sinks(facility)
+def operational_health(facility: Facility, realtime: bool = True) -> list[dict]:
+    """The subject's health records over a 2.6 s run (wall time, or logical under lockstep), after the checks every
+    tier makes: at 1 Hz, expected_period_s 1.0, STALE never sent (an observer derives it). Returns the operational
+    ones."""
+    run_with_sinks(facility, realtime=realtime)
     found = mine(rows(facility.path_of("health.jsonl")), facility)
     assert len(found) >= 2, f"{len(found)} health records"
     assert all(row["expected_period_s"] == 1.0 for row in found)
@@ -133,6 +141,19 @@ def test_health(facility, combination):
     operational = operational_health(facility)
     assert any(row["level"] == "ok" or (row["level"] == "warn" and row["code"] == "Overrun") for row in operational), \
         [(row["level"], row["code"]) for row in operational]
+
+
+@pytest.mark.parametrize("combination", INPROC_COMBINATIONS)
+def test_health_lockstep(facility, combination):
+    """health under lockstep (realtime=False, CONTRACT §5.5), every inproc combination: the checks of test_health, and
+    strictly ok in every tier, since no deadline can be missed on a logical clock, so no Overrun is honest here;
+    uptime_s is on the step clock, never negative. WHY (CONTRACT §15 A14, ruler-005): the facility suite never
+    deployed in lockstep, so a box that sent no health record at all under lockstep (uptime_s about -1.79e9 s, every
+    record refused) scored green."""
+    operational = operational_health(facility, realtime=False)
+    assert operational and all(row["level"] == "ok" for row in operational), \
+        [(row["level"], row["code"], row["message"]) for row in operational]
+    assert all(row["uptime_s"] >= 0.0 for row in operational), [row["uptime_s"] for row in operational]
 
 
 @pytest.mark.timing

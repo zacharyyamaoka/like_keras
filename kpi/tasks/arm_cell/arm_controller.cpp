@@ -66,7 +66,7 @@ struct Jtc : lk::Component {
   JtcCore core_;
 };
 
-LK_PARAMS(Guard::Params, runaway_rad, max_velocity_rad_s, max_effort_nm)
+LK_PARAMS(Guard::Params, runaway_rad, max_velocity_rad_s, max_effort_nm, start_tolerance_rad)
 
 struct ArmConfig {
   MoteusBus::Params bus;
@@ -78,7 +78,7 @@ lk::System arm_controller(const ArmConfig& c) {
   lk::System s{"arm_controller"};
   auto& bus = s.add<MoteusBus>("bus", c.bus);
   auto& jtc = s.add<Jtc>("jtc");
-  auto& guard = s.add<Guard>("guard", c.guard);  // fault, runaway -> hold; overspeed logged only; PD + FF only
+  auto& guard = s.add<Guard>("guard", c.guard);  // fault, runaway -> hold (a runaway until a plan starts here); PD + FF
   s.wire(jtc.state, bus.state);
   s.wire(guard.state, bus.state);
   s.wire(guard.proposed, jtc.command);

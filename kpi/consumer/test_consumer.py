@@ -112,6 +112,92 @@ def test_A3_fallback_matches_reference(tmp_path):
         _assert_same_commands(fallback["command"], same_box["command"], "fallback vs same_box under A1's load")
 
 
+# ---------------------------------------------------------------- the reference guard recovers (A14): lockstep
+
+STALL_ON = 2  # the third target, planned from the state read before the plan before it ran: a whole move away
+RUNAWAY_RAD = 0.5  # kpi/tasks/arm_cell/arm_controller.toml [guard]
+
+
+def _stalled_planner_run(placement: str, directory) -> dict:
+    """cell.py's wiring with kpi/consumer/parts.py's StallingPlanner, in lockstep for LOCKSTEP_S: the exposed
+    commands, the plans sent and the arm's log records."""
+    lk = like_keras()
+    from kpi.consumer.parts import StallingPlanner
+    from kpi.facilities.parts import LogLog
+    from kpi.support.parts import read_log
+    from kpi.tasks.arm_cell.arm_controller_py import ArmControllerPy
+    from kpi.tasks.arm_cell.targets import TargetFile
+
+    directory.mkdir(parents=True, exist_ok=True)
+    config = cells.config(directory, lockstep=True)
+    if placement == "fallback":
+        arm = ArmControllerPy(config=config)
+        arm.expose(guard_log=arm.guard.log)  # the Python chain is a System: its guard's log port, made readable
+        arm_log = arm.guard_log
+    else:
+        arm = lk.native(native_library("arm_controller"), config=config)
+        arm_log = arm.log  # the box's one log port carries every component of the C++ chain
+    s = lk.System("stalled_cell")
+    targets = s.add(TargetFile(), "targets")
+    s.add(arm, "arm")
+    planner = s.add(StallingPlanner(stall_on=STALL_ON), "planner", target=targets.target, state=arm.state)
+    s.wire(arm, trajectory=planner.trajectory)
+    s.add(LogLog(path=str(directory / "log.jsonl")), "log_sink", value=arm_log)
+    dep = lk.Deployment(s, realtime=False)
+    dep.place(s.arm, process="arm-controller", hz=100, cpus=kpi_cpus(), fifo=80)
+    dep.place(s.targets, hz=2)
+    dep.place(s.planner)
+    dep.place(s.log_sink)
+    dep.record(directory / "run.mcap", s.arm.command, s.planner.trajectory)
+    try:
+        dep.start(until=LOCKSTEP_S)
+    finally:
+        dep.stop()
+    return {"commands": recorded(directory / "run.mcap", "command"),
+            "plans": recorded(directory / "run.mcap", "trajectory"), "log": read_log(directory / "log.jsonl")}
+
+
+def _assert_recovers(run: dict, what: str) -> None:
+    stamps, positions = cells.command_rows(run["commands"])
+    plans = run["plans"]
+    stalled_index = [index for index, plan in enumerate(plans) if plan["header"]["meta"].get("stalled") == "true"]
+    assert len(stalled_index) == 1 and stalled_index[0] + 2 < len(plans), \
+        f"{what}: {len(plans)} plans, stalled {stalled_index}"
+    stalled, following = plans[stalled_index[0]], plans[stalled_index[0] + 1]
+    stalled_at, following_at = stalled["header"]["stamp"], following["header"]["stamp"]
+    held = positions[(stamps >= stalled_at - 1e-9) & (stamps < following_at - 1e-9)]
+    assert len(held) >= 10, f"{what}: {len(held)} commands between the stalled plan and the next one"
+    start = np.asarray(stalled["positions"]).reshape(len(stalled["t"]), -1)[0]
+    assert np.max(np.abs(start - held[0])) > RUNAWAY_RAD, f"{what}: the stalled plan starts near the arm (no runaway)"
+    assert np.all(np.abs(held - held[0]) <= 1e-12), f"{what}: the arm did not hold at the measured position"
+    end = np.asarray(following["positions"]).reshape(len(following["t"]), -1)[-1]
+    ended = int(np.searchsorted(stamps, following_at + following["t"][-1] + 0.5 * TICK_S))
+    missed = float(np.max(np.abs(positions[min(ended, len(stamps) - 1)] - end)))
+    assert ended < len(stamps) and missed <= TOLERANCE_RAD, (
+        f"{what}: the guard did not accept the next plan (it starts at the held position): the command "
+        f"{0.5 * TICK_S + following['t'][-1]:.3f} s after its start is {missed:.3f} rad from its end: still held")
+    last = plans[-1]
+    last_end = np.asarray(last["positions"]).reshape(len(last["t"]), -1)[-1]
+    assert np.max(np.abs(positions[-1] - last_end)) <= TOLERANCE_RAD, f"{what}: the later plans did not run"
+    messages = [(row["level"], row["message"]) for row in run["log"]]
+    runaway = [index for index, (level, message) in enumerate(messages) if level >= 40 and "runaway" in message]
+    released = [index for index, (level, message) in enumerate(messages) if "released" in message]
+    assert runaway, f"{what}: the runaway hold was not logged: {messages}"
+    assert released and released[0] > runaway[0], f"{what}: the release was not logged after the hold: {messages}"
+
+
+def test_guard_recovers_after_a_runaway(tmp_path):
+    """CONTRACT §15 A14 (Zach, 2026-11-13: robots recover, they don't stop). A planner stalls and plans a target
+    from a stale state, so its plan starts a whole move from the arm: the guard holds at the measured position (a
+    runaway), then accepts the next plan, which starts where the arm is, and logs both. Lockstep, the C++ chain
+    (same_box) and the Python one (fallback): the same commands to 1e-9 rad, the recovery included (T1).
+    It pins the reference cell's own guard; it is not one of criterion 1's nine tests."""
+    runs = {placement: _stalled_planner_run(placement, tmp_path / placement) for placement in ("fallback", "same_box")}
+    for placement, run in runs.items():
+        _assert_recovers(run, placement)
+    _assert_same_commands(runs["fallback"]["commands"], runs["same_box"]["commands"], "fallback vs same_box")
+
+
 # ---------------------------------------------------------------- A1, A2, T2, T3: the timing tier
 
 
@@ -365,9 +451,10 @@ def _assert_holds(log, start_wall: float, end_wall: float) -> None:
     assert all(np.allclose(rows[0]["position"], row["position"], atol=1e-12) for row in rows), "the arm did not hold"
 
 
-@pytest.mark.parametrize("placement", ["target", "attached"])
-def test_T5_planner_crash(placement, tmp_path, request):
-    """kill -9 the planner, restart it: the arm holds; the restarted planner commands again within 1 s."""
+def _planner_crash(placement: str, tmp_path, request) -> float:
+    """T5's run: kill -9 the planner, restart it. Asserts that the arm holds from the end of the plan in flight until
+    the restarted planner's first plan moves it, and that this happens within 5 s of the restart; returns how long
+    after the restart it happened."""
     like_keras()
     from kpi.support.parts import observe
 
@@ -403,9 +490,10 @@ def test_T5_planner_crash(placement, tmp_path, request):
             planner = procs.Child("kpi.tasks.arm_cell.attached_planner", "--address", address)
             planner.wait_ready()
             restarted = time.time()
-        if restarted - killed > 0.7:  # the plan in flight (<= 0.4 s) has ended: the arm must be holding
-            _assert_holds(log, killed + 0.5, restarted - 0.1)
-        assert _restarted_commands_within(log, restarted, 5.0) <= 1.0, "the restarted planner did not command within 1 s"
+        commanded_after = _restarted_commands_within(log, restarted, 5.0)
+        if restarted - killed > 0.7:  # the plan in flight (<= 0.4 s) has ended: the arm must hold until the next one
+            _assert_holds(log, killed + 0.5, restarted + commanded_after - 0.02)
+        return commanded_after
     finally:
         observer.stop()
         for child in (planner, controller):
@@ -413,6 +501,23 @@ def test_T5_planner_crash(placement, tmp_path, request):
                 child.stop()
         if dep is not None:
             dep.stop()
+
+
+@pytest.mark.parametrize("placement", ["target", "attached"])
+def test_T5_planner_crash(placement, tmp_path, request):
+    """kill -9 the planner, restart it: the arm holds; the restarted planner commands again within 5 s.
+    WHY 5 s here (CONTRACT §15 A14, ruler-006 §2): on the loaded cores the restart alone (a Python start and its
+    imports, the hello, activation, the first target, plan_pick) took 1.25 s once. CONTRACT §10's 1 s is the timing
+    twin's (test_T5_planner_crash_within_1s)."""
+    _planner_crash(placement, tmp_path, request)
+
+
+@pytest.mark.timing
+@pytest.mark.parametrize("placement", ["target", "attached"])
+def test_T5_planner_crash_within_1s(placement, tmp_path, request):
+    """Timing tier (rack unpowered or the fixed cloud VM): T5 as CONTRACT §10 writes it, the arm holds and the
+    restarted planner commands again within 1 s."""
+    assert _planner_crash(placement, tmp_path, request) <= 1.0, "the restarted planner did not command within 1 s"
 
 
 @pytest.mark.parametrize("placement", ["target"])

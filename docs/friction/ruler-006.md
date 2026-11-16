@@ -24,3 +24,12 @@ Lane dora hit two frozen tests that assert wall-clock rates in the default tier.
   - 6 runs in a row then passed.
 - On `attached` (with core's two lines from contract-006 applied in a scratch copy): 1 pass and 1 fail. Under load, the restarted planner's `state` input reads stale (`stale=0.1`) target after target, so it never plans. A run once also latched the guard's `runaway` hold (`kpi/tasks/arm_cell/guard.hpp`), after which no plan can move the arm.
 - **Proposal:** the 1 s bound belongs to the timing tier. In the default tier, assert that the arm holds and that the restarted planner commands again within the test's existing 5 s.
+
+## Resolution (2026-11-16, dispatcher)
+
+See CONTRACT.md §15, amendment A14. Decided: §1 compares against a no-client baseline; §2 moves the 1 s bound to the timing tier. The guard latch §2 mentions is fixed in the same commit: the reference guard recovers instead of latching.
+
+**Done (ruler lane, the M0.2 commit "kpi: M0.2 — ruler amendment A14").**
+- §1: `kpi/attach/test_attach.py::test_clients_cannot_hurt_the_node` measures a 3 s no-client window just before the bad clients start, then the 3 s window with them, and asserts at least 0.9 × the baseline's ticks and a longest gap no more than the baseline's + 20 ms. The absolute 280 ticks and 50 ms gap are `test_clients_cannot_hurt_the_node_unloaded` (`timing`), which `kpi/score.py` requires as well in the timing tier.
+- §2: `test_T5_planner_crash` asserts that the arm holds from the end of the plan in flight until the restarted planner's first plan moves it, and that this happens within 5 s. CONTRACT §10's 1 s is `test_T5_planner_crash_within_1s` (`timing`), which `kpi/score.py` requires as well in the timing tier.
+- The guard (`kpi/tasks/arm_cell/guard.hpp`, `guard_law.py`): after a runaway hold it accepts the next plan that starts within `start_tolerance_rad` (0.0524 rad, 3°) of the measured position on every joint, and logs the release; a board fault still latches. `kpi/consumer/test_consumer.py::test_guard_recovers_after_a_runaway` pins it, C++ = Python to 1e-9 rad.

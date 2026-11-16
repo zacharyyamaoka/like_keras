@@ -3,7 +3,9 @@
 Each test runs on `inproc` and on `dora` (dora 0.5.0, a private coordinator and daemon, kpi/support/dora_private).
 Under dora the sending and receiving groups sit in different processes, so every rule is checked across a process
 boundary too. Lockstep tests (`realtime=False`) check exact values; the few real-time tests check what only a
-clock can show (overruns, staleness reported in health, FIFO delivery under load, now() as epoch time).
+clock can show (overruns, staleness reported in health, FIFO delivery under load, now() as epoch time). Where such a
+test also bounds how late or how often steps run on the wall clock, that half is a `timing`-marked twin
+(`..._wall_clock`): a loaded host cannot judge it (CONTRACT §15 A14).
 The ruler's reading of the open points (rate-less groups under lockstep, tick times i / hz) is in
 docs/friction/contract-002.md.
 """
@@ -19,6 +21,7 @@ from kpi.support.lk import backend as load_backend
 from kpi.support.lk import like_keras
 
 BACKENDS = ["inproc", "dora"]
+EPOCH_SLACK_S = 0.05  # how far now() may sit from the wall clock it is mapped to (the offset sampled at start, §5.6)
 
 
 def rows(path, tag: str | None = None) -> list[dict]:
@@ -252,10 +255,9 @@ def test_activate_raising_sends_nothing(make, tmp_path, backend):
     assert rows(sink(tmp_path)) == [], "a refused component sent data"
 
 
-@pytest.mark.parametrize("backend", BACKENDS)
-def test_forward_exception_goes_error(make, tmp_path, backend):
-    """§5.7: an exception in forward deactivates that group; health goes error with code Exception; the process
-    keeps serving health and the other groups keep stepping."""
+def _raise_in_forward(make, tmp_path) -> tuple[list[dict], list[dict], list[dict]]:
+    """Two 20 Hz groups in one process for 3 s of wall time, one raising in forward at its step 3: what the reader
+    got from the raiser, from the counter, and the raiser's health records."""
     from kpi.facilities.parts import HealthLog
 
     s, deployment = make("raises")
@@ -271,9 +273,32 @@ def test_forward_exception_goes_error(make, tmp_path, backend):
     dep.start()
     time.sleep(3.0)
     dep.stop()
-    assert [row["value"] for row in rows(sink(tmp_path), "raiser")] == [0, 1, 2], "the raising group kept stepping"
-    assert len(rows(sink(tmp_path), "counter")) >= 40, "the other group stopped"
-    health = rows(sink(tmp_path, "health.jsonl"))
+    return rows(sink(tmp_path), "raiser"), rows(sink(tmp_path), "counter"), rows(sink(tmp_path, "health.jsonl"))
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_forward_exception_goes_error(make, tmp_path, backend):
+    """§5.7: an exception in forward deactivates that group; health goes error with code Exception; the process
+    keeps serving health and the other groups keep stepping: the counter's values still arrive after the error was
+    reported. How many steps the other group made in 3 s of wall time is the timing twin's
+    (test_forward_exception_goes_error_wall_clock, CONTRACT §15 A14)."""
+    from_raiser, from_counter, health = _raise_in_forward(make, tmp_path)
+    assert [row["value"] for row in from_raiser] == [0, 1, 2], "the raising group kept stepping"
+    errors = [row for row in health
+              if row["level"] == "error" and row["code"] == "Exception" and "on purpose" in row["message"]]
+    assert errors, "health did not go error with code Exception"
+    reported = min(row["stamp"] for row in errors)
+    assert any(row["wall"] > reported for row in from_counter), "the other group stopped when the raiser's group did"
+
+
+@pytest.mark.timing
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_forward_exception_goes_error_wall_clock(make, tmp_path, backend):
+    """Timing tier (rack unpowered or the fixed cloud VM): test_forward_exception_goes_error, and the other group
+    made at least 40 of its 60 steps in the 3 s."""
+    from_raiser, from_counter, health = _raise_in_forward(make, tmp_path)
+    assert [row["value"] for row in from_raiser] == [0, 1, 2], "the raising group kept stepping"
+    assert len(from_counter) >= 40, "the other group stopped"
     assert any(row["level"] == "error" and row["code"] == "Exception" and "on purpose" in row["message"] for row in health)
 
 
@@ -345,22 +370,48 @@ def test_stale_reported_in_health(make, tmp_path, backend):
     assert any(row["level"] == "warn" and row["code"] == "InputStale" and "value" in row["stale_inputs"] for row in health)
 
 
-@pytest.mark.parametrize("backend", BACKENDS)
-def test_now_is_scheduled_time(make, tmp_path, backend):
-    """§5.6: now() is the step's scheduled time: epoch seconds in real time (a deadline, not a measurement)."""
+def _scheduled_clock(make, tmp_path) -> tuple[list[dict], float, float]:
+    """A 50 Hz probe for 1.5 s of wall time: what it wrote each step (now, wall), and the wall clock just before
+    start() and just after stop()."""
     s, deployment = make("clock")
     s.add(make.parts.OrderProbe(path=sink(tmp_path)), "probe")
     dep = deployment(realtime=True)
     dep.place(s.probe, process=make.process("probe"), hz=50)
+    started = time.time()
     dep.start()
     time.sleep(1.5)
     dep.stop()
-    found = rows(sink(tmp_path))
-    assert len(found) >= 50
+    return rows(sink(tmp_path)), started, time.time()
+
+
+def _assert_on_the_period_grid(found: list[dict]) -> None:
     nows = [row["now"] for row in found]
-    assert all(abs(row["now"] - row["wall"]) < 0.05 for row in found), "now() is not epoch time"
     periods = [later - earlier for earlier, later in zip(nows, nows[1:])]
     assert all(abs(period - 0.02) < 1e-6 or period > 0.03 for period in periods), "now() is not the scheduled deadline"
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_now_is_scheduled_time(make, tmp_path, backend):
+    """§5.6: now() is the step's scheduled time: epoch seconds in real time (a deadline, not a measurement). What
+    holds however late a step runs: every now() is epoch time inside the run, never after the wall clock of its own
+    step (a deadline comes first), and on the period grid. How late steps run (|now - wall| < 50 ms) and how many run
+    (>= 50 in 1.5 s) is the timing twin's (test_now_is_scheduled_time_wall_clock, CONTRACT §15 A14)."""
+    found, started, stopped = _scheduled_clock(make, tmp_path)
+    assert len(found) >= 3, f"{len(found)} steps in 1.5 s"
+    assert all(started - EPOCH_SLACK_S < row["now"] < stopped for row in found), "now() is not epoch time in the run"
+    assert all(row["now"] - row["wall"] < EPOCH_SLACK_S for row in found), "now() came after its step: a measurement"
+    _assert_on_the_period_grid(found)
+
+
+@pytest.mark.timing
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_now_is_scheduled_time_wall_clock(make, tmp_path, backend):
+    """Timing tier (rack unpowered or the fixed cloud VM): test_now_is_scheduled_time, with every step within 50 ms of
+    its deadline and at least 50 of the 75 steps run."""
+    found, _, _ = _scheduled_clock(make, tmp_path)
+    assert len(found) >= 50
+    assert all(abs(row["now"] - row["wall"]) < EPOCH_SLACK_S for row in found), "now() is not epoch time"
+    _assert_on_the_period_grid(found)
 
 
 @pytest.mark.parametrize("backend", BACKENDS)

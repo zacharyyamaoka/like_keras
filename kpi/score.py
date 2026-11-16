@@ -11,7 +11,9 @@ counts as failed, so the empty repo scores 0 and a skip can never raise a score.
 Timing numbers (criterion 2, and the timing tests of criterion 1) count only in the timing tier (KPI_TIER=timing,
 rack unpowered or the fixed cloud VM); elsewhere they are reported, labelled, and scored 0. Criteria 9 and 10 read a
 timing-marked twin as well in the timing tier: health ok when unloaded, and >= 10x real time on the wall clock
-(the default tier reads warn/Overrun as honest and >= 10x on CPU time; ruler-002 §1, ruler-003).
+(the default tier reads warn/Overrun as honest and >= 10x on CPU time; ruler-002 §1, ruler-003). So do criteria 1, 6
+and 11 since M0.2 (CONTRACT §15 A14): T5 within 1 s, the two conformance tests' wall-clock bounds, and the attach
+node's absolute tick rate with bad clients; criterion 9's health also needs its lockstep half, in every tier.
 """
 
 from __future__ import annotations
@@ -45,9 +47,15 @@ CONSUMER = ["test_T1_swap", "test_T2_send_cost", "test_T3_isolation", "test_T4_b
 ACCEPTANCE = ["test_A1_handoff_over_dora", "test_A2_same_planner_in_one_process", "test_A3_fallback_matches_reference"]
 FACILITIES = ["log", "metrics", "health", "params", "lifecycle", "recording", "introspection"]
 COMBINATIONS = ["python-inproc", "python-dora", "cpp-inproc", "cpp-dora"]
+INPROC_COMBINATIONS = ["python-inproc", "cpp-inproc"]
 ATTACH = ["test_list_ports_within_1s", "test_attach_receive_and_write", "test_clients_cannot_hurt_the_node",
           "test_attach_needs_an_explicit_address"]
 SWAPS = ["process", "language", "backend", "host"]
+# Timing-tier twins (CONTRACT §15 A14): a test id that counts in the timing tier only when its twin passes as well.
+TIMING_TWINS = {"test_T5_planner_crash": "test_T5_planner_crash_within_1s",
+                "test_now_is_scheduled_time": "test_now_is_scheduled_time_wall_clock",
+                "test_forward_exception_goes_error": "test_forward_exception_goes_error_wall_clock",
+                "test_clients_cannot_hurt_the_node": "test_clients_cannot_hurt_the_node_unloaded"}
 VALID_GRAPHS = [("test_valid_graph_accepted", name) for name in (
     "cross_group_cycle", "exposed_input_unwired", "fan_out", "fifo_on_python_ignored", "gather", "lagged_cycle", "linear",
     "multi_process_dora", "native_group", "native_own_process_dora", "nested_system", "no_place",
@@ -159,9 +167,15 @@ def gates(junit: dict, arguments) -> dict:
 # ---------------------------------------------------------------- criteria
 
 
-def consumer_fit(junit: dict) -> dict:
+def with_twin(results: dict[str, list[str]], test_id: str, timing: bool) -> bool:
+    """passed(), and in the timing tier its timing twin's pass as well (TIMING_TWINS; CONTRACT §15 A14)."""
+    twin = TIMING_TWINS.get(test_id)
+    return passed(results, test_id) and (not timing or twin is None or passed(results, twin))
+
+
+def consumer_fit(junit: dict, timing: bool) -> dict:
     consumer = junit.get("consumer", {})
-    passing = [test for test in CONSUMER if passed(consumer, test)]
+    passing = [test for test in CONSUMER if with_twin(consumer, test, timing)]
     return {"score": clamp((len(passing) - 4) / (9 - 4)), "measured": f"{len(passing)}/9", "passing": passing,
             "acceptance": {test: passed(consumer, test) for test in ACCEPTANCE},
             "outcomes": {test: consumer.get(test, ["missing"]) for test in CONSUMER + ACCEPTANCE}}
@@ -255,9 +269,11 @@ def swap_cost(swaps: dict, junit: dict) -> dict:
     return {"score": sum(per_swap.values()) / len(SWAPS), "per_swap": per_swap, "measured": swaps.get("swaps")}
 
 
-def dora_insulation(junit: dict) -> dict:
+def dora_insulation(junit: dict, timing: bool) -> dict:
     churn = junit.get("churn", {})
     conformance = junit.get("conformance", {})
+    if not timing:  # WHY: a timing twin skips in the default tier by design; its default-tier half still counts (A14)
+        conformance = {test: outcomes for test, outcomes in conformance.items() if test not in TIMING_TWINS.values()}
     parts = {
         "named_only_in_backend": passed(churn, "test_dora_named_only_in_its_backend"),
         "wire_owned": passed(churn, "test_wire_is_owned_by_like_keras"),
@@ -299,6 +315,9 @@ def reach(junit: dict) -> dict:
 def facilities(junit: dict, surface: dict, timing: bool) -> dict:
     found = junit.get("facilities", {})
     per = {name: all(passed(found, f"test_{name}", combo) for combo in COMBINATIONS) for name in FACILITIES}
+    # WHY: health counts only with its lockstep half on both inproc combinations, in every tier: the suite never
+    # deployed in lockstep, and a box that sent no health record at all under lockstep scored green (ruler-005, A14)
+    per["health"] = per["health"] and all(passed(found, "test_health_lockstep", combo) for combo in INPROC_COMBINATIONS)
     if timing:  # WHY: the default tier's test_health accepts an honest warn/Overrun; unloaded, it must say ok (ruler-003)
         unloaded_ok = all(passed(found, "test_health_ok_when_unloaded", combo) for combo in COMBINATIONS)
         per["health"] = per["health"] and unloaded_ok
@@ -330,9 +349,9 @@ def testability(junit: dict, timing: bool) -> dict:
             "same_box_deterministic": deterministic_10x("same_box")}
 
 
-def attach(junit: dict) -> dict:
+def attach(junit: dict, timing: bool) -> dict:
     found = junit.get("attach", {})
-    parts = {test: passed(found, test) for test in ATTACH}
+    parts = {test: with_twin(found, test, timing) for test in ATTACH}
     return {"score": sum(parts.values()) / 4, "parts": parts}
 
 
@@ -391,17 +410,17 @@ def main(argv: list[str] | None = None) -> int:
     linter = import_linter()
     board_gates = gates(junit, arguments)
     criteria = {
-        "1_consumer_fit": consumer_fit(junit),
+        "1_consumer_fit": consumer_fit(junit, timing),
         "2_speed": speed(bench, timing),
         "3_black_box": black_box(junit, static, linter),
         "4_succinctness": succinctness(surface, junit),
         "5_swap_cost": swap_cost(swaps, junit),
-        "6_dora_insulation": dora_insulation(junit),
+        "6_dora_insulation": dora_insulation(junit, timing),
         "7_compactness": compactness(surface),
         "8_reach": reach(junit),
         "9_facilities": facilities(junit, surface, timing),
         "10_testability": testability(junit, timing),
-        "11_attach": attach(junit),
+        "11_attach": attach(junit, timing),
         "12_wiring_checks": wiring_checks(junit),
     }
     for name, row in criteria.items():

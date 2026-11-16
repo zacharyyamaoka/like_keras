@@ -32,6 +32,34 @@ class TimedPlanner(PickPlanner):
         return plan.replace(header=Header(stamp=plan.header.stamp, frame_id=plan.header.frame_id, meta=meta))
 
 
+class StallingPlanner(PickPlanner):
+    """PickPlanner that stalls on its `stall_on`-th target (counted from 0): it plans that target from the arm state
+    it read at the target before, as a planner that stalled between reading the state and planning would. Its plan
+    then starts where the arm was, not where it is, and the guard sees a runaway (the reference guard's recovery,
+    CONTRACT §15 A14). That plan carries header.meta {"stalled": "true"}; every other target is planned as
+    PickPlanner plans it. The ports are declared again, as in TimedPlanner."""
+
+    target = lk.In(PickTarget, queue=8)
+    state = lk.In(ServoState, stale=0.1)
+    trajectory = lk.Out(JointTrajectory)
+
+    @dataclasses.dataclass(frozen=True)
+    class Params:
+        lead_s: float = 0.05
+        stall_on: int = 2
+
+    def forward(self, target, state):
+        targets_seen = getattr(self, "_targets_seen", 0)
+        self._targets_seen = targets_seen + 1
+        before_the_stall = getattr(self, "_state_before", None)
+        self._state_before = state
+        if targets_seen != self.params.stall_on or before_the_stall is None:
+            return super().forward(target, state)
+        plan = super().forward(target, before_the_stall)
+        stalled = Header(stamp=plan.header.stamp, frame_id=plan.header.frame_id, meta={"stalled": "true"})
+        return plan.replace(header=stalled)
+
+
 class HandoffProbe(lk.Component):
     """Steps right after the planner in the planner's group (a same-group edge is a plain call): the gap between
     the planner's return and this step's start is what the framework did on the planner's thread (A1, A2, T2)."""

@@ -14,3 +14,4 @@ lock_path = "/run/user/1000/like_keras-kpi-arm_cell.lock"
 runaway_rad = 0.5
 max_velocity_rad_s = 10.0
 max_effort_nm = 2.0
+start_tolerance_rad = 0.0524  # 3°, arm-hold's READY tolerance: a runaway hold ends at a plan that starts this close

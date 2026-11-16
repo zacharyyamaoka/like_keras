@@ -102,9 +102,11 @@ class GuardPy(lk.Component):
         runaway_rad: float = 0.5
         max_velocity_rad_s: float = 10.0
         max_effort_nm: float = 2.0
+        start_tolerance_rad: float = 0.0524  # 3°, arm-hold's READY tolerance (guard.hpp)
 
     def activate(self):
-        self._core = GuardCore(self.params.runaway_rad, self.params.max_velocity_rad_s, self.params.max_effort_nm)
+        self._core = GuardCore(self.params.runaway_rad, self.params.max_velocity_rad_s, self.params.max_effort_nm,
+                               self.params.start_tolerance_rad)
 
     def forward(self, state, proposed):
         if state is None or proposed is None:
@@ -114,6 +116,9 @@ class GuardPy(lk.Component):
         for event in events:
             if event == "overspeed":
                 self.log.warning("overspeed above %g rad/s (logged only)", self.params.max_velocity_rad_s)
+            elif event == "released":
+                self.log.info("runaway hold released: a plan starts within %g rad of the measured position",
+                              self.params.start_tolerance_rad)
             else:
                 self.log.error("%s: holding at the measured position", "board fault" if event == "fault" else "runaway")
         return proposed.replace(position=position, velocity=velocity, feedforward_effort=effort, max_effort=cap)
