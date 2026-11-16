@@ -12,12 +12,17 @@
 // dora_send_output alias one &mut DoraContext with no lock, and it reads only UInt8 inputs), never
 // allocate_data_sample / DataSampleHandle / send_data_sample* or init_dora_node_from_id / init_dora_node_flexible /
 // node_id / dataflow_id (removed in dora 1.0), never operators.
+#include <dirent.h>
 #include <dlfcn.h>
+#include <poll.h>
 #include <pthread.h>
 #include <signal.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <atomic>
+#include <cctype>
 #include <chrono>
 #include <climits>
 #include <cmath>
@@ -26,6 +31,7 @@
 #include <cstring>
 #include <deque>
 #include <fstream>
+#include <iterator>
 #include <map>
 #include <mutex>
 #include <random>
@@ -188,6 +194,10 @@ struct Box {
   int (*wait)(lk_box*, int);
   void (*stop)(lk_box*);
   void (*destroy)(lk_box*);
+  // CONTRACT §15 A35: the boundary's realtime and send accounting; nullptr in a .so built before them
+  int (*raise)(lk_box*, int, int, int) = nullptr;
+  int (*lower)(lk_box*, int, int) = nullptr;
+  void (*sent)(lk_box*, uint32_t, int) = nullptr;
   lk_box* box = nullptr;
 };
 
@@ -294,7 +304,7 @@ void hold_until_stopped() {
 
 // ------------------------------------------------------------------ sending
 
-void send(::DoraNode& node, Output& output, ArrowArray* array, int64_t sent, int64_t horizon) {
+bool send(::DoraNode& node, Output& output, ArrowArray* array, int64_t sent, int64_t horizon) {
   ArrowSchema schema = *output.root;  // dora consumes this copy; the children stay ours
   std::lock_guard guard(g_host.sending);
   DoraResult result;
@@ -308,9 +318,11 @@ void send(::DoraNode& node, Output& output, ArrowArray* array, int64_t sent, int
     result = send_arrow_output(node.send_output, output.id, reinterpret_cast<uint8_t*>(array),
                                reinterpret_cast<uint8_t*>(&schema));
   }
-  if (!std::string(result.error).empty())
+  const bool went = std::string(result.error).empty();
+  if (!went)
     std::fprintf(stderr, "like_keras %s: send %s: %s\n", g_node.c_str(), output.id.c_str(), result.error.c_str());
   release(*array);
+  return went;
 }
 
 void send_empty(::DoraNode& node, const std::string& id, int64_t promise) {  // a promise under lockstep
@@ -337,6 +349,253 @@ void say_hello(::DoraNode& node) {
   std::lock_guard guard(host.sending);
   send_arrow_output(node.send_output, "lk_hello", reinterpret_cast<uint8_t*>(&array),
                     reinterpret_cast<uint8_t*>(&schema));
+}
+
+// ------------------------------------------------------------------ the boundary's realtime (CONTRACT §15 A35)
+//
+// The box's ladder (abi.h: lk_raise, lk_lower; cpp/src/rt.cpp) has the RT thread and, since this process blocks
+// SIGXCPU in every thread, a sentinel. This raises the rest of the boundary below them, as the raw-dora node does
+// (moteus_controller_node node_main.cpp and rt.cpp PrivateDaemonRealtime, fix rounds 2-6, lifted with credit): RX, TX
+// and dora's own threads in this process at the RT thread's priority - kIoBelow, then the daemon's data-path threads
+// at - kDaemonBelow, in that order (rtkit caps grants per user: the least important asks last). The daemon only when
+// it is private: this node's parent is a `dora run`, or a `dora daemon` every node of which runs this plan; a shared
+// daemon serves other dataflows and is never touched. It is realtime only while every peer is connected: a node of
+// this plan that exits (a pidfd each, Siblings) or an input dora closes demotes it at once; it is raised again once
+// its threads are quiet (none ran kQuietRunNs without sleeping for kQuietNs, and kQuietNs after the last departure at
+// least), and lk_stop demotes it for good, waiting for any grant in flight.
+// WHY the I/O (consumer-018): with only the RT thread raised, `target` lost 2-3 % of its states at a subscriber (the
+// raw node 0-0.1 %), with a hand-off tail ~10x the raw node's. WHY the daemon (raw node, round 2): with its own dora
+// threads raised, every remaining gap over 50 ms was the nice-19 daemon's. WHY the pause (round 5, measured): when a
+// node disconnects, the daemon thread that served it runs without sleeping, 8-71 ms at load 25-33 and 535 ms at load
+// 42; still SCHED_RR it crossed RLIMIT_RTTIME and the daemon died (exit 137 / 152). WHY raise it again (round 6):
+// demoted for the rest of a run, up to 20.7 % of the node's states went unpublished. Not covered, as in the raw node:
+// a node SIGKILLed outright leaves its daemon raised.
+constexpr int kIoBelow = 10, kDaemonBelow = 15;  // RT 20 (rtkit's highest here): I/O 10, daemon 5, as the raw node
+constexpr int64_t kQuietNs = 50'000'000, kQuietRunNs = 5'000'000, kQuietLookNs = 5'000'000;
+
+struct Boundary {
+  int daemon = 0;                // this node's parent, read at the start (a dead daemon's orphan gets another parent)
+  std::vector<int> dora_threads; // the threads init_dora_node started in this process
+  std::atomic<int> rx{0}, tx{0}; // their thread ids, once they run
+  std::mutex lock;
+  std::condition_variable changed;
+  bool ours = false, paused = false, over = false;  // ours: found private, so raised (and only then lowered)
+  int64_t paused_at = 0;  // CLOCK_MONOTONIC ns of the last departure
+} g_boundary;
+
+int64_t monotonic_ns() {
+  timespec now{};
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  return int64_t{now.tv_sec} * 1'000'000'000 + now.tv_nsec;
+}
+
+std::string proc_text(const std::string& path) {
+  std::ifstream file(path);
+  return std::string(std::istreambuf_iterator<char>(file), {});
+}
+
+std::vector<int> numbers_in(const std::string& text) {  // a /proc children file: pids, space separated
+  std::vector<int> found;
+  std::stringstream words(text);
+  for (int number = 0; words >> number;) found.push_back(number);
+  return found;
+}
+
+std::vector<int> tasks_of(int process) {
+  std::vector<int> found;
+  if (DIR* tasks = opendir(("/proc/" + std::to_string(process) + "/task").c_str())) {
+    while (const dirent* task = readdir(tasks))
+      if (std::isdigit(static_cast<unsigned char>(task->d_name[0]))) found.push_back(std::atoi(task->d_name));
+    closedir(tasks);
+  }
+  return found;
+}
+
+std::vector<std::string> command_line(int process) {
+  std::vector<std::string> words;
+  std::stringstream text(proc_text("/proc/" + std::to_string(process) + "/cmdline"));
+  for (std::string word; std::getline(text, word, '\0');) words.push_back(word);
+  return words;
+}
+
+// Private: a `dora run` (one dataflow, its daemon inside the CLI: the raw node's rule), or a `dora daemon` whose every
+// node (child process) runs this plan; `nodes` gets them. like_keras seam: dora's CLI and how its daemon spawns nodes.
+bool private_daemon(int daemon, const std::string& plan, std::vector<int>& nodes) {
+  const auto argv = command_line(daemon);
+  nodes.clear();
+  for (int task : tasks_of(daemon))
+    for (int node : numbers_in(proc_text("/proc/" + std::to_string(daemon) + "/task/" + std::to_string(task) +
+                                         "/children")))
+      nodes.push_back(node);
+  for (size_t at = 0; at + 1 < argv.size(); ++at) {
+    if (argv[at] != "dora" && !(argv[at].size() > 5 && argv[at].ends_with("/dora"))) continue;
+    return argv[at + 1] == "run" ||
+           (argv[at + 1] == "daemon" && !nodes.empty() && std::all_of(nodes.begin(), nodes.end(), [&](int node) {
+             const auto words = command_line(node);
+             return std::find(words.begin(), words.end(), plan) != words.end();
+           }));
+  }
+  return false;
+}
+
+// The other nodes of this plan, each a pidfd: one that exits is a peer leaving. WHY not only dora's InputClosed:
+// under restart_policy `always` (§9.2) dora 0.5 restarts a killed peer and closes no input, yet its daemon still
+// serves that disconnect (measured: a SIGKILLed subscriber, no event here).
+struct Siblings {
+  std::map<int, int> watched;  // pid -> pidfd
+  ~Siblings() {
+    for (const auto& [pid, fd] : watched) close(fd);
+  }
+  void watch(const std::vector<int>& nodes) {
+    for (int node : nodes)
+      if (node != ::getpid() && !watched.count(node))
+        if (const int fd = static_cast<int>(::syscall(SYS_pidfd_open, node, 0)); fd >= 0) watched[node] = fd;
+  }
+  bool left() {  // any exited since the last look (no wait)
+    bool gone = false;
+    for (auto at = watched.begin(); at != watched.end();) {
+      pollfd exited{at->second, POLLIN, 0};
+      if (::poll(&exited, 1, 0) == 1) {
+        close(at->second), at = watched.erase(at), gone = true;
+      } else {
+        ++at;
+      }
+    }
+    return gone;
+  }
+};
+
+// The daemon's threads on its nodes' data path. WHY skip some (raw node, round 3): rtkit supervises at most 25 threads
+// per user, and dora's Ctrl-C handler and its zenoh runtimes (app-N, net-N, acc-N, rx-N, tx-N: links to daemons on
+// other machines, none here) carry no node's data. like_keras seam: the names dora gives its daemon's threads.
+std::vector<int> daemon_data_path(int daemon) {
+  std::vector<int> found;
+  for (int task : tasks_of(daemon)) {
+    std::string name = proc_text("/proc/" + std::to_string(daemon) + "/task/" + std::to_string(task) + "/comm");
+    static const char* const kZenoh[] = {"app-", "net-", "acc-", "rx-", "tx-"};
+    while (!name.empty() && std::isspace(static_cast<unsigned char>(name.back()))) name.pop_back();
+    if (name == "ctrl-c" ||
+        std::any_of(std::begin(kZenoh), std::end(kZenoh), [&](const char* zenoh) { return name.starts_with(zenoh); }))
+      continue;
+    found.push_back(task);
+  }
+  return found;
+}
+
+void pause_daemon() {  // RX, when a peer's input closes: the daemon's threads go back now, before its spin
+  {
+    std::lock_guard guard(g_boundary.lock);
+    if (!g_boundary.ours || g_boundary.over) return;
+    g_boundary.paused = true, g_boundary.paused_at = monotonic_ns();
+  }
+  g_boundary.changed.notify_all();
+  const int demoted = g_host.box.lower(g_host.box.box, g_boundary.daemon, 0);
+  std::fprintf(stderr, "like_keras %s: a peer left: the daemon (pid %d) SCHED_OTHER until quiet, %d demoted\n",
+               g_node.c_str(), g_boundary.daemon, demoted);
+}
+
+// Blocks until the daemon's data-path threads are quiet (above); false when the boundary is over or the daemon gone.
+// WHY schedstat and the voluntary switches: RLIMIT_RTTIME counts CPU time since a thread last slept, and the round-5
+// spinner read state S while on a CPU.
+bool wait_until_quiet() {
+  std::map<int, std::pair<long long, long long>> seen;  // thread -> (voluntary switches, on-CPU ns at that count)
+  int64_t quiet_from = -1;
+  for (;;) {
+    int64_t paused_at = 0;
+    {
+      std::unique_lock guard(g_boundary.lock);
+      if (g_boundary.over) return false;
+      paused_at = g_boundary.paused_at;
+    }
+    const std::string base = "/proc/" + std::to_string(g_boundary.daemon) + "/task/";
+    const std::vector<int> threads = daemon_data_path(g_boundary.daemon);
+    if (threads.empty()) return false;
+    long long longest = 0;
+    for (int thread : threads) {
+      const std::string status = proc_text(base + std::to_string(thread) + "/status");
+      const size_t at = status.find("voluntary_ctxt_switches:");
+      long long on_cpu = -1;
+      std::stringstream(proc_text(base + std::to_string(thread) + "/schedstat")) >> on_cpu;
+      if (at == std::string::npos || on_cpu < 0) continue;  // exited meanwhile
+      const long long switches = std::atoll(status.c_str() + at + 24);
+      auto& [count, since] = seen[thread];
+      if (count != switches) count = switches, since = on_cpu;
+      longest = std::max(longest, on_cpu - since);
+    }
+    const int64_t now = monotonic_ns();
+    quiet_from = longest > kQuietRunNs ? -1 : quiet_from < 0 ? now : quiet_from;
+    if (quiet_from >= 0 && now - quiet_from >= kQuietNs && now - paused_at >= kQuietNs) return true;
+    std::unique_lock guard(g_boundary.lock);
+    g_boundary.changed.wait_for(guard, std::chrono::nanoseconds(kQuietLookNs), [] { return g_boundary.over; });
+  }
+}
+
+// The I/O threads, then the daemon: now, at 1 s and 3 s (rtkit's grant is per thread, and the daemon starts some
+// later), then every second, each time checked still private (else demoted for good, and never asked again), and
+// again after each pause once quiet. Every grant goes through the box's ladder, so lk_stop ends them all.
+void elevate(std::string plan) {
+  Box& box = g_host.box;
+  if (box.raise == nullptr) return;  // a .so built before A35: SCHED_OTHER, as before
+  while (g_boundary.tx.load() == 0) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  std::vector<int> io = g_boundary.dora_threads;
+  io.push_back(g_boundary.rx.load()), io.push_back(g_boundary.tx.load());
+  int raised = 0;
+  for (int thread : io) raised += box.raise(box.box, 0, thread, kIoBelow);
+  std::fprintf(stderr, "like_keras %s: RX, TX and dora's threads: %d of %zu realtime, %d below the RT thread\n",
+               g_node.c_str(), raised, io.size(), kIoBelow);
+  const int daemon = g_boundary.daemon;
+  const auto began = std::chrono::steady_clock::now();
+  const auto at = [&](double seconds) {
+    return began + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(seconds));
+  };
+  Siblings siblings;
+  std::vector<int> nodes;
+  for (double due_s = 0.0; daemon > 1;) {
+    bool paused = false;
+    {
+      std::unique_lock guard(g_boundary.lock);
+      const auto look = std::chrono::steady_clock::now() + std::chrono::nanoseconds(kQuietLookNs * 4);
+      g_boundary.changed.wait_until(guard, std::min(at(due_s), look),
+                                    [] { return g_boundary.over || g_boundary.paused; });
+      if (g_boundary.over) return;
+      paused = g_boundary.paused;
+    }
+    if (!paused && siblings.left()) {
+      pause_daemon();
+      continue;
+    }
+    if (paused && !wait_until_quiet()) return;
+    if (!paused && std::chrono::steady_clock::now() < at(due_s)) continue;
+    if (!paused) due_s = due_s < 1.0 ? 1.0 : due_s < 3.0 ? 3.0 : due_s + 1.0;
+    const bool private_now = private_daemon(daemon, plan, nodes);
+    siblings.watch(nodes);
+    bool was_ours = false;
+    {
+      std::lock_guard guard(g_boundary.lock);
+      if (g_boundary.over) return;
+      g_boundary.paused = false, was_ours = std::exchange(g_boundary.ours, private_now);
+    }
+    if (!private_now) {  // never private: never touched; shared since: what it was given goes back, for good
+      if (was_ours) box.lower(box.box, daemon, 1);
+      std::fprintf(stderr, "like_keras %s: the daemon (pid %d) is not private to this dataflow: left %s\n",
+                   g_node.c_str(), daemon, was_ours ? "SCHED_OTHER for good" : "alone");
+      return;
+    }
+    const std::vector<int> threads = daemon_data_path(daemon);
+    int realtime = 0;
+    for (int thread : threads) {
+      {
+        std::lock_guard guard(g_boundary.lock);
+        if (g_boundary.paused || g_boundary.over) break;
+      }
+      realtime += box.raise(box.box, daemon, thread, kDaemonBelow);
+    }
+    if (paused || !was_ours)
+      std::fprintf(stderr, "like_keras %s: the daemon (pid %d)%s: %d of %zu data-path threads realtime\n",
+                   g_node.c_str(), daemon, paused ? " is quiet again" : ", private", realtime, threads.size());
+    std::lock_guard guard(g_boundary.lock);  // a grant that landed during a new pause goes back at once
+    if (g_boundary.paused) box.lower(box.box, daemon, 0);
+  }
 }
 
 // ------------------------------------------------------------------ receiving (the RX thread)
@@ -368,10 +627,12 @@ void hello_from(::DoraNode& node, const std::string& peer, const ArrowArray& arr
 
 void receive(::DoraNode& node) {
   Host& host = g_host;
+  g_boundary.rx.store(static_cast<int>(::gettid()));
   for (;;) {
     auto event = next_event(node.events);
     DoraEventType type = event_type(event);
     if (type == DoraEventType::Stop || type == DoraEventType::AllInputsClosed) break;
+    if (type == DoraEventType::InputClosed) pause_daemon();  // a peer left (A35)
     if (type != DoraEventType::Input) continue;
     ArrowArray array{};
     ArrowSchema schema{};
@@ -430,6 +691,7 @@ void receive(::DoraNode& node) {
 
 void transmit(::DoraNode& node) {
   Host& host = g_host;
+  g_boundary.tx.store(static_cast<int>(::gettid()));
   auto next_facilities = std::chrono::steady_clock::now() + std::chrono::seconds(1);
   for (;;) {
     {
@@ -442,7 +704,11 @@ void transmit(::DoraNode& node) {
     for (Output& output : host.outputs) {
       if (output.port < host.exposed_outs ? !news : !facilities) continue;
       ArrowArray array{};
-      while (host.box.take(host.box.box, output.port, &array) == 1) send(node, output, &array, -1, -1);
+      while (host.box.take(host.box.box, output.port, &array) == 1) {
+        const bool went = send(node, output, &array, -1, -1);
+        // CONTRACT §15 A35: the box counts an exposed Out's steps that never went out and its worst send gap
+        if (output.port < host.exposed_outs && host.box.sent != nullptr) host.box.sent(host.box.box, output.port, went);
+      }
     }
   }
 }
@@ -572,6 +838,7 @@ int main(int argc, char** argv) {
     return 2;
   }
   Host& host = g_host;
+  g_boundary.daemon = static_cast<int>(::getppid());  // the dora daemon that started this node (A35)
   g_node = argv[2], g_main = std::this_thread::get_id();
   std::string plan = argv[1];
   host.read(plan.substr(0, plan.rfind('/') + 1) + g_node + ".host");
@@ -583,6 +850,11 @@ int main(int argc, char** argv) {
   sigemptyset(&ending);
   for (int number : {SIGTERM, SIGHUP, SIGINT}) sigaddset(&ending, number);
   pthread_sigmask(SIG_BLOCK, &ending, nullptr);
+  // CONTRACT §15 A35: SIGXCPU blocked in every thread too, dora's included, so the box's ladder reads it on its
+  // sentinel (cpp/src/rt.cpp) and demotes whichever realtime thread ran past RLIMIT_RTTIME's soft limit
+  sigset_t xcpu;
+  sigemptyset(&xcpu), sigaddset(&xcpu, SIGXCPU);
+  pthread_sigmask(SIG_BLOCK, &xcpu, nullptr);
   std::thread([ending] {
     int number = 0;
     while (sigwait(&ending, &number) != 0) {
@@ -596,9 +868,12 @@ int main(int argc, char** argv) {
     if (!g_initialized.load())
       refuse(4, "init_dora_node did not return within 2 s: is a dora " LK_DORA_VERSION " daemon running?", false);
   }).detach();
+  const std::vector<int> before = tasks_of(::getpid());
   ::DoraNode node = init_dora_node();
   g_dora = &node;
   g_initialized.store(true);
+  for (int thread : tasks_of(::getpid()))  // dora's own (its event stream, its daemon channel), raised with RX and TX
+    if (std::find(before.begin(), before.end(), thread) == before.end()) g_boundary.dora_threads.push_back(thread);
   void* library = dlopen(host.so.c_str(), RTLD_NOW | RTLD_LOCAL);
   if (library == nullptr) refuse(1, std::string("dlopen: ") + dlerror(), true);
   Box& box = host.box;
@@ -606,6 +881,12 @@ int main(int argc, char** argv) {
   bind(library, "lk_create", box.create), bind(library, "lk_start", box.start), bind(library, "lk_step", box.step);
   bind(library, "lk_push", box.push), bind(library, "lk_take", box.take), bind(library, "lk_wait", box.wait);
   bind(library, "lk_stop", box.stop), bind(library, "lk_destroy", box.destroy);
+  box.raise = reinterpret_cast<decltype(box.raise)>(dlsym(library, "lk_raise"));  // optional (A35)
+  box.lower = reinterpret_cast<decltype(box.lower)>(dlsym(library, "lk_lower"));
+  box.sent = reinterpret_cast<decltype(box.sent)>(dlsym(library, "lk_sent"));
+  // WHY: a .so built before A35 has no sentinel, only A19's SIGXCPU handler; RX, TX and its RT thread start from
+  // here and inherit main's mask, so the signal reaches its handler again (dora's threads stay SCHED_OTHER then)
+  if (box.raise == nullptr) pthread_sigmask(SIG_UNBLOCK, &xcpu, nullptr);
   std::string description = box.describe();
   host.like_keras = json_string(description, "like_keras");
   for (size_t at = description.find("\"dir\": \"out\""); at != std::string::npos;
@@ -649,8 +930,15 @@ int main(int argc, char** argv) {
     code = run_lockstep(node);
   } else {
     std::thread tx(transmit, std::ref(node));
+    std::thread elevator(elevate, plan);  // the boundary's realtime, after lk_start (the grant order, A35)
     tx.join();
-    box.stop(box.box);  // the RT thread joined, the components deactivated in reverse order
+    {
+      std::lock_guard guard(g_boundary.lock);
+      g_boundary.over = true;
+    }
+    g_boundary.changed.notify_all();
+    box.stop(box.box);  // the RT thread joined, the components deactivated in reverse order, every grant ended
+    elevator.join();
     drain(node, -1, 0.0);
     mark("drained");
   }
