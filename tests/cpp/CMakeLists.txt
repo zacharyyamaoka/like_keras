@@ -28,3 +28,6 @@ target_link_libraries(links_static PRIVATE default_visibility)
 
 # CONTRACT §15 A19: the RT ladder probe's box (tests/test_rt_ladder.py)
 lk_component(spinner spinner.cpp)
+
+# CONTRACT §15 A23: an exposed optional queue input, wired or left unwired by the deployment (tests/test_optional_queue.py)
+lk_component(optional_queue optional_queue.cpp)

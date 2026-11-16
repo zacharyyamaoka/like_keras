@@ -596,6 +596,8 @@ int main(int argc, char** argv) {
       refuse(3, "no verified lk_hello from every peer within 2 s (this node: like_keras " + host.like_keras +
                     ", dora " LK_DORA_VERSION "; theirs: unknown, they never answered)", false);
   }
+  for (const Input& input : host.inputs)  // WHY (§15 A23, abi.h): a queue input this node wires gates; one it leaves
+    if (input.queue > 0) box.push(box.box, input.port, nullptr);  // unwired (an optional one) reads NULL, never gates
   lk_place place{host.hz, host.cpus.empty() ? nullptr : host.cpus.data(), int(host.cpus.size()), host.fifo,
                  host.stepped ? 0 : 1, host.stepped};
   if (box.start(box.box, &place, error, sizeof error) != 0) {  // §5.7, T7: refused before any data frame

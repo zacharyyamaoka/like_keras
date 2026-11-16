@@ -270,6 +270,7 @@ class NativeGroup:
         self.types = [message_type(cls._lk_ports[name].type) for name in self.outs]
         self.sinks = {name: [] for name in self.outs}
         self.waiting: dict[str, list] = {name: [] for name in self.ins}  # lockstep: (sent, value) not yet visible
+        self.wired: set[str] = set()  # the exposed inputs this deployment writes (receive)
         self.calls = ctypes.CDLL(cls._lk_impl)  # lk_create, lk_start, lk_wait, lk_stop: they block, the GIL is released
         # WHY PyDLL for push/take/step: they never block, and CDLL's release and re-take of the GIL could wait a
         # whole 5 ms switch interval behind a spinning Python thread (CONTRACT §6.3).
@@ -294,6 +295,9 @@ class NativeGroup:
         box = self.calls.lk_create(json.dumps(self.component._lk_params()).encode(), error, len(error))
         if not box:
             raise RuntimeError(f"{path(self.component)}: lk_create refused: {error.value.decode(errors='replace')}")
+        for port, name in enumerate(self.ins):  # WHY (§15 A23, abi.h): a queue this host wires gates; one it leaves
+            if name in self.queued and name in self.wired:  # unwired (an optional one) reads NULL and gates nothing
+                self.hot.lk_push(box, port, None)
         cpus = list(self.placed.cpus or [])
         place = _arrow().Place(
             self.hz or 0.0,
@@ -323,6 +327,7 @@ class NativeGroup:
         """The writer of one exposed input: under lockstep held until a step strictly after its send time (a
         rate-less group's queue: at it), in real time pushed at once from the writer's thread."""
         port, queued = self.ins.index(name), name in self.queued
+        self.wired.add(name)
 
         def write(value, sent: float) -> None:
             if self.run.lockstep:

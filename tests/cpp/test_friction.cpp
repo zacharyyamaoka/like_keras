@@ -334,6 +334,64 @@ TEST(OptionalInput, MayStayUnwiredAndUnexposedAndReadsNull) {
   EXPECT_THROW(Box{std::move(unbound)}, std::invalid_argument);
 }
 
+// An optional QUEUE input (fix round 1 after the first consumer, item 1): it must neither crash nor gate the gather of
+// §5.2 while nothing writes it. Its count of steps and what it read last are what the box's forward saw.
+struct QueueGuarded : lk::Component {
+  lk::In<rm::JointState> extra{this, "extra", {.queue = 4, .optional = true}};
+  lk::Out<rm::JointState> ticks{this, "ticks"};
+  int steps = 0;
+  double read = -1.0;  // the position of this step's message, or -1 when it read nullptr
+  void forward() override {
+    ++steps;
+    read = extra.get() == nullptr ? -1.0 : extra.get()->position[0];
+    ticks.write().size = 0;
+  }
+};
+
+TEST(OptionalInput, AQueueLeftUnwiredAndUnexposedNeverGatesAndReadsNull) {
+  lk::System s{"queue_internal"};
+  QueueGuarded& guarded = s.add<QueueGuarded>("guarded");
+  s.expose(guarded.ticks);
+  Box box{std::move(s)};
+  std::string error;
+  ASSERT_TRUE(box.start(kStepped, error)) << error;
+  for (int step = 0; step < 3; ++step) box.step(step * 0.02);
+  EXPECT_EQ(guarded.steps, 3) << "an unwired optional queue gates nothing";
+  EXPECT_EQ(guarded.read, -1.0);
+  EXPECT_FALSE(metric_names_of_the_box(box).empty()) << "a metrics round with an unwired queue (drops.extra)";
+  box.stop();
+}
+
+TEST(OptionalInput, AnExposedQueueGatesOnlyOnceTheHostWiresIt) {
+  lk::System unwired{"queue_exposed"};
+  QueueGuarded& alone = unwired.add<QueueGuarded>("guarded");
+  unwired.expose(alone.extra, alone.ticks);
+  Box idle{std::move(unwired)};
+  std::string error;
+  ASSERT_TRUE(idle.start(kStepped, error)) << error;
+  for (int step = 0; step < 3; ++step) idle.step(step * 0.02);
+  EXPECT_EQ(alone.steps, 3) << "the host never pushed to it: it is not wired, so it gates nothing";
+  EXPECT_EQ(alone.read, -1.0);
+  idle.stop();
+
+  lk::System wired{"queue_wired"};
+  QueueGuarded& fed = wired.add<QueueGuarded>("guarded");
+  wired.expose(fed.extra, fed.ticks);
+  Box box{std::move(wired)};
+  ASSERT_EQ(box.push(0, nullptr), 0) << "a host wires an input by retracting it before lk_start (abi.h)";
+  ASSERT_TRUE(box.start(kStepped, error)) << error;
+  box.step(0.0);
+  EXPECT_EQ(fed.steps, 0) << "wired and empty: gather waits for a message, as for any queue input";
+  ArrowArray message = encoded(2.5);
+  ASSERT_EQ(box.push(0, &message), 0);
+  box.step(0.02);
+  EXPECT_EQ(fed.steps, 1);
+  EXPECT_EQ(fed.read, 2.5);
+  box.step(0.04);
+  EXPECT_EQ(fed.steps, 1) << "one message, one step";
+  box.stop();
+}
+
 TEST(OptionalInput, IsListedOptionalOnTheSheet) {
   lk::System s{"listed"};
   Guarded& guarded = s.add<Guarded>("guarded");

@@ -12,6 +12,8 @@
  * offline, and the last metrics): a host takes them once more in between (§15 A28).
  * lk_push(box, port, NULL) retracts that input (CONTRACT §5.4): a latest input reads as none until its next value, a
  * queue is emptied.
+ * An optional queue input (§15 A23) gates a step (§5.2) only once its host has pushed to it, a retraction included:
+ * a host retracts each queue input it wires before lk_start, and one it leaves unwired reads NULL and gates nothing.
  */
 #ifndef LIKE_KERAS_ABI_H
 #define LIKE_KERAS_ABI_H

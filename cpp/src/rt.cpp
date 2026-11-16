@@ -227,7 +227,9 @@ Box::Box(System built) : system(std::move(built)) {
     component->box_ = this, component->clock_ = &now, component->index_ = position;
     for (Port* port : component->ports_) {
       (port->output ? child.outs : child.ins).push_back(port);
-      if (!port->output && port->opts.queue > 0) child.queued.push_back(port);
+      // an optional queue input neither wired nor exposed has no ring: it reads nullptr and gates nothing (§15 A23)
+      if (!port->output && port->opts.queue > 0 && (writer.count(port) || exposed_in.count(port)))
+        child.queued.push_back(port);
       if (!port->output && !port->opts.optional && !writer.count(port) && !exposed_in.count(port))
         throw std::invalid_argument(where(port) +
                                     " is unbound: wire it (s.wire), expose it (s.expose) or declare "
@@ -277,6 +279,7 @@ Box::Box(System built) : system(std::move(built)) {
     inlet.port = port, inlet.wire = wire;
     if (port->opts.queue > 0) {
       inlet.ring = rings.emplace_back(std::make_unique<Ring>(port->opts.queue, port->bytes)).get();
+      inlet.ring->gates.store(!port->opts.optional, std::memory_order_relaxed);  // until its host pushes (§15 A23)
       port->plumbing = inlet.ring;
     }
     for (Slot& slot : inlet.slots) slot.value.resize(port->bytes);
@@ -317,14 +320,22 @@ void Box::step(double at) {
   for (Child& child : children) {
     child.stepped = false;
     if (child.mode.load(std::memory_order_relaxed) != kOperational) continue;
-    bool ready = true;  // CONTRACT §5.2: a component with queue inputs steps when each holds a message (gather)
-    for (Port* port : child.queued) ready = static_cast<Ring*>(port->plumbing)->ready(*this) && ready;
+    // CONTRACT §5.2: a component with queue inputs steps when each holds a message (gather); an exposed optional
+    // one its host never pushed to gates nothing and reads nullptr (§15 A23)
+    bool ready = true, gated = false;
+    for (Port* port : child.queued) {
+      Ring& ring = *static_cast<Ring*>(port->plumbing);
+      ring.due = ring.ready(*this);
+      const bool gates = ring.gates.load(std::memory_order_acquire);
+      gated |= gates, ready = (ring.due || !gates) && ready;
+    }
     if (!ready) continue;
-    if (rateless && child.queued.empty() &&
+    if (rateless && !gated &&
         std::none_of(child.upstream.begin(), child.upstream.end(),
                      [&](std::size_t at) { return children[at].stepped; }))
       continue;
-    for (Port* port : child.queued) static_cast<Ring*>(port->plumbing)->pop(*this, *port);
+    for (Port* port : child.queued)
+      if (Ring& ring = *static_cast<Ring*>(port->plumbing); ring.due) ring.pop(*this, *port);
     try {
       child.component->forward();
     } catch (const std::exception& error) {
@@ -735,6 +746,7 @@ int Box::push(std::uint32_t port, ArrowArray* msg) {
   const double stamp = clock();
   if (inlet.ring != nullptr) {
     Ring& ring = *inlet.ring;
+    ring.gates.store(true, std::memory_order_release);  // its host writes it: it is wired (§15 A23), before any commit
     if (msg == nullptr) {  // retracted: the reader empties what was queued before now
       ring.retract_to.store(ring.head.load(std::memory_order_relaxed), std::memory_order_release);
       return 0;
@@ -978,8 +990,9 @@ void Box::facilities(int which) {
     }
     Values values = standard(child.step, child.step_seen, child.steps.load(std::memory_order_relaxed));
     for (Port* in : child.ins) {
-      if (in->opts.queue > 0) {
-        values.emplace_back("drops." + std::string(in->name), static_cast<Ring*>(in->plumbing)->drops());
+      if (in->opts.queue > 0) {  // an unwired optional queue has no ring and drops nothing (§15 A23)
+        values.emplace_back("drops." + std::string(in->name),
+                            in->plumbing == nullptr ? 0.0 : static_cast<Ring*>(in->plumbing)->drops());
       } else {
         const bool has = in->feed->value.load(std::memory_order_relaxed) != nullptr;
         values.emplace_back("input_age_s." + std::string(in->name),

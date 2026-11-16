@@ -109,8 +109,12 @@ struct Ring {
   // and by the RT thread (its trims) lost counts (M2 verifier, round 1). drops.<port> is their sum.
   alignas(64) std::atomic<std::uint64_t> head{0};
   std::atomic<std::uint64_t> retract_to{0}, refused{0};  // the writer's: a full ring refuses the newest
+  // WHY (CONTRACT §15 A23): an exposed optional input's host may leave it unwired, and an input nothing writes must
+  // not hold the gather of §5.2 forever; it gates once its host pushes to it, a retraction included (abi.h)
+  std::atomic<bool> gates{true};
   alignas(64) std::atomic<std::uint64_t> tail{0};
   std::atomic<std::uint64_t> trimmed{0};  // the reader's: drop-oldest beyond n
+  bool due = false;                       // the reader's: it held a message when this step's gather looked
 };
 
 struct Inlet {  // an exposed In: the host pushes (any thread, one at a time), the RT thread reads
@@ -153,7 +157,7 @@ enum Mode : int { kInitialization = 0, kOperational = 1, kOffline = 2 };
 
 struct Child {  // one leaf of the box's System
   Component* component;
-  std::vector<Port*> ins, outs, queued;  // queued: its queue inputs, in declaration order
+  std::vector<Port*> ins, outs, queued;  // queued: its queue inputs with a writer or exposed, in declaration order
   std::vector<std::size_t> upstream;     // in-box writers over non-lagged wires (a rate-less box's trigger)
   Histogram step;
   std::atomic<std::uint64_t> steps{0};
