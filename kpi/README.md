@@ -76,6 +76,18 @@ nice -n 19 ionice -c3 cmake --build /home/bam/like_keras/build -j 2
   - **A34's bound:** `start()` must raise within 60 s on these loaded cores, and the node must still have exactly one start 3 s later.
 
   M0.6 (CONTRACT §15 A40, ruler-009) corrects one M0 case to A34: `conformance::test_activate_raising_sends_nothing[dora]` expects `start()` to raise naming the refusal, as its inproc half does, and still asserts that the reader got no data frame (M0 expected `start()` to return).
+
+  M0.7 (CONTRACT §15 A43) freezes one test each for A41 and A42 (consumer-020, consumer-021), the same way, before their code lands. Both boxes compile on the library at `3816307`, and both tests fail there: the native box lists only the keys its config gave, and no refusal is counted or logged.
+
+  | Decision | Test | Counts with |
+  |---|---|---|
+  | A41 a native box's `describe()` lists every `LK_PARAMS` field with its default, overlaid by the config given, as its Python twin with the same `Params` does | `facilities::test_native_describe_lists_param_defaults[inproc,dora]` | criterion 9, params |
+  | A42 a push the box refuses is counted as `refused.<port>` in its metrics and logged on its log port | `facilities::test_refused_pushes_are_counted_and_logged[inproc,dora,before_activate]` | criterion 9, metrics |
+
+  The readings M0.7 pins where the contract names no spelling:
+  - **A41's shape** is the Python twin's. Each given key replaces its default whole (a given row table is shown as given, as Python stores what it is given), and the two datasheets compare as sorted JSON, so an int stays an int and NaN stays NaN.
+  - **A42's counter** sits on the box record (path = the box's own path, A9), as consumer-021 proposed: `refused.<exposed name>`, cumulative. Its log line names the input; its text and level are not pinned, and rate limiting may keep it to one line. The host cases run in lockstep, so delivery, and with it the count, is exact on both backends.
+  - **A42's `before_activate` case** drives the box through the C ABI: two pushes before `lk_start`, then one admitted and one its conversion refuses. No host pushes before `lk_start` (dora holds a frame until the box runs, and inproc drops a write until then), yet the box refuses such a push, so the box itself must count and log it.
 - A19's test asks the host what it offers first (`kpi/blackbox/rt_ladder_child.py --oracle`). Under `kpi/run.py`'s private PID namespace rtkit cannot name our threads, so there the honest answer is `SCHED_OTHER`, reported; run outside that namespace (plain pytest in the device sandbox) it expects rtkit's `SCHED_RR` on this host.
 - **Where kpi writes:** nothing outside the repo. Temporary files go to `build/kpi/tmp`, the private dora's working directory is `build/kpi/dora-<pid>`, and attach sockets go under `build/kpi/xdg/` (M0.4).
 
@@ -91,7 +103,7 @@ nice -n 19 ionice -c3 cmake --build /home/bam/like_keras/build -j 2
 | `churn/` | Criterion 6, parts 1-4 (T11) |
 | `golden/` | §7 LKF goldens, written by `make_golden.py` with the ruler's own codec (`lkf.py`, numpy + struct). pyarrow validates each golden in full. |
 | `polyglot/` | Criterion 8 (T10); `test_polyglot_friction.py` (A16, A17, A23, A31) |
-| `facilities/` | Criterion 9; `test_facilities_friction.py` (A18, A21, A22, A24, A28, A33, A35, A37) |
+| `facilities/` | Criterion 9; `test_facilities_friction.py` (A18, A21, A22, A24, A28, A33, A35, A37, A41, A42) |
 | `twin/` | Criterion 10 |
 | `attach/` | Criterion 11 |
 | `blackbox/` + `blackbox.py` + `/.importlinter` | Criterion 3; `test_blackbox_friction.py` (A19) |

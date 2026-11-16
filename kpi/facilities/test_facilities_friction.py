@@ -13,9 +13,12 @@ Ruler M0.5 (CONTRACT §15 A38) adds three:
   A33 test_non_finite_params_defaults              params: NaN and +-inf defaults round-trip
   A35 test_dora_boundary_accounting                metrics: io_sched_policy, drops and send gaps per exposed Out
   A37 test_dora_stop_drains_python_to_live_readers lifecycle: A28's drain for a Python node under dora
-The C++ boxes (hand_back.cpp, self_health.cpp, table_params.cpp, tie_health.cpp, non_finite.cpp) are built on demand
-(kpi/support/lk.feature_library): until a decision lands, its box does not compile, or the library does not do it,
-and its test FAILS, never skips.
+Ruler M0.7 (CONTRACT §15 A43) adds two:
+  A41 test_native_describe_lists_param_defaults    params: a native box's describe() lists every default, overlaid
+  A42 test_refused_pushes_are_counted_and_logged   metrics: refused.<port> on the box record, a line on its log port
+The C++ boxes (hand_back.cpp, self_health.cpp, table_params.cpp, tie_health.cpp, non_finite.cpp, described_params.cpp,
+refused_pushes.cpp) are built on demand (kpi/support/lk.feature_library): until a decision lands, its box does not
+compile, or the library does not do it, and its test FAILS, never skips.
 """
 
 from __future__ import annotations
@@ -594,3 +597,230 @@ def test_dora_stop_drains_python_to_live_readers(tmp_path, request):
     recorded_health = [row for row in recorded(tmp_path / "run.mcap", "health") if row["path"] == f"{name}.box"]
     _assert_ends_offline([row["mode"] for row in recorded_health], "the recording")
     assert len(node_pids) == 1, f"the box's node had pids {sorted(node_pids)}: dora restarted it during the stop"
+
+
+# ================================================================ ruler M0.7 (CONTRACT §15 A43)
+
+# ---------------------------------------------------------------- A41 (consumer-020): params
+
+# described_params.cpp's LK_PARAMS defaults, which kpi/facilities/friction_parts.py DescribedParamsPy repeats.
+DESCRIBED_DEFAULTS = {"gain": 0.5, "retries": 3, "armed": True, "adapter": "0607623A", "timeout_s": math.nan,
+                      "limits": [-1.5, 1.5], "joints": [{"name": "shoulder", "offset": 0.25}]}
+# Each config sets one key (the consumer's cell gives its arm only the joint table), or none. A given table is given
+# whole: its rows are shown as given, in both languages.
+DESCRIBED_CONFIGS = {"none": None, "scalar": {"gain": 2.0},
+                     "table": {"joints": [{"name": "shoulder", "offset": 0.1}, {"name": "elbow", "offset": -0.2}]}}
+
+
+def _canonical(params) -> str:
+    """params as JSON with sorted keys: equal strings mean the same keys, values and JSON kinds (an int stays 3, never
+    3.0) and the same NaN, which == cannot compare."""
+    return json.dumps(params, sort_keys=True)
+
+
+@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+def test_native_describe_lists_param_defaults(backend_name):
+    """CONTRACT §15 A41: a native box's describe() lists every LK_PARAMS field with its default, overlaid by the config
+    given, as a Python component's does. described_params.cpp (scalars of every reflected kind, NaN among them, a
+    vector and a row table, each with a default) and its Python twin DescribedParamsPy (the same Params), side by side
+    in one deployment, each given the same config: none, one scalar, or the row table alone. describe()'s params of
+    the box equal its lk_describe() defaults overlaid by that config, key for key, and equal what the twin lists, in
+    JSON kind as well (an int stays an int, NaN stays NaN). WHY (consumer-020): the arm given only its joint table
+    showed 1 key in same_box and 24 in fallback, guard_timeout_s's NaN among the missing; a Python <-> C++ swap
+    changed what the datasheet says the component runs with, though lk.native() had read every default."""
+    lk = like_keras()
+    chosen = backend(backend_name)
+    library = feature_library("described_params")
+    from kpi.facilities.friction_parts import DescribedParamsPy
+
+    so = ctypes.CDLL(str(library))
+    so.lk_describe.restype = ctypes.c_char_p
+    defaults = json.loads(so.lk_describe())["params"]
+    assert _canonical(defaults) == _canonical(DESCRIBED_DEFAULTS), f"lk_describe()'s params: {defaults}"
+    wrong = {}
+    for case, config in DESCRIBED_CONFIGS.items():
+        s = lk.System(f"described_{backend_name}_{case}")
+        s.add(lk.native(library, config=config), "box")
+        s.add(DescribedParamsPy(**(config or {})), "twin")
+        dep = lk.Deployment(s, backend=chosen)
+        dep.place(s.box, process="box", hz=10)  # under dora a native .so and a Python component never share one
+        dep.place(s.twin, process="twin", hz=10)
+        sheet = dep.describe()["components"]
+        shown = {side: next(component["params"] for path, component in sheet.items() if path.endswith(f".{side}"))
+                 for side in ("box", "twin")}
+        expected = _canonical({**DESCRIBED_DEFAULTS, **(config or {})})
+        assert _canonical(shown["twin"]) == expected, f"{case}: the Python twin lists {shown['twin']}"
+        if _canonical(shown["box"]) != expected:
+            wrong[case] = f"the native box lists {shown['box']}, its Python twin {shown['twin']}"
+    assert not wrong, "describe()'s params, given the same config:\n" + "\n".join(
+        f"  {case} ({DESCRIBED_CONFIGS[case]}): {what}" for case, what in wrong.items())
+
+
+# ---------------------------------------------------------------- A42 (consumer-021): metrics (and log)
+
+SIGNED_SENT = 10  # SignedSteps' pushes: -1, 2, -3, 4, ..., 10
+SIGNED_ADMITTED = [2.0, 4.0, 6.0, 8.0, 10.0]
+SIGNED_REFUSED = 5  # the odd ones, which refused_pushes.cpp's conversion refuses (it throws on a negative sample)
+PORT = "sample"  # refused_pushes.cpp's In<rm::JointState, Checked>, exposed under its own name
+
+
+def _refusal_lines(lines: list[dict]) -> list[str]:
+    """The box's log lines about its input: the box logs nothing else, so a line naming the input reports a refusal."""
+    return [row["message"] for row in lines if PORT in row["message"]]
+
+
+def _refusals_through_a_host(backend_name: str, directory) -> list[str]:
+    """A42 through one host, lockstep (exact delivery on both backends): SignedSteps at 10 Hz in its own process
+    sends SIGNED_SENT values, the box (100 Hz, its own process) converts each on lk_push and refuses the negative
+    ones, and readers in a third process hold the box's echo, metrics and log. The problems found, if any."""
+    lk = like_keras()
+    chosen = backend(backend_name)
+    from kpi.facilities.friction_parts import SignedSteps
+    from kpi.facilities.parts import LogLog, MetricsLog
+    from kpi.polyglot.friction_parts import JointStateLog
+
+    name = f"refused_{backend_name}_{os.getpid()}"
+    s = lk.System(name)
+    source = s.add(SignedSteps(count=SIGNED_SENT), "source")
+    box = s.add(lk.native(feature_library("refused_pushes"), config={"unused": 0}), "box", sample=source.sample)
+    s.add(JointStateLog(path=str(directory / "echo.jsonl")), "echo_reader", value=box.echo)
+    s.add(MetricsLog(path=str(directory / "metrics.jsonl")), "metrics_reader", value=box.metrics)
+    s.add(LogLog(path=str(directory / "log.jsonl")), "log_reader", value=box.log)
+    dep = lk.Deployment(s, backend=chosen, realtime=False)
+    dep.place(s.source, process="source", hz=10)
+    dep.place(s.box, process="box", hz=100)
+    dep.place(s.echo_reader, s.metrics_reader, s.log_reader, process="readers")
+    try:
+        dep.start(until=2.5)  # every push is made by 0.91 s; metrics rounds at 1 s, 2 s and the drain after the stop
+    finally:
+        dep.stop()
+    admitted = [row["position"][0] for row in rows(directory / "echo.jsonl")]
+    assert admitted == SIGNED_ADMITTED, f"the box took {admitted}: the conversion is not refusing the odd pushes alone"
+    problems = []
+    records = [row for row in rows(directory / "metrics.jsonl") if row["path"] == f"{name}.box"]
+    settled = [row for row in records if row["stamp"] >= 1.0 - 1e-9]
+    counted = {round(row["stamp"], 6): row["values"].get(f"refused.{PORT}") for row in settled}
+    if not settled or any(count != SIGNED_REFUSED for count in counted.values()):
+        names = sorted(records[-1]["values"]) if records else "no box record"
+        problems.append(f"{backend_name}: refused.{PORT} on the box record after every push, by stamp: {counted} "
+                        f"(expected {SIGNED_REFUSED} at each); the box record's names: {names}")
+    lines = _refusal_lines([row for row in rows(directory / "log.jsonl") if row["path"].startswith(f"{name}.box")])
+    if not 1 <= len(lines) <= SIGNED_REFUSED:
+        problems.append(f"{backend_name}: {len(lines)} lines naming {PORT} on the box's log port (expected 1 to "
+                        f"{SIGNED_REFUSED}, the first refusal, then rate-limited): {lines}")
+    return problems
+
+
+def _refusals_through_the_c_abi(library) -> list[str]:
+    """A42 at the box itself, through the C ABI both hosts call (abi.h): two pushes before lk_start, outside
+    activate()..deactivate(); after it (stepped), one admitted and one the conversion refuses; two steps; lk_stop;
+    then the facility ports' last records (abi.h: they hold them until lk_destroy). WHY here and not through a host:
+    no host pushes before lk_start (dora holds a frame until the box runs, inproc drops a write until it does), yet
+    the box refuses such a push, so the box must count it. The problems found, if any."""
+    import numpy as np
+    import pyarrow as pa
+
+    from kpi.golden import arrow_oracle, lkf
+
+    class ArrowArray(ctypes.Structure):  # the Arrow C Data Interface's array (abi.h)
+        _fields_ = [("length", ctypes.c_int64), ("null_count", ctypes.c_int64), ("offset", ctypes.c_int64),
+                    ("n_buffers", ctypes.c_int64), ("n_children", ctypes.c_int64), ("buffers", ctypes.c_void_p),
+                    ("children", ctypes.c_void_p), ("dictionary", ctypes.c_void_p), ("release", ctypes.c_void_p),
+                    ("private_data", ctypes.c_void_p)]
+
+    class Place(ctypes.Structure):  # lk_place (abi.h)
+        _fields_ = [("hz", ctypes.c_double), ("cpus", ctypes.c_void_p), ("ncpus", ctypes.c_int),
+                    ("fifo", ctypes.c_int), ("lock_memory", ctypes.c_int), ("stepped", ctypes.c_int)]
+
+    # WHY PyDLL, as inproc (CONTRACT §6.3): a pushed array's release runs on the calling thread, into pyarrow
+    so = ctypes.PyDLL(str(library))
+    so.lk_describe.restype = ctypes.c_char_p
+    so.lk_create.argtypes, so.lk_create.restype = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_size_t], ctypes.c_void_p
+    so.lk_start.argtypes = [ctypes.c_void_p, ctypes.POINTER(Place), ctypes.c_char_p, ctypes.c_size_t]
+    so.lk_step.argtypes = [ctypes.c_void_p, ctypes.c_double]
+    so.lk_push.argtypes = so.lk_take.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_void_p]
+    so.lk_stop.argtypes = so.lk_destroy.argtypes = [ctypes.c_void_p]
+    so.lk_stop.restype = so.lk_destroy.restype = None
+    ports = json.loads(so.lk_describe())["ports"]
+    ins = [port for port, spec in ports.items() if spec["dir"] == "in"]
+    outs = [port for port, spec in ports.items() if spec["dir"] == "out"]
+    echo_port, log_port, metrics_port = outs.index("echo"), len(outs), len(outs) + 2  # facilities: log, health, metrics
+    error = ctypes.create_string_buffer(1024)
+    box = so.lk_create(b'{"unused": 0}', error, len(error))
+    assert box, f"lk_create refused: {error.value.decode(errors='replace')}"
+
+    def push(value: float) -> int:
+        message = {"name": (PORT,), "position": np.array([value]), "velocity": None, "effort": None,
+                   "header": {"stamp": 0.0, "frame_id": "", "meta": {}}}
+        exported = ArrowArray()
+        array = arrow_oracle.rebuild("sensor/JointState", lkf.encode("sensor/JointState", message))
+        array._export_to_c(ctypes.addressof(exported))
+        return so.lk_push(box, ins.index(PORT), ctypes.addressof(exported))  # moves it in, refused or not
+
+    def take(port: int, type_name: str, *columns: str) -> list[tuple]:
+        """Every record the port holds, as plain Python copies of `columns` (nothing points into the box after)."""
+        arrow_type = arrow_oracle.arrow_type(lkf.Field("", "struct", of=type_name))
+        found = []
+        while True:
+            received = ArrowArray()
+            if so.lk_take(box, port, ctypes.addressof(received)) != 1:
+                return found
+            array = pa.Array._import_from_c(ctypes.addressof(received), arrow_type)
+            if len(array):
+                found.append(tuple(array.field(column)[0].as_py() for column in columns))
+            del array  # released here, on this thread, while the box lives
+
+    try:
+        returns = [push(1.0), push(2.0)]  # before lk_start: outside activate()..deactivate()
+        place = Place(10.0, None, 0, 0, 0, 1)  # stepped: no RT thread, the steps run on this thread
+        assert so.lk_start(box, ctypes.byref(place), error, len(error)) == 0, error.value.decode(errors="replace")
+        returns += [push(3.0), push(-4.0)]  # in the window: admitted, then refused by the conversion
+        so.lk_step(box, 0.0)
+        so.lk_step(box, 0.1)
+        echoed = [position[0] for (position,) in take(echo_port, "sensor/JointState", "position")]
+        so.lk_stop(box)
+        lines = [{"path": path, "message": message} for path, message in
+                 take(log_port, "std/LogRecord", "path", "message")]
+        metrics = {path: dict(zip(names, values)) for path, names, values in
+                   take(metrics_port, "std/Metrics", "path", "names", "values")}
+    finally:
+        so.lk_destroy(box)
+    assert returns == [-1, -1, 0, -1] and echoed == [3.0], (
+        f"lk_push returned {returns} (before lk_start twice, then admitted, then refused) and the box took {echoed}")
+    problems = []
+    if (metrics.get("") or {}).get(f"refused.{PORT}") != 3:
+        problems.append(f"C ABI: the box record (path \"\") after 2 pushes before lk_start and 1 its conversion "
+                        f"refused carries refused.{PORT} = {(metrics.get('') or {}).get(f'refused.{PORT}')} "
+                        f"(expected 3); its names: {sorted(metrics.get('') or {})}")
+    named = _refusal_lines(lines)
+    if not 1 <= len(named) <= 3:
+        problems.append(f"C ABI: {len(named)} lines naming {PORT} on the box's log port (expected 1 to 3): "
+                        f"{[line['message'] for line in lines]}")
+    return problems
+
+
+@pytest.mark.parametrize("case", ["inproc", "dora", "before_activate"])
+def test_refused_pushes_are_counted_and_logged(case, tmp_path, request):
+    """CONTRACT §15 A42: a push the box refuses (a conversion that throws, a push outside the activate/deactivate
+    window, more than kMaxJoints) is counted per input as refused.<port> in the component's metrics and logged on the
+    box's log port (the first, then rate-limited), in both hosts. refused_pushes.cpp's input `sample` is an
+    In<rm::JointState, Checked> whose conversion throws on a negative sample.
+      inproc, dora: SignedSteps sends -1, 2, -3, ..., 10 into the box (lockstep, so delivery is exact): the box takes
+        2, 4, 6, 8, 10; its box record (path = the box's own, A9) carries refused.sample = 5 at every metrics round
+        after the last push; and its log port, read by a reader in another process, carries 1 to 5 lines naming
+        `sample`.
+      before_activate: the same box driven through the C ABI (two pushes before lk_start, then one admitted and one
+        refused by the conversion): refused.sample = 3 on the box record and 1 to 3 lines naming `sample` on the log
+        port, both read after lk_stop. No host pushes before lk_start, so this case is the box's own.
+    WHY (consumer-021): ten plans refused by their conversion were counted nowhere (the box record had drops.log and
+    unreleased only, though rt.cpp's comment said "counted as a refused push"); inproc printed one line to stderr,
+    never to the box's log port, and lk-dora-host dropped lk_push's -1 without a word."""
+    like_keras()
+    library = feature_library("refused_pushes")
+    if case == "before_activate":
+        problems = _refusals_through_the_c_abi(library)
+    else:
+        if case == "dora":
+            request.getfixturevalue("private_dora")
+        problems = _refusals_through_a_host(case, tmp_path)
+    assert not problems, "\n".join(problems)

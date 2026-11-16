@@ -24,6 +24,9 @@ stay as they are.
 M0.5 (CONTRACT §15 A38) adds one companion per decision on the second consumer round (A31-A36: consumer-014..019)
 and on the Python drain under dora (A37), the same way; A35's exit against raw dora is a timing-tier companion of
 T4 (the dora boundary). Weights, gates, formulas and denominators stay as they are.
+M0.7 (CONTRACT §15 A43) adds one companion each for A41 (criterion 9, params: a native box's describe() lists every
+default, overlaid by its config) and A42 (criterion 9, metrics: a refused push is counted as refused.<port> and
+logged), the same way. Weights, gates, formulas and denominators stay as they are.
 """
 
 from __future__ import annotations
@@ -95,11 +98,13 @@ FRICTION_FACILITIES = {
                   "test_dora_stop_drains_to_live_readers",  # M0.4, A28/A30: a dora stop's final drain reaches readers
                   "test_dora_stop_drains_python_to_live_readers"],  # M0.5, A37: the same for a Python node
     "metrics": ["test_system_facility_ports",  # A21: a Python System's log/health/metrics, as a native box's
-                "test_dora_boundary_accounting"],  # M0.5, A35: io_sched_policy, drops and send gaps per exposed Out
+                "test_dora_boundary_accounting",  # M0.5, A35: io_sched_policy, drops and send gaps per exposed Out
+                "test_refused_pushes_are_counted_and_logged"],  # M0.7, A42: refused.<port>, and a line on the log
     "health": ["test_health_set_by_the_component",  # A22: health(level, code); log.error -> ErrorLogged
                "test_health_tie_keeps_the_facility_message"],  # M0.4, A22 with §4.5: a tie keeps the message
     "params": ["test_vector_params",  # A24: LK_PARAMS reflects vectors and vectors of rows
-               "test_non_finite_params_defaults"],  # M0.5, A33: NaN and +-inf defaults round-trip
+               "test_non_finite_params_defaults",  # M0.5, A33: NaN and +-inf defaults round-trip
+               "test_native_describe_lists_param_defaults"],  # M0.7, A41: a native datasheet lists the defaults
 }
 VALID_GRAPHS = [("test_valid_graph_accepted", name) for name in (
     "cross_group_cycle", "exposed_input_unwired", "fan_out", "fifo_on_python_ignored", "gather", "lagged_cycle", "linear",

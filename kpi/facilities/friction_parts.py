@@ -1,9 +1,18 @@
 """Python components of the M0.3 facility tests (CONTRACT §15 A18, A22; kpi/facilities/test_facilities_friction.py), the
-Python twins of hand_back.cpp and self_health.cpp."""
+Python twins of hand_back.cpp and self_health.cpp; and of ruler M0.7's (A41, A42): the twin of described_params.cpp and
+the writer of refused_pushes.cpp.
+
+Module level, so a deployment can rebuild each part in another process (CONTRACT §4.1: `module:qualname(**params)`).
+"""
 
 from __future__ import annotations
 
 import dataclasses
+import math
+
+import numpy as np
+from robot_msgs.sensor import JointState
+from robot_msgs.std import Header
 
 import like_keras as lk
 
@@ -61,3 +70,54 @@ class TieHealth(lk.Component):
             self.health("warn", "Slipping")
             self.log.warning("slipping: %s", "J3")
             self._phase = 3
+
+
+# ---------------------------------------------------------------- ruler M0.7 (CONTRACT §15 A43)
+
+
+def _default_limits() -> list[float]:
+    return [-1.5, 1.5]
+
+
+def _default_joints() -> list[dict]:
+    return [{"name": "shoulder", "offset": 0.25}]
+
+
+class DescribedParamsPy(lk.Component):
+    """The Python twin of described_params.cpp (A41): the same Params, field by field, with the same defaults. WHY
+    lists, never tuples: a component placed in another process is rebuilt from its params' JSON round trip (§4.1),
+    and a tuple comes back a list."""
+
+    echo = lk.Out(JointState)
+
+    @dataclasses.dataclass(frozen=True)
+    class Params:
+        gain: float = 0.5
+        retries: int = 3
+        armed: bool = True
+        adapter: str = "0607623A"
+        timeout_s: float = math.nan  # NaN = off (A33)
+        limits: list = dataclasses.field(default_factory=_default_limits)
+        joints: list = dataclasses.field(default_factory=_default_joints)
+
+    def forward(self):
+        return None
+
+
+class SignedSteps(lk.Component):
+    """A JointState on each of its first `count` steps (A42): position [k] at step k = 1, 2, 3, ..., the odd ones
+    negated (-1, 2, -3, 4, ...), so refused_pushes.cpp's conversion refuses exactly the odd ones."""
+
+    sample = lk.Out(JointState)
+
+    @dataclasses.dataclass(frozen=True)
+    class Params:
+        count: int = 10
+
+    def forward(self):
+        step = getattr(self, "_step", 0) + 1
+        self._step = step
+        if step > self.params.count:
+            return None
+        value = float(step) if step % 2 == 0 else -float(step)
+        return JointState(header=Header(stamp=self.now()), name=("sample",), position=np.array([value]))

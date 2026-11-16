@@ -47,8 +47,12 @@ if(COMMAND lk_component AND TARGET like_keras::rt)
   lk_component(owner_conversion polyglot/owner_conversion.cpp)  # A31 (consumer-014): from(const T&, const Owner&)
   lk_component(non_finite facilities/non_finite.cpp)            # A33 (consumer-016): NaN and +-inf defaults
   lk_component(refuser consumer/refuser.cpp)                    # A34 (consumer-017): a refusal is final under dora
+  # Ruler M0.7 (CONTRACT §15 A43): A41 and A42 (consumer-020, consumer-021).
+  lk_component(described_params facilities/described_params.cpp)  # A41: describe() lists a native box's defaults
+  lk_component(refused_pushes facilities/refused_pushes.cpp)      # A42: refused pushes are counted and logged
   set_target_properties(joint_names kept_plan hand_back rt_ladder period_probe self_health verdict table_params
                         arrivals optional_queue log_steps tie_health owner_conversion non_finite refuser
+                        described_params refused_pushes
                         PROPERTIES EXCLUDE_FROM_ALL ON)
 
   find_package(GTest REQUIRED)
