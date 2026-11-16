@@ -81,3 +81,63 @@ def test_fresh_sees_each_send_once_even_of_one_object(same_group):
 def test_fresh_is_refused_on_a_queue():
     with pytest.raises(ValueError, match="fresh is for a latest input"):
         lk.In(Header, queue=4, fresh=True)
+
+
+# ---------------------------------------------------------------- A22: health(level, code)
+
+
+class Scripted(lk.Component):
+    """One fact per logical second (lockstep, rounds at 1 s, 2 s, ...): the rules of a health round in combination."""
+
+    value = lk.Out(Header)
+
+    def forward(self):
+        at = round(self.now(), 6)  # each fact once, at a whole second: it shows in the round one second later
+        if at == 0.0:
+            self.health("warn", "Degraded")
+            self.log.warning("a warning beside the component's own warn")  # tie: the component's code
+        elif at == 1.0:
+            self.log.error("an error logged while the component says warn")  # worse: error / ErrorLogged
+        elif at == 3.0:
+            self.health("ok", "")
+            self.log.warning("a warning once the component says ok")  # the facility's own: WarningLogged
+        elif at == 4.0:
+            self.health("error", "Braked")  # held ...
+        elif at == 5.5:
+            raise RuntimeError("forward failed while braked")  # ... until an Exception, which always wins
+        return Header(stamp=self.now())
+
+
+class Diagnoses(lk.Component):
+    value = lk.In("std/DiagnosticRecord", queue=100)
+
+    def activate(self):
+        self.rows = []
+
+    def forward(self, value):
+        self.rows.append((round(value.header.stamp, 6), value.level, value.code))
+
+
+def test_health_rounds_combine_the_components_level_with_the_facilitys():
+    s = lk.System("scripted")
+    subject = s.add(Scripted(), "subject")
+    sink = s.add(Diagnoses(), "sink", value=subject.health)
+    dep = lk.Deployment(s, realtime=False)
+    dep.place(subject, hz=10)
+    dep.place(sink)
+    dep.start(until=6.5)
+    dep.stop()
+    assert sink.rows[1:] == [
+        (1.0, "warn", "Degraded"),
+        (2.0, "error", "ErrorLogged"),
+        (3.0, "warn", "Degraded"),  # held: no call in between
+        (4.0, "warn", "WarningLogged"),
+        (5.0, "error", "Braked"),
+        (6.0, "error", "Exception"),
+    ], sink.rows
+
+
+@pytest.mark.parametrize(("level", "code"), [("warning", "Degraded"), ("warn", ""), ("error", "not pascal")])
+def test_health_refuses_a_level_or_code_a_record_cannot_carry(level, code):
+    with pytest.raises(ValueError, match=r"health\("):
+        Ticker().health(level, code)

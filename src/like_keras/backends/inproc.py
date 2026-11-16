@@ -25,6 +25,7 @@ from like_keras.backends import address  # noqa: F401  (part of the backend's su
 from like_keras.component import FACILITY_PORTS, message_type, path
 
 NAME = "inproc"
+SEVERITY = {"ok": 0, "unknown": 1, "warn": 2, "error": 3}  # what "the worse" of two health levels means (§15 A22)
 VERSION = "0.1.0"
 CAPABILITIES = ("latest", "queue", "lagged", "lockstep", "mixed_process")
 
@@ -187,7 +188,7 @@ class Group:
                 if self.entered is None:
                     self.entered = box.entered
         except Exception as error:  # §5.7: the group stops; health says why; the process keeps serving
-            box.state.error, box.state.code = f"{type(error).__name__}: {error}", "Exception"
+            box.state.error = f"{type(error).__name__}: {error}"
             box.component.log.error("forward raised; its group stops: %s", error, exc_info=error)
             self.dead = True
             self.deactivate()
@@ -786,9 +787,10 @@ class Run:
             lateness, state.period_errors = state.period_errors, []
             stale, state.stale = state.stale, set()
             warning, state.warning = state.warning, None
+            logged, state.logged_error = state.logged_error, None
             overrun, state.overruns_reported = state.overruns - state.overruns_reported, state.overruns
             if box.sinks["health"]:
-                record = self._health(box, now, stale, overrun, warning)
+                record = self._health(box, now, stale, overrun, warning, logged)
                 for sink in box.sinks["health"]:
                     sink(record, now)
             if box.sinks["metrics"]:
@@ -800,11 +802,13 @@ class Run:
         for recorder in self.recorders:
             recorder.flush()
 
-    def _health(self, box: Box, now: float, stale: set[str], overrun: int, warning: str | None):
+    def _health(self, box: Box, now: float, stale: set[str], overrun: int, warning: str | None, logged: str | None):
         state, (header, diagnostic, _) = box.state, self.records
         level, code, message = "ok", "", ""
-        if state.error:  # the component's own code when it set one (attach: LeaseHeld, CONTRACT §15 A11)
-            level, code, message = "error", state.code or "Exception", state.error
+        if state.error:
+            level, code, message = "error", "Exception", state.error
+        elif logged:  # CONTRACT §15 A22: until a round in which no error was logged
+            level, code, message = "error", "ErrorLogged", logged
         elif stale:
             level, code, message = "warn", "InputStale", f"stale: {', '.join(sorted(stale))}"
         elif overrun:
@@ -813,6 +817,10 @@ class Run:
             level, code, message = "warn", "WarningLogged", warning
         elif state.mode == "initialization":
             level = "unknown"
+        # CONTRACT §15 A22, as the C++ runtime: the worse of the component's own health(level, code) and the
+        # facility's; on a tie the component's code says more, but an Exception always wins (it no longer runs)
+        if state.own is not None and code != "Exception" and SEVERITY[state.own[0]] >= max(SEVERITY[level], 1):
+            (level, code), message = state.own, ""
         return diagnostic(
             header=header(stamp=now),
             path=path(box.component),

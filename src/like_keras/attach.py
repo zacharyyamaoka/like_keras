@@ -466,9 +466,11 @@ class _Attached(Component):
             refusal = link.refusals.popleft()
             message = f"write refused: the lease is held by {refusal.get('holder')} ({refusal.get('reason')})"
             self.log.error(message)
-            self._lk.error, self._lk.code, self._refused_at = message, "LeaseHeld", time.monotonic()
+            self.health("error", "LeaseHeld")  # CONTRACT §4.5, §15 A22: the log line names the holder
+            self._refused_at = time.monotonic()
         elif self._refused_at > 0 and time.monotonic() - self._refused_at > 1.0:
-            self._lk.error, self._lk.code, self._refused_at = None, None, -1.0  # no refusal in the last period
+            self.health("ok", "")  # no refusal in the last period
+            self._refused_at = -1.0
         outs = type(self)._lk_outs
         news = [link.take(name) for name in outs]
         return news[0] if len(news) == 1 else tuple(news) if news else None

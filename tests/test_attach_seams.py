@@ -1,6 +1,6 @@
 """Lane core's own tests of the three seams attach needs from the core (CONTRACT §15 A11, docs/friction/contract-006.md
-§1-3): an `In` marked optional may stay unwired, `health.code` comes from the component's state, and
-`run.subscribe(leaf, port, sink)` is the one way a reader takes a leaf's outputs.
+§1-3): an `In` marked optional may stay unwired, `health.code` comes from the component (A11, since A22 through
+its own health(level, code)), and `run.subscribe(leaf, port, sink)` is the one way a reader takes a leaf's outputs.
 
     env -u VIRTUAL_ENV uv run --frozen --directory /home/bam/like_keras --extra test pytest -q tests/test_attach_seams.py
 
@@ -78,15 +78,12 @@ class Refused(lk.Component):
 
     @dataclasses.dataclass(frozen=True)
     class Params:
-        code: str = ""
+        code: str = "LeaseHeld"
         then_raise: bool = False
 
     def forward(self):
         if self.now() >= 0.25:
-            self._lk.error, self._lk.code = (
-                "write refused: the lease is held by another client",
-                self.params.code or None,
-            )
+            self.health("error", self.params.code)  # CONTRACT §15 A22, replacing A11's internal state.code
         if self.params.then_raise and self.now() >= 1.25:
             raise RuntimeError("forward failed after the refusal")
 
@@ -149,19 +146,15 @@ def test_health_code_is_the_components_own():
     ]
 
 
-def test_health_code_defaults_to_exception():
-    assert health_of({}) == [(0.0, "ok", ""), (1.0, "error", "Exception"), (2.0, "error", "Exception")]
-
-
 def test_a_forward_that_raises_reports_exception_whatever_code_was_set():
     assert health_of({"code": "LeaseHeld", "then_raise": True})[-1] == (2.0, "error", "Exception")
 
 
 def test_reset_clears_the_code():
     state = ComponentState("proxy")
-    state.error, state.code = "write refused", "LeaseHeld"
+    state.own, state.logged_error = ("error", "LeaseHeld"), "write refused"
     state.reset()
-    assert state.error is None and state.code is None
+    assert state.own is None and state.logged_error is None
 
 
 # ---------------------------------------------------------------- (c) run.subscribe: the one seam readers use

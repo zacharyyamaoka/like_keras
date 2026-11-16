@@ -117,6 +117,27 @@ class PortRef:
         return hash((id(self.owner), self.name))
 
 
+HEALTH_LEVELS = ("ok", "warn", "error")
+HEALTH_CODE = re.compile(r"[A-Z][A-Za-z0-9]*(\.[A-Za-z0-9_]+)*")  # robot_msgs DiagnosticRecord.code's rule
+
+
+class _Health(PortRef):
+    """`self.health`: the `health` port, for wiring; called, the component's own level and code, held until it is
+    called again (CONTRACT §15 A22). Each round health reports the worse of it and the facility's own level; on a tie
+    the component's code, which says more; an Exception in forward always wins."""
+
+    __slots__ = ()
+
+    def __call__(self, level: str, code: str) -> None:
+        # WHY checked here: a bad level or code would otherwise raise on the facilities thread, a second later
+        if level not in HEALTH_LEVELS:
+            raise ValueError(f"health({level!r}, {code!r}): level is one of {', '.join(HEALTH_LEVELS)}")
+        if (code or level != "ok") and not HEALTH_CODE.fullmatch(code):
+            raise ValueError(f"health({level!r}, {code!r}): code is a PascalCase reason (e.g. 'Refused'), "
+                             "required unless the level is ok")
+        self.owner._lk.own = (level, code)
+
+
 def as_ref(port) -> PortRef:
     """A PortRef from `planner.state`, or from `component.log` (the logger is also the `log` port)."""
     ref = port if isinstance(port, PortRef) else getattr(port, "_lk_ref", None)
@@ -149,9 +170,10 @@ class ComponentState:
         self.overruns = self.overruns_reported = 0
         self.stale: set[str] = set()
         self.ages: dict[str, float] = {}
-        self.warning: str | None = None
-        self.error: str | None = None
-        self.code: str | None = None  # health.code while `error` is set (attach: LeaseHeld); None reads Exception
+        self.warning: str | None = None  # the last warning logged this period (health: WarningLogged)
+        self.logged_error: str | None = None  # the last error logged this period (health: ErrorLogged, §15 A22)
+        self.error: str | None = None  # why forward raised (health: Exception, for good)
+        self.own: tuple[str, str] | None = None  # the component's own health(level, code), held (§15 A22)
         self.custom: dict[str, float] = {}
         self.log_sinks: tuple = ()
 
@@ -204,6 +226,7 @@ class Component:
         self.params = type(self).Params(**params)
         self._lk = ComponentState(snake(type(self).__name__))
         self.log = _Log(self)
+        self.health = _Health(self, "health")
 
     def forward(self, **inputs: Any) -> Any:
         """One step: inputs by name in; one Out returns its value, several a tuple; None is not sent."""
@@ -266,8 +289,11 @@ class _LogPort(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         state, message = self.state, record.getMessage()
-        if record.levelno >= logging.WARNING:
+        if record.levelno >= logging.ERROR:
+            state.logged_error = message  # health goes error for this period, with the text (CONTRACT §15 A22)
+        elif record.levelno >= logging.WARNING:
             state.warning = message  # health goes warn for this period, with the text (CONTRACT §8)
+        if record.levelno >= logging.WARNING:
             logging.getLogger("like_keras").handle(record)
         if state.log_sinks:
             from robot_msgs.std import Header, LogRecord
