@@ -122,9 +122,9 @@ class Deployment:
         """Deactivate in reverse order, join the threads, close the recordings. Idempotent."""
         main = threading.current_thread() is threading.main_thread()
         with self._stopping:
-            run, self._run = self._run, None
-            _ending.stops += main
+            _ending.stops += main  # WHY first: a signal from here on waits for this stop to finish
             try:
+                run, self._run = self._run, None
                 if run is not None:
                     run.stop()
             finally:
@@ -339,8 +339,8 @@ class _Ended(BaseException):
 class _Ending:
     """SIGTERM and SIGHUP end a deployment the way SIGINT does: every running deployment stops (each component's
     deactivate runs: a controller hands the arm back), then the process ends as the signal would have ended it.
-    WHY (consumer-003): systemctl stop, kill and a dora stop of a Python node send SIGTERM, which ended a process
-    with no deactivate. Installed by start() only where the application installed nothing (SIG_DFL: never over its
+    WHY (consumer-003): systemctl stop, kill and a transport stopping a Python process send SIGTERM, which ended a
+    process with no deactivate. Installed by start() only where the application installed nothing (SIG_DFL: never over its
     own handler, nor over nohup's SIG_IGN); put back once no deployment runs. WHY re-raise rather than exit(143):
     systemd counts death by SIGTERM or SIGHUP as a clean stop, and an exit code of 143 as a failure."""
 
