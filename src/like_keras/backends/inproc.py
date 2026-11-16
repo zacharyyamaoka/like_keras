@@ -379,10 +379,23 @@ class NativeGroup:
                     continue
                 if port >= facility:  # the box names its components; the records carry the full path
                     value = value.replace(path=".".join(filter(None, (path(self.component), value.path))))
+                if port > facility and self.run.lockstep:  # health and metrics, never a log line (wall time)
+                    value = _at_tick(value, sent)
                 if name == "log" and value.level >= logging.WARNING:  # as a Python component's (component._Log)
                     logging.getLogger("like_keras").log(value.level, "%s: %s", value.path, value.message)
                 for sink in self.sinks[name]:
                     sink(value, sent)
+
+
+def _at_tick(record, tick: float):
+    """A native box's health or metrics record stamped at its facility tick, uptime_s shifted with it.
+    WHY (CONTRACT §15 A10): under lockstep the box stamps its last step's time (0.98 s at the tick 1.0, at 50 Hz)
+    where a Python component is stamped at the tick, so a Python <-> C++ swap shifted every stamp by one period.
+    lk-dora-host does the same (cpp/hosts/dora_host.cpp, restamp)."""
+    shift = tick - record.header.stamp
+    if getattr(record, "mode", None) == "operational":  # the box sends uptime 0 unless operational
+        record = record.replace(uptime_s=record.uptime_s + shift)
+    return record.replace(header=record.header.replace(stamp=tick))
 
 
 @functools.cache

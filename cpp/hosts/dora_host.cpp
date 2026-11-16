@@ -418,6 +418,34 @@ void transmit(::DoraNode& node) {
 
 // ------------------------------------------------------------------ lockstep (CONTRACT §5.5)
 
+// WHY (CONTRACT §15 A10): under lockstep every health and metrics record is stamped at the facility tick, its
+// publish time on the logical clock, as a Python component's is, and uptime_s shifts by the same amount. The box
+// stamps its last step's time (0.98 s at the tick 1.0, at 50 Hz), so a Python <-> C++ swap shifted every stamp by a
+// period. lk_take moved the record here (abi.h), its buffers are this host's until it is sent: rewritten in place.
+void restamp(ArrowArray& record, const Tree& tree, double stamp) {
+  const auto number = [](ArrowArray* array) {
+    return const_cast<double*>(static_cast<const double*>(array->buffers[1])) + array->offset;
+  };
+  double *header_stamp = nullptr, *uptime = nullptr;
+  bool operational = false;
+  for (size_t at = 0; at < tree.children.size() && at < size_t(record.n_children); ++at) {
+    const Tree& field = tree.children[at];
+    ArrowArray* array = record.children[at];
+    if (field.name == "header")
+      for (size_t inner = 0; inner < field.children.size(); ++inner)
+        if (field.children[inner].name == "stamp") header_stamp = number(array->children[inner]);
+    if (field.name == "uptime_s") uptime = number(array);
+    if (field.name == "mode") {
+      const auto* ends = static_cast<const int32_t*>(array->buffers[1]) + array->offset;
+      operational =
+          std::string(static_cast<const char*>(array->buffers[2]) + ends[0], ends[1] - ends[0]) == "operational";
+    }
+  }
+  if (header_stamp == nullptr) return;
+  if (uptime != nullptr && operational) *uptime += stamp - *header_stamp;  // C++ sends 0 unless operational
+  *header_stamp = stamp;
+}
+
 int run_lockstep(::DoraNode& node) {
   Host& host = g_host;
   int64_t tick = 0, second = 0;
@@ -463,7 +491,10 @@ int run_lockstep(::DoraNode& node) {
     for (Output& output : host.outputs) {
       if ((output.port < host.exposed_outs) == facilities) continue;
       ArrowArray array{};
-      while (host.box.take(host.box.box, output.port, &array) == 1) frames[&output].push_back(array), array = {};
+      while (host.box.take(host.box.box, output.port, &array) == 1) {
+        if (output.port > host.exposed_outs) restamp(array, output.tree, now);  // health, metrics; never a log line
+        frames[&output].push_back(array), array = {};
+      }
     }
     int64_t promise = to_ns(next_time());
     for (Output& output : host.outputs) {
