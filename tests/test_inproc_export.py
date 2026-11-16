@@ -1,5 +1,6 @@
 """Lane cpp's own test of what inproc hands a native box (CONTRACT §6.3, §7.1): `_export`'s cache of constant
-subtrees gives the Arrow arrays the plain walk gives, node for node and byte for byte.
+subtrees, and since §15 A26 its one-message walk and per-type table layout, give the Arrow arrays the plain walk
+gives, node for node and byte for byte.
 
     env -u VIRTUAL_ENV uv run --frozen --directory /home/bam/like_keras --extra test pytest -q tests
 
@@ -67,9 +68,12 @@ def exported(value) -> tuple[list, list[bytes]]:
 
 
 def walked(value, monkeypatch) -> tuple[list, list[bytes]]:
-    """The same, through the plain walk only (every _nodes call goes to _walk, no cache)."""
+    """The same, through the plain walk only (every _nodes call goes to _walk, no cache; and since A26 the one-message
+    fast path _one too, and the cached table layout is built afresh)."""
     with monkeypatch.context() as patched:
         patched.setattr(inproc, "_nodes", inproc._walk)
+        patched.setattr(inproc, "_one", lambda node, value, nodes, codec, np: inproc._walk(node, [value], nodes, codec, np))
+        patched.setattr(inproc, "_LAYOUTS", {})
         return exported(value)
 
 
@@ -100,6 +104,7 @@ def test_a_plan_walks_only_what_it_carries(monkeypatch):
     with monkeypatch.context() as patched:
         patched.setattr(inproc, "_walk", counting("walked"))
         patched.setattr(inproc, "_nodes", inproc._walk)
+        patched.setattr(inproc, "_one", lambda node, value, nodes, codec, np: inproc._walk(node, [value], nodes, codec, np))
         exported(plan())
     skipped = {"limits", "channels", "accelerations", "effort"}
     assert skipped <= set(calls["walked"]) and not skipped & set(calls["cached"]), calls
@@ -116,3 +121,29 @@ def test_a_field_none_then_empty_then_none_exports_as_its_own_walk_each_time(mon
     for velocity in (None, np.zeros(0), None, np.zeros(0)):
         value = JointState(name=(), position=np.zeros(0), velocity=velocity)
         assert exported(value) == walked(value, monkeypatch), velocity
+
+
+def test_one_message_walk_gives_the_column_walks_nodes():
+    """CONTRACT §15 A26: _one(value) is _nodes([value]), node for node, for every v0 type and the plan's variants
+    (meta set, a field None, channels): the cached table layout relies on a type's nodes having one shape."""
+    for value in [*messages(), plan().replace(velocities=None)]:
+        node = codec.Node("", "+s", children=codec.schema(type(value)), message=type(value))
+        column, one = [], []
+        inproc._nodes(node, [value], column, codec, np)
+        inproc._one(node, value, one, codec, np)
+        assert [(a[0], a[1], tuple(a[3]), len(a[2])) for a in column] == [(b[0], b[1], tuple(b[3]), len(b[2])) for b in one]
+        for a, b in zip(column, one, strict=True):
+            for x, y in zip(a[2], b[2], strict=True):
+                same = x is y or (isinstance(x, np.ndarray) and isinstance(y, np.ndarray) and x.tobytes() == y.tobytes())
+                assert same or bytes(x or b"") == bytes(y or b""), (type(value).__name__, x, y)
+
+
+def test_a_types_layout_serves_messages_of_any_lengths_and_nones(monkeypatch):
+    """One cached layout per type: plans of other lengths, a field None then present, export as the plain walk."""
+    from robot_msgs.trajectory import JointTrajectory
+
+    monkeypatch.setattr(inproc, "_LAYOUTS", {})
+    short = JointTrajectory(t=np.arange(3.0), joint_names=("a", "b"), positions=np.ones((3, 2)))
+    for value in (plan(), plan().replace(velocities=None), plan(accelerations=np.zeros((1000, 7))), short, plan()):
+        assert exported(value) == walked(value, monkeypatch)
+    assert len(inproc._LAYOUTS) == 1, list(inproc._LAYOUTS)

@@ -468,60 +468,82 @@ def _arrow():
 def _export(value) -> int:
     """`value` as an Arrow C Data struct array of length 1 (CONTRACT §7.1) whose array buffers ARE its frozen numpy
     arrays (no copy, §6.3); the address of its root, which lk_push moves into the box."""
-    import ctypes
-
     import numpy as np
 
     from like_keras import codec
 
-    nodes: list = []
-    _nodes(codec.Node("", "+s", children=codec.schema(type(value)), message=type(value)), [value], nodes, codec, np)
-    # WHY one block for the small buffers (validity, offsets, scalars, strings) and one int64 buffer for the three
-    # tables, filled from one list: a numpy write per field cost ~160 us per plan on the planner's thread (rack
-    # powered, cores 22-23), and A2 allows 0.1 ms for the whole push.
-    block, arrays = bytearray(), []
-    for _, _, buffers, _ in nodes:
-        for at, buffer in enumerate(buffers):
-            if isinstance(buffer, np.ndarray):
+    cls, nodes = type(value), []
+    _one(codec.Node("", "+s", children=codec.schema(cls), message=cls), value, nodes, codec, np)
+    buffers = [buffer for node in nodes for buffer in node[2]]
+    layout = _layout(cls, nodes, len(buffers))
+    # WHY one block for the small buffers (validity, offsets, scalars, strings), and the node table from the type's
+    # cached layout with three vector writes (CONTRACT §15 A26): building the table field by field cost more than
+    # the walk itself, 50 of 73 us p50 for a 7 x 1000 plan (rack powered, cores 22-23, not the timing tier).
+    pointers, small, arrays, parts, end = [0] * len(buffers), [], [], [], 0
+    for at, buffer in enumerate(buffers):
+        if type(buffer) is np.ndarray:
+            if buffer.nbytes:
                 arrays.append(buffer)
-                buffers[at] = buffer.__array_interface__["data"][0] if buffer.nbytes else 0
-            elif buffer:
-                buffers[at] = -1 - len(block)  # a spot in the block, resolved once the block has an address
-                block += buffer + bytes(-len(buffer) % 8)  # 8-byte aligned, as Arrow buffers are
-            else:
-                buffers[at] = 0
-    held = ctypes.create_string_buffer(bytes(block), max(8, len(block)))
-    small = ctypes.addressof(held)
-    count, buffer_count = len(nodes), sum(len(node[2]) for node in nodes)
-    words = (ctypes.c_int64 * (10 * count + buffer_count + sum(len(node[3]) for node in nodes)))()
-    base = ctypes.addressof(words)
-    pointer_base, release = base + 80 * count, _arrow().release_address
-    child_base = pointer_base + 8 * buffer_count
-    table, pointers, children = [], [], []
-    for length, nulls, buffers, kids in nodes:
-        table += (
-            length,
-            nulls,
-            0,
-            len(buffers),
-            len(kids),
-            pointer_base + 8 * len(pointers),
-            child_base + 8 * len(children) if kids else 0,
-            0,
-            release,
-            0,
-        )
-        pointers += [small - 1 - spot if spot < 0 else spot for spot in buffers]
-        children += [base + 80 * kid for kid in kids]
+                pointers[at] = buffer.__array_interface__["data"][0]
+        elif buffer:
+            small.append(at)
+            pointers[at] = end  # a spot in the block, resolved once the block has an address
+            pad = -len(buffer) % 8  # 8-byte aligned, as Arrow buffers are
+            parts += (buffer, PADDING[pad])
+            end += len(buffer) + pad
+    held = np.frombuffer(b"".join(parts) or bytes(8), np.uint8)
+    pointers = np.array(pointers, np.int64)
+    pointers[small] += held.__array_interface__["data"][0]
+    words = layout.template.copy()
+    base = words.__array_interface__["data"][0]
+    words[layout.relative] += base
+    words[layout.lengths] = [node[0] for node in nodes]
+    words[layout.nulls] = [node[1] for node in nodes]
+    words[layout.pointers] = pointers
     arrow = _arrow()
-    key = next(arrow.keys)
-    table[9] = key  # the root's private_data: what its release drops
-    words[:] = table + pointers + children
+    key = words[9] = next(arrow.keys)  # the root's private_data: what its release drops
     arrow.alive[key] = (words, held, arrays)
     return base
 
 
-_CONSTANT: dict[tuple, tuple] = {}  # (schema node id, which values are None) -> that subtree's nodes, relative
+_LAYOUTS: dict[tuple, types.SimpleNamespace] = {}
+PADDING = tuple(bytes(size) for size in range(8))
+
+
+def _layout(cls, nodes: list, buffer_count: int) -> types.SimpleNamespace:
+    """A message type's ArrowArray table with every field that never changes filled in: the counts, the release,
+    the buffer and child pointers relative to the table's start. WHY per type: a type's nodes have one shape
+    whatever its values (a None field still has its node, empty), so only lengths, null counts and buffer
+    addresses differ from one message to the next. The key also holds the counts, so a shape never seen is built."""
+    import numpy as np
+
+    key = (cls, len(nodes), buffer_count)
+    if (layout := _LAYOUTS.get(key)) is not None:
+        return layout
+    count = len(nodes)
+    template = np.zeros(10 * count + buffer_count + sum(len(node[3]) for node in nodes), np.int64)
+    relative, buffer_at, kid_at = [], 0, 0
+    for index, (_, _, parts, kids) in enumerate(nodes):
+        row = template[10 * index : 10 * index + 10]
+        row[3:6] = len(parts), len(kids), 80 * count + 8 * buffer_at
+        row[8] = _arrow().release_address
+        relative.append(10 * index + 5)
+        if kids:
+            row[6] = 80 * count + 8 * buffer_count + 8 * kid_at
+            relative.append(10 * index + 6)
+        for kid in kids:
+            template[10 * count + buffer_count + kid_at] = 80 * kid
+            relative.append(10 * count + buffer_count + kid_at)
+            kid_at += 1
+        buffer_at += len(parts)
+    rows = np.arange(count) * 10
+    layout = types.SimpleNamespace(template=template, relative=np.array(relative), lengths=rows, nulls=rows + 1,
+                                   pointers=np.arange(10 * count, 10 * count + buffer_count))
+    _LAYOUTS[key] = layout
+    return layout
+
+
+_CONSTANT: dict[tuple, tuple] = {}  # (schema node id, which values are None, start) -> that subtree's nodes
 
 
 def _nodes(node, values: list, nodes: list, codec, np) -> int:
@@ -532,18 +554,58 @@ def _nodes(node, values: list, nodes: list, codec, np) -> int:
     # plan's 42 nodes (contract-005 §5; A2 and T2 allow 0.1 ms per push, M2 verifier round 1). The buffers are the
     # same bytes, so the layout is unchanged (kpi/golden, T10).
     if node.children and all(value is None or node.format != "+s" and len(value) == 0 for value in values):
-        key = (id(node), tuple(value is None for value in values))
+        # WHY the start index in the key: a subtree sits at the same place in every message of its type, so its
+        # cached nodes carry their absolute child indices and are appended as they are (CONTRACT §15 A26)
+        base = len(nodes)
+        key = (id(node), tuple(value is None for value in values), base)
         if (subtree := _CONSTANT.get(key)) is None:
             built: list = []
             _walk(node, values, built, codec, np)
             subtree = _CONSTANT[key] = tuple(
-                (length, nulls, tuple(b"" if isinstance(part, np.ndarray) else part for part in parts), tuple(kids))
+                (
+                    length,
+                    nulls,
+                    tuple(b"" if isinstance(part, np.ndarray) else part for part in parts),
+                    tuple(base + kid for kid in kids),
+                )
                 for length, nulls, parts, kids in built
             )  # an empty numpy buffer and b"" both export as a null pointer
-        base = len(nodes)
-        nodes += [(length, nulls, list(parts), [base + kid for kid in kids]) for length, nulls, parts, kids in subtree]
+        nodes += subtree
         return base
     return _walk(node, values, nodes, codec, np)
+
+
+def _one(node, value, nodes: list, codec, np) -> int:
+    """_nodes for one value, an exported message: the same nodes, without building a column per field. WHY: the walk
+    over columns of one cost 24 of a 7 x 1000 plan's ~50 us export (CONTRACT §15 A26; rack powered, cores 22-23)."""
+    kind = node.format
+    if node.children and (value is None or kind != "+s" and len(value) == 0) or kind in ("b", "+m"):
+        return _nodes(node, [value], nodes, codec, np)  # the cached constant subtrees, and the rare kinds
+    index = len(nodes)
+    present = value is not None
+    entry = (1, 0 if present else 1, [b"" if present else b"\x00"], [])
+    nodes.append(entry)
+    buffers, kids = entry[2], entry[3]
+    if kind in codec.NUMBER:  # struct packs a float's bits as they are: a NaN keeps its payload
+        buffers.append(struct.pack("<d" if kind == "g" else "<q", value if present else 0))
+    elif kind == "u":
+        encoded = value.encode() if present else b""
+        buffers += [struct.pack("<2i", 0, len(encoded)), encoded]
+    elif kind == "+l":
+        item = node.children[0]
+        if item.format in codec.NUMBER:  # WHY ascontiguousarray: a frozen C-order array comes back as itself
+            data = np.ascontiguousarray(value, codec.NUMBER[item.format]).ravel()
+            buffers.append(struct.pack("<2i", 0, len(data)))
+            kids.append(len(nodes))
+            nodes.append((len(data), 0, [None, data], []))
+        else:
+            buffers.append(struct.pack("<2i", 0, len(value)))
+            kids.append(_nodes(item, list(value), nodes, codec, np))
+    else:  # +s
+        for child in node.children:
+            column = getattr(value, child.name) if present else None if child.nullable else codec._zero(child)
+            kids.append(_one(child, column, nodes, codec, np))
+    return index
 
 
 def _walk(node, values: list, nodes: list, codec, np) -> int:
