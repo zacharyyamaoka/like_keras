@@ -12,8 +12,8 @@ sentinel. tests/cpp/spinner.cpp's box starts at 100 Hz with fifo=80 (it never sp
   repromote_at_stop  io_spin's thread, demoted, waits for the sentinel's re-promotion 10 s later; the slow stand-in
                      holds that call, and lk_stop comes while it is in flight
 It prints one JSON line: what each thread ran under when, every realtime thread of this process after lk_stop, the
-stand-in daemon's pid; it exits 0 when it lived. The slow stand-in holds the call for LK_SLOW_PID / LK_SLOW_TID,
-which this probe sets once only that call is still to come (tests/test_io_ladder.py writes the stand-in).
+stand-in daemon's pid, this probe's; it exits 0 when it lived. The slow stand-in holds the call for LK_SLOW_PID /
+LK_SLOW_TID, which this probe sets once only that call is still to come (tests/test_io_ladder.py writes the stand-in).
 WHY in shape of the raw node's race tests (fix round 6, slow_busctl.hpp): a race shown only by chance is no test.
 """
 
@@ -93,7 +93,7 @@ def main(library_path: str, cpu: int, scenario: str) -> None:
     assert box, error.value
     cpus = (ctypes.c_int * 1)(cpu)
     assert library.lk_start(box, ctypes.byref(Place(100.0, cpus, 1, 80, 0, 0)), error, len(error)) == 0, error.value
-    report: dict = {"scenario": scenario, "at_start": realtime_threads()}
+    report: dict = {"scenario": scenario, "pid": os.getpid(), "at_start": realtime_threads()}
     if scenario in ("io_spin", "repromote_at_stop"):
         spinner = Spinner(library, box)
         spinner.start()

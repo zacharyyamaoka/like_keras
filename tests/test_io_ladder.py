@@ -11,7 +11,9 @@ as lk-dora-host is: SIGXCPU blocked in every thread, so the box runs its sentine
 - lk_stop while the sentinel's re-promotion is in flight (held the same way): no thread of the host is realtime after.
 Each runs on the runtime as built and on a mutant of cpp/src/rt.cpp that must fail it. It needs rtkit's route (the
 host's PID namespace, rtkit on the system bus, no rtprio limit; kpi/blackbox/rt_ladder_child.py --oracle), else it
-skips naming why. No timing is asserted (the rack is powered on this host).
+skips naming why. No timing is asserted (the rack is powered on this host). rtkit's per-user limits are shared with
+every lane on this host: a check that needs a grant, failed while rtkit refused grants for another process's load,
+runs the probe again (tests/rtkit_load.py).
 """
 
 from __future__ import annotations
@@ -26,10 +28,12 @@ import time
 import pytest
 
 from kpi.support.lk import kpi_cpus, python, subprocess_env
+from tests.rtkit_load import GRANT, judged
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build" / "tests-cpp"
 SLOW_S = 0.5  # how long the stand-in holds the call: inside lk_stop's 1 s wait, so the runtime as built ends it
+PACE_S = 21.0  # before a probe runs again for rtkit's load: its burst window and then some (tests/rtkit_load.py)
 
 # WHY a shell stand-in first on PATH: the ladder spawns `busctl` by name (rt.cpp), and only the one call the probe
 # names (LK_SLOW_PID, LK_SLOW_TID) is held; it marks that it holds it, so lk_stop comes while it is in flight
@@ -86,26 +90,30 @@ def probe(library: pathlib.Path, scenario: str, directory: pathlib.Path) -> tupl
 
 
 def failures(scenario: str, code: int, found: dict) -> list[str]:
-    """What the run got wrong; [] when the ladder held. A stand-in daemon is checked after the host has exited and the
-    held call has had time to land (SLOW_S and then some), and killed."""
+    """What the run got wrong; [] when the ladder held. GRANT marks what a grant rtkit refused explains
+    (tests/rtkit_load.py). A stand-in daemon is checked after the host has exited and the held call has had time to
+    land (SLOW_S and then some), and killed."""
     wrong = [] if code == 0 else [f"the probe died (exit {code})"]
-    if scenario in ("io_spin", "repromote_at_stop"):
+    tried = code != 0 or bool(found.get("at_start"))  # else: below an RT thread rtkit never raised, nothing is asked
+    if not tried:
+        wrong.append(f"{GRANT}the box's RT thread was never raised (rtkit), so the scenario was not tried")
+    if tried and scenario in ("io_spin", "repromote_at_stop"):
         spun = found.get("spinner", {})
         if spun.get("raised") != 1 or (spun.get("before_spin") or [0])[0] != os.SCHED_RR:
-            wrong.append(f"the host thread was not raised: {spun}")
+            wrong.append(f"{GRANT}the host thread was not raised: {spun}")
         if code == 0 and (spun.get("after_spin") or [1])[0] != os.SCHED_OTHER:
             wrong.append(f"the sentinel did not demote the spinning thread: {spun}")
         if code == 0 and not any(name.startswith("lk-sentinel") for name in found.get("at_start", {})):
-            wrong.append(f"no realtime sentinel at the start: {found.get('at_start')}")
-    if scenario == "repromote_at_stop":
+            wrong.append(f"{GRANT}no realtime sentinel at the start: {found.get('at_start')}")
+    if tried and scenario == "repromote_at_stop":
         if not found.get("repromotion_in_flight"):
             wrong.append("the sentinel's re-promotion never started (no call held)")
         if (found.get("spinner", {}).get("after_stop") or [1])[0] != os.SCHED_OTHER:
             wrong.append(f"a re-promotion in flight at lk_stop outlived it: {found.get('spinner')}")
+    if tried and scenario == "stop_while_raising" and not found.get("raise_in_flight"):
+        wrong.append("the daemon's grant was never in flight (no call held)")
     if scenario == "stop_while_raising":
         daemon = found.get("daemon")
-        if not found.get("raise_in_flight"):
-            wrong.append("the daemon's grant was never in flight (no call held)")
         if daemon:
             time.sleep(SLOW_S + 1.0)
             try:
@@ -119,10 +127,24 @@ def failures(scenario: str, code: int, found: dict) -> list[str]:
     return wrong
 
 
+def judged_probe(library: pathlib.Path, scenario: str, directory: pathlib.Path, verdict) -> list[str]:
+    """probe() judged by `verdict(wrong, found)` (problems, [] when it holds), run again while rtkit refuses grants for
+    another process's load (tests/rtkit_load.py), each run PACE_S after the last."""
+    def attempt(index: int):
+        if index:
+            time.sleep(PACE_S)
+        code, found = probe(library, scenario, directory / f"attempt{index}")
+        wrong = failures(scenario, code, found)
+        problems = verdict(wrong, found)
+        print(f"{scenario} attempt {index}: wrong {wrong}, judged {problems}; {json.dumps(found)[:600]}")
+        return problems, [pid for pid in (found.get("pid"), found.get("daemon")) if pid]
+
+    return judged(attempt)
+
+
 @pytest.mark.parametrize("scenario", ["io_spin", "stop_while_raising", "repromote_at_stop"])
 def test_the_ladder_holds(scenario, rtkit_route, spinner, tmp_path):
-    code, found = probe(spinner, scenario, tmp_path)
-    assert failures(scenario, code, found) == [], found
+    assert judged_probe(spinner, scenario, tmp_path, lambda wrong, found: wrong) == []
 
 
 @pytest.fixture(scope="module")
@@ -155,7 +177,10 @@ def test_a_mutant_of_the_ladder_fails(mutant, rtkit_route, objects, tmp_path):
             f"-Wl,--version-script={ROOT / 'cmake' / 'lk_component.map'}"]
     done = subprocess.run(link, capture_output=True, text=True, timeout=300)
     assert done.returncode == 0, done.stderr[-3000:]
-    code, found = probe(library, scenario, tmp_path / "run")
-    wrong = failures(scenario, code, found)
-    print(f"{mutant} fails {scenario}: {wrong}")
-    assert wrong != [], f"{mutant} passed {scenario}: {found}"
+
+    def caught(wrong: list[str], found: dict) -> list[str]:  # caught: a problem no refused grant explains
+        if any(not reason.startswith(GRANT) for reason in wrong):
+            return []
+        return [f"{GRANT}{mutant} passed {scenario} (or only a grant failed: {wrong})"]
+
+    assert judged_probe(library, scenario, tmp_path / "run", caught) == []
