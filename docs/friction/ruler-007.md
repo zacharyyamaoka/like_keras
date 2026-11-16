@@ -33,3 +33,7 @@ exposure in two places. Neither is wrong today, so this note is for the dispatch
   `tests/test_dora_cli.py::test_a_hanging_cli_is_still_refused_as_a_hang_within_2s` failed on it, as intended.
 - **Proposal:** in the `hangs` case, also assert `"did not answer" in message`, or `elapsed >= 1.0`. Until then,
   lane dora's test covers it.
+
+## Resolution (2026-11-16, ruler lane)
+
+See CONTRACT.md §15, amendment A27. §2 is done in the M0.3 commit ("kpi: M0.3 — ruler amendment A27"): `test_T11_cli_skew_refused_within_2s[hangs]` also asserts `"did not answer"` in the refusal. With the backend's CLI run on a PATH of only the hidden helpers (the mutant above), the M0.2 test passed and the M0.3 test fails, naming the `sleep: not found` refusal; on the real backend both pass. §1 is left as it is: a slow `dora check` delays the private-dora fixture but cannot fail it.

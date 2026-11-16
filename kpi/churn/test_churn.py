@@ -127,6 +127,8 @@ def test_T11_cli_skew_refused_within_2s(fake, tmp_path, monkeypatch):
     assert "0.5.0" in message, message
     if fake == "other_version":
         assert "0.4.1" in message, message
+    else:  # WHY (ruler-007 §2): a CLI that failed at once (`sleep: not found`) also named 0.5.0 and passed as a hang
+        assert "did not answer" in message, message
 
 
 def test_golden_bytes_owned_here():

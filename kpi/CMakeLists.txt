@@ -27,6 +27,21 @@ if(COMMAND lk_component AND TARGET like_keras::rt)
   lk_component(echo polyglot/echo.cpp)
   lk_component(chain4 bench/chain4.cpp)
 
+  # CONTRACT §15 A27 (ruler M0.3): one box per consumer decision A16-A26 that needs C++. Each is kept out of `all`
+  # and built by its own test (kpi/support/lk.py feature_library), so a decision that has not landed fails its one
+  # test and never breaks the build of the rest of the ruler.
+  lk_component(joint_names polyglot/joint_names.cpp)      # A16 (consumer-001)
+  lk_component(kept_plan polyglot/kept_plan.cpp)          # A17 (consumer-002)
+  lk_component(hand_back facilities/hand_back.cpp)        # A18 (consumer-003)
+  lk_component(rt_ladder blackbox/rt_ladder.cpp)          # A19 (consumer-004)
+  lk_component(period_probe consumer/period_probe.cpp)    # A20 (consumer-005)
+  lk_component(self_health facilities/self_health.cpp)    # A22 (consumer-007)
+  lk_component(verdict polyglot/verdict.cpp)              # A23 (consumer-008)
+  lk_component(table_params facilities/table_params.cpp)  # A24 (consumer-009)
+  lk_component(arrivals consumer/arrivals.cpp)            # A25 (consumer-010)
+  set_target_properties(joint_names kept_plan hand_back rt_ladder period_probe self_health verdict table_params
+                        arrivals PROPERTIES EXCLUDE_FROM_ALL ON)
+
   find_package(GTest REQUIRED)
   add_executable(alloc_probe alloc_probe.cpp)
   target_include_directories(alloc_probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

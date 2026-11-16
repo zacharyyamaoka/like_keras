@@ -14,6 +14,10 @@ timing-marked twin as well in the timing tier: health ok when unloaded, and >= 1
 (the default tier reads warn/Overrun as honest and >= 10x on CPU time; ruler-002 §1, ruler-003). So do criteria 1, 6
 and 11 since M0.2 (CONTRACT §15 A14): T5 within 1 s, the two conformance tests' wall-clock bounds, and the attach
 node's absolute tick rate with bad clients; criterion 9's health also needs its lockstep half, in every tier.
+
+Since M0.3 (CONTRACT §15 A27) each of the first consumer's eleven decisions (A16-A26) has one frozen test, counted as
+a companion of an id or part its criterion already scores (FRICTION_* below): that id or part counts only when its
+companions pass as well. Weights, gates, formulas and denominators are unchanged.
 """
 
 from __future__ import annotations
@@ -56,6 +60,29 @@ TIMING_TWINS = {"test_T5_planner_crash": "test_T5_planner_crash_within_1s",
                 "test_now_is_scheduled_time": "test_now_is_scheduled_time_wall_clock",
                 "test_forward_exception_goes_error": "test_forward_exception_goes_error_wall_clock",
                 "test_clients_cannot_hurt_the_node": "test_clients_cannot_hurt_the_node_unloaded"}
+# Ruler M0.3 (CONTRACT §15 A27): one frozen test per consumer decision A16-A26 (docs/friction/consumer-001..011), each
+# a companion of what its decision serves. Criterion 1: an id of CONSUMER counts only when its companions in the
+# consumer suite pass too.
+FRICTION_CONSUMER = {
+    "test_T1_swap": ["test_fresh_input_counts_arrivals"],  # A25: Python and C++ count the same arrivals
+    "test_T2_send_cost": ["test_T2_export_and_push_apart"],  # A26: the send split into export and lk_push (timing)
+    "test_T7_exclusivity": ["test_period_in_activate"],  # A20: refused in activate when a tick is too short
+}
+# Criterion 3: a C++ row is clean only when these pass too (blackbox suite): the component never names its thread.
+FRICTION_BLACK_BOX = ["test_rt_ladder_is_the_librarys"]  # A19: the RT ladder is the library's
+# Criterion 8: a part counts only when its companions (polyglot suite) pass too.
+FRICTION_REACH = {
+    "mixed_chain": ["test_converted_input_keeps_a_plan_off_the_rt_thread",  # A17: In<T, Converted>
+                    "test_optional_verdict_input"],  # A23: an optional C++ In; a verdict as a DiagnosticRecord
+    "codec_bit_exact": ["test_T10_trajectory_joint_names"],  # A16: a JointTrajectory view's joint names
+}
+# Criterion 9: a facility counts only when its companions (facilities suite) pass too.
+FRICTION_FACILITIES = {
+    "lifecycle": ["test_sigterm_runs_deactivate"],  # A18: SIGTERM and SIGHUP end a deployment as SIGINT does
+    "metrics": ["test_system_facility_ports"],  # A21: a Python System's log/health/metrics, as a native box's
+    "health": ["test_health_set_by_the_component"],  # A22: health(level, code); log.error -> ErrorLogged
+    "params": ["test_vector_params"],  # A24: LK_PARAMS reflects vectors and vectors of rows
+}
 VALID_GRAPHS = [("test_valid_graph_accepted", name) for name in (
     "cross_group_cycle", "exposed_input_unwired", "fan_out", "fifo_on_python_ignored", "gather", "lagged_cycle", "linear",
     "multi_process_dora", "native_group", "native_own_process_dora", "nested_system", "no_place",
@@ -173,12 +200,19 @@ def with_twin(results: dict[str, list[str]], test_id: str, timing: bool) -> bool
     return passed(results, test_id) and (not timing or twin is None or passed(results, twin))
 
 
+def with_companions(results: dict[str, list[str]], companions: list[str]) -> bool:
+    """Every companion test of an id or part passes (ruler M0.3, CONTRACT §15 A27)."""
+    return all(passed(results, test) for test in companions)
+
+
 def consumer_fit(junit: dict, timing: bool) -> dict:
     consumer = junit.get("consumer", {})
-    passing = [test for test in CONSUMER if with_twin(consumer, test, timing)]
+    passing = [test for test in CONSUMER if with_twin(consumer, test, timing)
+               and with_companions(consumer, FRICTION_CONSUMER.get(test, []))]
+    companions = [test for tests in FRICTION_CONSUMER.values() for test in tests]
     return {"score": clamp((len(passing) - 4) / (9 - 4)), "measured": f"{len(passing)}/9", "passing": passing,
             "acceptance": {test: passed(consumer, test) for test in ACCEPTANCE},
-            "outcomes": {test: consumer.get(test, ["missing"]) for test in CONSUMER + ACCEPTANCE}}
+            "outcomes": {test: consumer.get(test, ["missing"]) for test in CONSUMER + ACCEPTANCE + companions}}
 
 
 def speed(bench: dict, timing: bool) -> dict:
@@ -218,7 +252,7 @@ def black_box(junit: dict, static: dict, linter: dict) -> dict:
             key = f"{component['task']}.{component['name']}"
             dynamic = passed(blocked, "test_steps_with_transports_blocked", key) if key in BLOCKED_STEPS else False
         else:
-            dynamic = passed(polyglot, "test_cpp_needs_no_python")
+            dynamic = passed(polyglot, "test_cpp_needs_no_python") and with_companions(blocked, FRICTION_BLACK_BOX)
         rows.append({**component, "clean": not component["violations"] and dynamic and linter.get("pass", False)})
     rows.append({"name": "ArmControllerPy", "task": "arm_cell", "language": "python", "violations": [],
                  "clean": passed(blocked, "test_steps_with_transports_blocked", "arm_cell.ArmControllerPy")
@@ -229,7 +263,8 @@ def black_box(junit: dict, static: dict, linter: dict) -> dict:
     library_env = static.get("library_env_reads", [])
     score = 0.0 if controller_dirty or library_env else clamp((share - 0.8) / 0.2)
     return {"score": score, "measured": f"{clean}/{len(rows)}", "controller_violations": controller_dirty,
-            "library_env_reads": library_env, "import_linter": linter}
+            "library_env_reads": library_env, "import_linter": linter,
+            "friction": {test: blocked.get(test, ["missing"]) for test in FRICTION_BLACK_BOX}}
 
 
 def succinctness(surface: dict, junit: dict) -> dict:
@@ -309,7 +344,9 @@ def reach(junit: dict) -> dict:
                                ("test_T10_codec_roundtrip", "test_T10_trajectory_view", "test_T10_hash_mismatch_refused")),
         "boilerplate": passed(polyglot, "test_cpp_boilerplate"),
     }
-    return {"score": sum(parts.values()) / 5, "parts": parts}
+    parts = {name: ok and with_companions(polyglot, FRICTION_REACH.get(name, [])) for name, ok in parts.items()}
+    friction = {test: polyglot.get(test, ["missing"]) for tests in FRICTION_REACH.values() for test in tests}
+    return {"score": sum(parts.values()) / 5, "parts": parts, "friction": friction}
 
 
 def facilities(junit: dict, surface: dict, timing: bool) -> dict:
@@ -321,10 +358,13 @@ def facilities(junit: dict, surface: dict, timing: bool) -> dict:
     if timing:  # WHY: the default tier's test_health accepts an honest warn/Overrun; unloaded, it must say ok (ruler-003)
         unloaded_ok = all(passed(found, "test_health_ok_when_unloaded", combo) for combo in COMBINATIONS)
         per["health"] = per["health"] and unloaded_ok
+    per = {name: ok and with_companions(found, FRICTION_FACILITIES.get(name, [])) for name, ok in per.items()}
     share = ((surface.get("size") or {}).get("facility") or {}).get("share")
     count = sum(per.values())
     score = 0.0 if share is not None and share > 0.30 else clamp((count - 3) / (7 - 3))
-    return {"score": score, "measured": f"{count}/7", "facilities": per, "facility_sloc_share": share}
+    friction = {test: found.get(test, ["missing"]) for tests in FRICTION_FACILITIES.values() for test in tests}
+    return {"score": score, "measured": f"{count}/7", "facilities": per, "facility_sloc_share": share,
+            "friction": friction}
 
 
 def testability(junit: dict, timing: bool) -> dict:

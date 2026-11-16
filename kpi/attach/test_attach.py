@@ -4,9 +4,9 @@ The always-on form (kpi/tasks/arm_cell/always_on.py: the Python controller on th
 state and command) runs as its own process; every client is a separate process started at least 1 s later.
 1 list          `lk ls <address>` lists the exposed ports, types, schema hashes, policies and the dora version in 1 s
 2 attach        a late client receives `state` within 1 s and its `trajectory` runs, under the write lease
-3 harmless      a client killed or stalled does not hurt the node (against a no-client window taken just before; the
-                absolute tick rate is the timing tier's); a slow one is dropped; a new one gets the cached latest
-                state at once
+3 harmless      a client killed or stalled does not hurt the node (against the worse of two no-client windows, one
+                before the bad clients and one after; the absolute tick rate is the timing tier's); a slow one is
+                dropped; a new one gets the cached latest state at once
 4 explicit      attaching needs an explicit address; nothing is discovered
 """
 
@@ -64,8 +64,8 @@ def tick_window(boards_path, seconds: float = WINDOW_S) -> tuple[int, float]:
 
 def bad_clients(node, tmp_path) -> dict:
     """test_clients_cannot_hurt_the_node's run: a no-client window, then a stalled and a killed attached planner and a
-    window with them, then a late client. The ticks and longest gaps of both windows, and how long the late client
-    waited for the cached latest state."""
+    window with them, then a late client, then (the bad clients gone) a second no-client window. The ticks and longest
+    gaps of the three windows, and how long the late client waited for the cached latest state."""
     like_keras()
     from kpi.support.parts import read_log
 
@@ -98,8 +98,16 @@ def bad_clients(node, tmp_path) -> dict:
         stalled.signal(signal.SIGCONT)
         stalled.stop()
         killed.stop()
+    after_ticks, after_gap = tick_window(node.boards)  # the second baseline, the bad clients gone (CONTRACT §15 A15)
     return {"quiet_ticks": quiet_ticks, "quiet_gap_s": quiet_gap, "bad_ticks": bad_ticks, "bad_gap_s": bad_gap,
-            "late_client_s": first["wall"] - started}
+            "after_ticks": after_ticks, "after_gap_s": after_gap, "late_client_s": first["wall"] - started}
+
+
+def baseline(run: dict) -> tuple[int, float]:
+    """The worse of the two no-client windows: the fewer ticks and the longer gap (CONTRACT §15 A15). WHY: one window
+    just before the clients still failed 2 runs in 12 on the powered rig, and two no-client windows back to back broke
+    the gap rule 1 time in 8 (ruler lane, M0.2): a single window measures the host's own noise as harm."""
+    return min(run["quiet_ticks"], run["after_ticks"]), max(run["quiet_gap_s"], run["after_gap_s"])
 
 
 def test_list_ports_within_1s(node):
@@ -150,16 +158,18 @@ def test_attach_receive_and_write(node, tmp_path):
 
 def test_clients_cannot_hurt_the_node(node, tmp_path):
     """A stalled and a killed attached planner cost the node nothing it would not have lost with no client at all:
-    against a no-client window of the same length taken just before, at least 0.9 x its ticks, and a longest gap
-    no more than its own + 20 ms. A new client gets the cached latest state at once.
+    against the worse of two no-client windows of the same length, one just before the bad clients and one after
+    them, at least 0.9 x its ticks, and a longest gap no more than its + 20 ms. A new client gets the cached latest
+    state at once.
     WHY a baseline (CONTRACT §15 A14, ruler-006 §1): on the powered rig the node alone ticked 214-269 times in 3 s
     with 36-113 ms gaps, so absolute bounds measured the host, not the clients. They are the timing twin's
-    (test_clients_cannot_hurt_the_node_unloaded)."""
+    (test_clients_cannot_hurt_the_node_unloaded). WHY two windows (A15): see baseline()."""
     run = bad_clients(node, tmp_path)
-    assert run["bad_ticks"] >= 0.9 * run["quiet_ticks"], \
-        f"the node ticked {run['bad_ticks']} times in {WINDOW_S} s with bad clients, {run['quiet_ticks']} with none"
-    assert run["bad_gap_s"] <= run["quiet_gap_s"] + 0.020, \
-        f"a {run['bad_gap_s'] * 1e3:.0f} ms gap with bad clients, {run['quiet_gap_s'] * 1e3:.0f} ms with none"
+    quiet_ticks, quiet_gap = baseline(run)
+    assert run["bad_ticks"] >= 0.9 * quiet_ticks, \
+        f"the node ticked {run['bad_ticks']} times in {WINDOW_S} s with bad clients, {quiet_ticks} at worst with none"
+    assert run["bad_gap_s"] <= quiet_gap + 0.020, \
+        f"a {run['bad_gap_s'] * 1e3:.0f} ms gap with bad clients, {quiet_gap * 1e3:.0f} ms at worst with none"
     assert run["late_client_s"] <= 0.5, "a new client did not get the cached latest state at once"
 
 
@@ -168,8 +178,9 @@ def test_clients_cannot_hurt_the_node_unloaded(node, tmp_path):
     """Timing tier (rack unpowered or the fixed cloud VM): test_clients_cannot_hurt_the_node, and with the bad clients
     the node still ticks at least 280 times in 3 s with every gap under 50 ms."""
     run = bad_clients(node, tmp_path)
-    assert run["bad_ticks"] >= 0.9 * run["quiet_ticks"], run
-    assert run["bad_gap_s"] <= run["quiet_gap_s"] + 0.020, run
+    quiet_ticks, quiet_gap = baseline(run)
+    assert run["bad_ticks"] >= 0.9 * quiet_ticks, run
+    assert run["bad_gap_s"] <= quiet_gap + 0.020, run
     assert run["bad_ticks"] >= 280, f"the node ticked {run['bad_ticks']} times in {WINDOW_S} s with bad clients"
     assert run["bad_gap_s"] < 0.05, f"a {run['bad_gap_s'] * 1e3:.0f} ms gap in the node's ticks"
     assert run["late_client_s"] <= 0.5, "a new client did not get the cached latest state at once"

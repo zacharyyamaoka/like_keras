@@ -62,6 +62,32 @@ def native_library(name: str) -> pathlib.Path:
     return path
 
 
+def feature_library(name: str) -> pathlib.Path:
+    """build/kpi/lib<name>.so for a ruler box that needs a library feature a CONTRACT §15 amendment decided (A16-A26),
+    built here from its CMake target. WHY on demand: kpi/CMakeLists.txt keeps these targets out of `all`, so a
+    decision that has not landed fails its one test and never breaks the build of the rest of the ruler. A compile
+    error FAILS the test with the compiler's own words; it never skips (A27: frozen before the feature lands)."""
+    import subprocess
+
+    build = REPO / "build"
+    if not (build / "CMakeCache.txt").exists():
+        pytest.fail(f"{build} is not configured: cmake -S {REPO} -B {build} -DCMAKE_BUILD_TYPE=Release")
+    # WHY -j 1: the rig is powered all day and a lane runs at most two worker processes (this test is the other)
+    command = ["cmake", "--build", str(build), "--target", name, "-j", "1"]
+    result = subprocess.run(command, capture_output=True, text=True, timeout=1800)
+    if result.returncode != 0 and ("No rule to make target" in result.stdout + result.stderr
+                                   or "unknown target" in result.stdout + result.stderr):
+        # a build tree configured before this target existed (Makefiles regenerate only for targets they know)
+        subprocess.run(["cmake", "-S", str(REPO), "-B", str(build)], capture_output=True, text=True, timeout=600)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=1800)
+    path = BUILD / f"lib{name}.so"
+    if result.returncode != 0 or not path.exists():
+        output = (result.stdout + result.stderr).splitlines()
+        errors = [line for line in output if "error" in line.lower()] or output[-12:]
+        pytest.fail(f"lib{name}.so does not build against this like_keras:\n" + "\n".join(errors[:12]))
+    return path
+
+
 def binary(name: str) -> pathlib.Path:
     path = BUILD / name
     if not path.exists():
