@@ -104,3 +104,15 @@ def test_a_plan_walks_only_what_it_carries(monkeypatch):
     skipped = {"limits", "channels", "accelerations", "effort"}
     assert skipped <= set(calls["walked"]) and not skipped & set(calls["cached"]), calls
     assert len(calls["cached"]) < len(calls["walked"]) / 2, calls
+
+
+def test_a_field_none_then_empty_then_none_exports_as_its_own_walk_each_time(monkeypatch):
+    """The cache key holds WHICH values are None: a field None in one message and empty in the next is two different
+    arrays (a null versus a valid empty list), never one cached subtree. WHY (M2 verifier, round 2): a key of
+    (id(node), len(values)) passed every other case here, and handed the second message the first one's null."""
+    from robot_msgs.sensor import JointState
+
+    monkeypatch.setattr(inproc, "_CONSTANT", {})  # cold, so the None pattern is cached first
+    for velocity in (None, np.zeros(0), None, np.zeros(0)):
+        value = JointState(name=(), position=np.zeros(0), velocity=velocity)
+        assert exported(value) == walked(value, monkeypatch), velocity
