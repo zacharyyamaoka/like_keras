@@ -39,3 +39,21 @@ The controller's conversion never throws. It returns a `PlanIn` whose `refusal` 
 ## Resolution (2026-11-16, dispatcher)
 
 Decided in CONTRACT.md §15 (A41/A42); its frozen test comes in ruler M0.7 (A43).
+
+## Verified by the consumer (2026-11-16, final pass on like_keras 41ce82d)
+
+Fixed for what the port needs (A42, `41ce82d`). Built and run against a `git archive` of like_keras `41ce82d` in the lane's sandbox; rack powered, cores 22-23, not the timing tier (repros at load 9, suite runs at load 18-31). bam_ws `claude/cpp-controller-nodes-f9a521` @ `a99338289`.
+
+- The repro now counts and says every refusal, on the box's own record and log:
+  ```
+  $SBX ~/like_keras/.venv/bin/python $PKG/lk/friction_repro/refused_conversion.py <build>/librefused_conversion.so <x>.mcap
+  sent 20 plans, 10 refused by the conversion
+  last metrics round of refused.box: {'steps': 352.0, ..., 'unreleased': 0.0, 'refused.trajectory': 10.0}
+  log lines: ['a push on trajectory was refused: its conversion threw (1 refused so far)',
+              'a push on trajectory was refused: its conversion threw (6 refused so far)',
+              'a push on trajectory was refused: its conversion threw (10 refused so far)']
+  ```
+  The count is exact (10 of 10). The lines go to the input owner's log (`refused.box.taker`): the first, then at most one a second. inproc's own stderr-only line is gone.
+- Under dora, the box record of the port's `target` and always-on runs carries `refused.trajectory` and `refused.verdict`. `lk/twin_demo.py` and `lk/ab_compare.py` now print them; they read 0 in every demo and A/B run of this pass, as no plan reached the box outside its window.
+- A42's warning during a stop or restart changed nothing in the port's tests: 32 passed, 1 skipped, 3 of 3 back to back. T1's 13 log lines are still identical in `target`, `same_box` and `fallback`, so no refusal line appeared in any placement. The always-on and A36 recordings of a suite run carry `refused.* = 0` and no refusal line.
+- Not done, and not needed here: the line gives a fixed reason ("its conversion threw"), not the exception's `what()`. The A42 lane explained why (log entries hold their text by pointer). The port's conversion never throws: it returns a refusal, and the RT thread logs it with its reason and counts it in `plans_dropped`, the same line in both languages (T1). Not filing.

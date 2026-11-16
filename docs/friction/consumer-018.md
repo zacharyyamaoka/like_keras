@@ -68,3 +68,41 @@ Decided in CONTRACT.md §15 (A31-A36); its frozen test comes in ruler M0.5 (A38)
 Not verified yet: A35 is not in like_keras `adbac3b`, the sha this adaptation built against (its lane was editing `cpp/hosts` and `cpp/src` in the live checkout during the run). The A/B was not re-run, because without A35 it would only repeat M3′'s numbers. The port needs no change for A35 (the RT thread, the boundary threads and the accounting are the library's), so the next step is `lk/ab_compare.py --seconds 30` on the A35 sha, which ruler M0.5's `consumer::test_A35_boundary_within_noise_of_raw_dora` also runs.
 
 One reading for A35's lane, from the A1 runs of this adaptation (60 s each, the same test as M3′): the planner's hand-off p99 was 0.118, 1.128 and 1.608 ms at load 20-23, 14-18 and 30-37, against M3′'s 2.0-5.6 ms (the RT thread's worst round p99 lateness 1.7, 1.2 and 12.6 ms; 0, 0 and 2 overruns). A late start against the stamp happened in 1 run of 3 (2 plans, worst 51.7 ms, at load 30-37). Load-labelled, not judged.
+
+## Verified by the consumer (2026-11-16, final pass on like_keras 41ce82d)
+
+What A35 asked for is in, and measured from the consumer's side. Its exit is half met in this set: states lost are within noise, hand-off p99 is narrowly not. Built against a `git archive` of like_keras `41ce82d`, with `lk-dora-host` built there by its own `cpp/hosts/build_dora_cxx.sh`. Run in the lane's sandbox; rack powered, cores 22-23, not the timing tier, so nothing here is judged. bam_ws `claude/cpp-controller-nodes-f9a521` @ `a99338289`.
+
+**The A/B.** Five interleaved pairs of 30 s: raw first in even pairs, like_keras first in odd ones. `lk/ab_compare.py` now runs pairs and applies kpi's `within_noise` rule (bootstrap 95 % CI of the paired mean difference against max(floor, raw's spread)):
+```
+$SBX ~/like_keras/.venv/bin/python $PKG/lk/ab_compare.py --seconds 30 --pairs 5
+states lost, like_keras - raw over 5 pairs: the 95 % CI's upper edge -0.007 % vs band 0.100 %: within noise
+hand-off p99, like_keras - raw over 5 pairs: the 95 % CI's upper edge 9.200 ms vs band 8.801 ms: NOT within noise
+```
+
+| pair | load (lk / raw) | states lost, like_keras | states lost, raw | worst arrival gap, lk / raw (ms) | hand-off p99, lk / raw (ms) | box: `drops.state`, `send_gap_max_s.state` (ms) |
+|---|---|---|---|---|---|---|
+| 0 | 12 / 10 | 0 of 3005 | 1 of 3041 | 207 / 48 | 12.6 / 10.5 | 0, 14.9 |
+| 1 | 15 / 13 | 0 of 3003 | 0 of 3047 | 73 / 19 | 12.2 / 8.7 | 0, 11.8 |
+| 2 | 12 / 12 | 0 of 3005 | 0 of 3039 | 82 / 19 | 11.8 / 7.8 | 0, 12.2 |
+| 3 | 13 / 21 | 0 of 3002 | 2 of 3061 | 133 / 45 | 28.5 / 16.6 | 0, 22.6 |
+| 4 | 20 / 23 | 0 of 3002 | 1 of 3052 | 130 / 45 | 21.6 / 13.4 | 0, 13.5 |
+
+- **States lost:** fixed. like_keras lost 0 in all 5 pairs; M3′ lost 2.0-3.1 %, and the raw node 0-0.07 % here.
+- **Hand-off p99:** 11.8-28.5 ms against raw's 7.8-16.6 ms (M3′: 27-167 ms). The miss is 0.4 ms over the band, while the load rose from 10 to 23 across the set. like_keras's p50 was the lower one in 4 of 5 pairs (3.0-10.6 ms against 2.8-9.3 ms). The A35 lane's set at load 8-17 was within noise (4.7 ≤ 5.9 ms). My reading: within noise at moderate load, not yet under heavy load. The timing tier judges.
+- **Scheduling, as asked:** every like_keras run reported `io_sched_policy` SCHED_RR 10 (read from a round with the RT thread running; the final drain reads OTHER because `lk_stop` demoted them).
+  - `/proc` 3 s in: `lk-dora-host` had 6 threads at RR 10, the RT thread and `lk-sentinel` at RR 20, 3 OTHER.
+  - The private daemon had `dora` and 3 `tokio-rt-worker` at RR 5.
+  - The raw node, for comparison: 5 dora threads at RR 10, control at RR 20; its `dora run` 2 `dora` and 3 `tokio-rt-worker` at RR 5. The same ladder.
+- **Accounting, as asked:** the box record carries `drops.state` and `send_gap_max_s.state` under dora. `drops.state` matched the subscriber's own count of missing states in every run (0 = 0). The worst send gap (11.8-22.6 ms) sits beside the raw node's own worst publish gap (15.5-28.5 ms).
+- **RT thread:** 0 overruns in 4 runs and 1 in pair 3; worst wake period 11.1-22.5 ms.
+- **CPU (CPU seconds per wall second, pair 4):** like_keras 0.24 in total, raw 0.13.
+  - planner 0.062 vs 0.036;
+  - subscriber 0.065 vs 0.043;
+  - daemon 0.055, plus coordinator 0.0006, vs `dora run` 0.032;
+  - node 0.023 vs 0.018;
+  - the gateway's 0.018 has no raw counterpart.
+
+**Still in the way, filed as consumer-022.** No state is lost, but the like_keras subscriber's worst arrival gap is 73-207 ms against raw's 19-48 ms. It sees 19-98 gaps over 20 ms per 30 s, against raw's 0-25. The large ones come every 2.000 s, and `send_gap_max_s.state` shows `lk-dora-host` sent on time, so the delay is downstream of it: the private `dora daemon`'s main thread runs about 50 ms at those moments. A Python guard reading `state` over dora meets these stalls, so the port's attached guard keeps its deadman at 1.0 s; the raw node's is 0.25 s.
+
+**Observation:** rtkit's per-user budget is spent faster now that one dora run asks for 13-18 grants. In one suite run, an always-on test's RT thread got "SCHED_FIFO 80 refused, and rtkit refused: the RT thread runs SCHED_OTHER". The log line said so (§4.3 holds), and the test does not judge timing. The A35 lane reported the same budget.
