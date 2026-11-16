@@ -198,4 +198,6 @@ def test_subscribe_takes_outputs_and_facilities_of_python_and_native_leaves(monk
     assert [sent for sent, _ in got["talker", "health"]] == [0.0, 1.0, 2.0]
     assert [row.path for _, row in got["talker", "metrics"]] == ["subscribed.talker"] * 3
     assert sorted({row.path for _, row in got["box", "health"]}) == ["subscribed.box.empty", "subscribed.box.talker"]
-    assert len(got["box", "health"]) == 6 and len(got["box", "metrics"]) == 9  # + the box's own record (A9)
+    # 3 rounds, + the box's own metrics record (A9), + the round drained after the last deactivate (A28, offline)
+    assert len(got["box", "health"]) == 8 and len(got["box", "metrics"]) == 12
+    assert [row.mode for _, row in got["box", "health"]] == ["operational"] * 6 + ["offline"] * 2

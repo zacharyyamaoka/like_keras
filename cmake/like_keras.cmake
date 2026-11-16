@@ -20,8 +20,15 @@ set_target_properties(like_keras_rt PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_
 add_library(like_keras::rt ALIAS like_keras_rt)
 
 # lk_component(<target> <sources...>): one C++ System, exported with LK_EXPORT, as lib<target>.so.
+# WHY the version script and --exclude-libs (CONTRACT §15 A28, consumer-013): hidden visibility reaches only the
+# component's own sources, so a .so exported every static library it linked (182 mcn:: and mjbots:: symbols in the
+# consumer's) and five std:: instantiations of the runtime itself; two components in one process then bound each
+# other's code. Now every .so this builds exports the lk_* C ABI and nothing else, whatever it links.
 function(lk_component target)
   add_library(${target} SHARED ${ARGN})
   target_link_libraries(${target} PRIVATE like_keras::rt)
-  set_target_properties(${target} PROPERTIES CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
+  set_target_properties(${target} PROPERTIES CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON
+                                             LINK_DEPENDS ${LIKE_KERAS_ROOT}/cmake/lk_component.map)
+  target_link_options(${target} PRIVATE "LINKER:--version-script=${LIKE_KERAS_ROOT}/cmake/lk_component.map"
+                      "LINKER:--exclude-libs,ALL")
 endfunction()

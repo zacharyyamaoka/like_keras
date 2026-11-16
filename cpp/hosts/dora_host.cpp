@@ -449,9 +449,24 @@ void restamp(ArrowArray& record, const Tree& tree, double stamp) {
   *header_stamp = stamp;
 }
 
+// CONTRACT §15 A28: after the last deactivate, the facility ports once more, so what the box logged in its last
+// partial second and in deactivate(), and its last health and metrics, are sent on every stop. Under lockstep
+// (`sent` >= 0) each frame keeps the output's last promise and health and metrics are stamped at the last step.
+void drain(::DoraNode& node, int64_t sent, double stamp) {
+  Host& host = g_host;
+  for (Output& output : host.outputs) {
+    ArrowArray array{};
+    while (output.port >= host.exposed_outs && host.box.take(host.box.box, output.port, &array) == 1) {
+      if (sent >= 0 && output.port > host.exposed_outs) restamp(array, output.tree, stamp);
+      send(node, output, &array, sent >= 0 ? std::max(sent, output.promised) : -1, -1);
+    }
+  }
+}
+
 int run_lockstep(::DoraNode& node) {
   Host& host = g_host;
   int64_t tick = 0, second = 0;
+  double last_step = 0.0;
   bool dead = false;
   std::map<Output*, std::vector<ArrowArray>> frames;
   auto next_time = [&] { return std::min(double(second), host.hz > 0 ? tick / host.hz : INFINITY); };
@@ -488,7 +503,7 @@ int run_lockstep(::DoraNode& node) {
     if (facilities) {
       ++second;  // the facilities first at equal times, as inproc
     } else {
-      ++tick;
+      ++tick, last_step = now;
       if (!dead && host.box.step(host.box.box, now) != 0) dead = true;  // §5.7: the box deactivated itself
     }
     for (Output& output : host.outputs) {
@@ -509,6 +524,8 @@ int run_lockstep(::DoraNode& node) {
       if (output.promised < promise) send_empty(node, output.id, promise), output.promised = promise;
     }
   }
+  host.box.stop(host.box.box);  // deactivate in reverse order, then the last records before the last promise (A28)
+  drain(node, 0, last_step);
   for (Output& output : host.outputs) send_empty(node, output.id, kForever);
   mark("done");
   std::unique_lock guard(host.lock);
@@ -598,8 +615,9 @@ int main(int argc, char** argv) {
   } else {
     std::thread tx(transmit, std::ref(node));
     tx.join();
+    box.stop(box.box);  // the RT thread joined, the components deactivated in reverse order
+    drain(node, -1, 0.0);
   }
-  box.stop(box.box);  // the RT thread joined, the components deactivated in reverse order
   if (host.signalled != 0) {  // RX may wait in next_event for good: neither joined nor raced by lk_destroy
     mark("exit");
     std::fflush(nullptr);

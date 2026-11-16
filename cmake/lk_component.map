@@ -1,0 +1,6 @@
+/* The version script lk_component() links every component .so with (cmake/like_keras.cmake, CONTRACT §15 A28): the
+ * .so exports the C ABI of like_keras/abi.h, whose entry points are all lk_*, and nothing else. */
+{
+  global: lk_*;
+  local: *;
+};

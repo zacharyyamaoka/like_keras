@@ -345,6 +345,29 @@ TEST(OptionalInput, IsListedOptionalOnTheSheet) {
   EXPECT_EQ(sheet.find("\"optional\""), sheet.find("\"optional\": true", verdict)) << "only the optional one";
 }
 
+// ---------------------------------------------------------------- A28: deactivate's last words on the C ABI
+
+struct LastWords : lk::Component {
+  void forward() override {}
+  void deactivate() override { log.info("handed back %s", "the arm"); }
+};
+
+TEST(FinalDrain, AfterStopTheLogPortCarriesDeactivatesLineAndHealthSaysOffline) {
+  lk::System s{"last"};
+  s.add<LastWords>("words");
+  Box box{std::move(s)};
+  std::string error;
+  ASSERT_TRUE(box.start(kStepped, error)) << error;
+  box.step(0.0);
+  log_round(box), health_round(box);
+  box.stop();
+  const auto lines = log_round(box);
+  EXPECT_EQ(lines, std::vector<std::string>{"handed back the arm"});
+  const auto health = health_round(box);
+  ASSERT_EQ(health.size(), 1u);
+  EXPECT_EQ(health[0].mode, "offline");
+}
+
 }  // namespace
 
 // ---------------------------------------------------------------- A24: vectors and tables of LK_PARAMS (the C ABI)

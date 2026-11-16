@@ -72,14 +72,16 @@ def test_two_threads_draining_one_box_at_once_each_take_their_own_message(monkey
             thread.start()
         for thread in threads:
             thread.join(timeout=30.0)
+        drained = {port: list(rows) for port, rows in received.items()}  # deactivate drains once more (A28)
     finally:
+        monkeypatch.setattr(inproc, "_import", real_import)
         group.deactivate()
     assert not failures, failures
     assert not shared, f"both threads took into one destination at {taken_at}: a message would be released twice"
-    assert sorted(row.path for row in received["health"]) == ["drained.box.empty", "drained.box.talker"]
-    assert all(isinstance(row, DiagnosticRecord) for row in received["health"]), received["health"]
-    assert sorted(row.path for row in received["metrics"]) == ["drained.box", "drained.box.empty", "drained.box.talker"]
-    assert all(isinstance(row, Metrics) for row in received["metrics"]), received["metrics"]
+    assert sorted(row.path for row in drained["health"]) == ["drained.box.empty", "drained.box.talker"]
+    assert all(isinstance(row, DiagnosticRecord) for row in drained["health"]), drained["health"]
+    assert sorted(row.path for row in drained["metrics"]) == ["drained.box", "drained.box.empty", "drained.box.talker"]
+    assert all(isinstance(row, Metrics) for row in drained["metrics"]), drained["metrics"]
 
 
 @pytest.mark.parametrize("port", ["health", "metrics"])
@@ -98,7 +100,8 @@ def test_one_thread_still_takes_a_whole_round(port):
     try:
         index = group.outs.index(port)
         group._drain(0.0, index + 1, index)
+        drained = list(rows)  # deactivate drains once more (A28)
     finally:
         group.deactivate()
     expected = ["drained_alone.box.empty", "drained_alone.box.talker"]
-    assert sorted(rows) == (expected if port == "health" else ["drained_alone.box", *expected])
+    assert sorted(drained) == (expected if port == "health" else ["drained_alone.box", *expected])

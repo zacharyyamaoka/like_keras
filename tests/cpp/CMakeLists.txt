@@ -19,5 +19,12 @@ add_executable(box_tests test_box.cpp test_friction.cpp)
 target_include_directories(box_tests PRIVATE ${LIKE_KERAS_ROOT}/cpp/src)
 target_link_libraries(box_tests PRIVATE like_keras::rt GTest::gtest GTest::gtest_main)
 
+# CONTRACT §15 A28 (consumer-013): a component that links a static library compiled with default visibility, as the
+# consumer's mcn_core: lk_component must still export the lk_* C ABI and nothing else (tests/test_component_exports.py).
+add_library(default_visibility STATIC default_visibility.cpp)
+set_target_properties(default_visibility PROPERTIES CXX_VISIBILITY_PRESET default POSITION_INDEPENDENT_CODE ON)
+lk_component(links_static links_static.cpp)
+target_link_libraries(links_static PRIVATE default_visibility)
+
 # CONTRACT §15 A19: the RT ladder probe's box (tests/test_rt_ladder.py)
 lk_component(spinner spinner.cpp)

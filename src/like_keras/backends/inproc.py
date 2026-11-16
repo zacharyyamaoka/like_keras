@@ -247,7 +247,7 @@ class NativeGroup:
         import ctypes
 
         (self.component,) = placed.order
-        self.run, self.index, self.hz, self.placed, self.dead = run, index, placed.hz, placed, False
+        self.run, self.index, self.hz, self.placed, self.dead, self.last = run, index, placed.hz, placed, False, 0.0
         self.wake, self.box, self.refusals = threading.Event(), None, 0
         ports, cls = type(self.component)._lk_description["ports"], type(self.component)
         self.ins = [name for name, spec in ports.items() if spec["dir"] == "in"]
@@ -295,9 +295,14 @@ class NativeGroup:
         self.box = box
 
     def deactivate(self) -> None:
-        box, self.box = self.box, None
+        box = self.box
         if box:
             self.calls.lk_stop(box)  # the RT thread joined, the components deactivated in reverse order
+            # WHY once more (CONTRACT §15 A28): what the box logged in its last partial second and in deactivate(),
+            # and its last health and metrics, on every stop: at the last step's time under lockstep, else now
+            now = self.last if self.run.lockstep else self.run.epoch0 + time.monotonic() - self.run.mono0
+            self._drain(now, len(self.outs), len(self.outs) - len(FACILITY_PORTS))
+            self.box = None
             self.calls.lk_destroy(box)
 
     def receive(self, name: str):
@@ -327,6 +332,7 @@ class NativeGroup:
         """Lockstep: deliver what is due, one step through lk_step on this thread, hand on what it sent at `now`."""
         if self.dead or self.box is None:
             return False
+        self.last = now
         for port, name in enumerate(self.ins):
             waiting, strict = self.waiting[name], not (name in self.queued and self.hz is None)
             due = 0
