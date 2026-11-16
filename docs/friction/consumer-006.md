@@ -49,3 +49,7 @@ kpi's own `kpi/consumer/test_consumer.py` does the same for the reference cell (
 
 - **Library fix (core, `system.py`).** A Python System gets the three facility ports. Each carries the records of every component inside it with their full paths, as a native box's do. Exposing a single child's facility port stays possible.
 - **New ruler test.** For the reference cell's arm in `same_box` and `fallback`: `arm.metrics` delivers records whose path sets are equal (`arm_cell.arm.<child>`), and `arm.log` delivers the guard's runaway line in both.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).

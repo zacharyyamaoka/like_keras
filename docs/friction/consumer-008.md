@@ -48,3 +48,7 @@ Not ported. The twin config runs with the deadman off (`guard_timeout_s` NaN), a
 - **Contract change (§6.1), with a library fix.** `InOpts{.optional = true}`: unwired is legal and reads `nullptr`. `describe()` lists it as optional, and an attach client may write it (A11's semantics, in C++).
 - **Contract change (§7.2) and robot_msgs.** A v0 type for a guard verdict: `robot_msgs.control.GuardVerdict{header (stamp = the judged state's stamp), state_seq, verdict: "ok" | "stop" | "brake", reason: str}`. Or ratify `DiagnosticRecord` as the verdict type, with `header.stamp` = the judged state's stamp and `level` error meaning stop.
 - **New ruler test.** The reference arm with an optional `verdict` input: unwired, the cell runs as today. Wired to a guard that stops confirming, a running plan stops within `guard_timeout_s` + one tick, in `same_box` and `target`.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).

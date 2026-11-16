@@ -27,3 +27,7 @@ prints nothing. The rate lives only in `lk_place.hz`, which a component cannot r
 
 - **Contract change (§6.1, §4.1), with a library fix.** `double Component::period() const` (C++) and `self.period()` (Python): the group's period in seconds, 0.0 for a rate-less group, valid from `activate()` on. It adds one public name (§3). The alternative is a field of the params `activate` sees.
 - **New ruler test.** A C++ and a Python component placed at 50 Hz read 0.02 in `activate`. One that refuses in `activate` when `period()` is below a param fails `start()` naming the reason, before any step (T7's shape).
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).

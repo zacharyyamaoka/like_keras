@@ -43,3 +43,7 @@ Nothing: the port runs on lk's SCHED_OTHER fallback, and A2's numbers in `lk/tes
 - **Library fix: the scheduling ladder in `Box::run`.** If `place.fifo > 0` and SCHED_FIFO is refused, ask rtkit (`org.freedesktop.RealtimeKit1.MakeThreadRealtimeWithPID`) for SCHED_RR at min(fifo, rtkit's MaxRealtimePriority) **from a host thread before the RT thread starts its loop**, with the RT thread's tid, so the RT thread never blocks on it. Report what was granted in the box's metrics record (`sched_policy`, `sched_priority`) and on health. The raw node's `rt.cpp` and `rt_sentinel.cpp` are the prior art. Its RLIMIT_RTTIME handling has to come with it, or rtkit's own limit kills the process on the first 200 ms spin.
 - **Or a contract change: an `on_rt_start()` hook.** A Component member that runs once on the RT thread before its first step, may block, and cannot touch ports. The consumer then brings its own ladder.
 - **New ruler test.** In a session without an rtprio limit but with rtkit, `fifo=80` gives the RT thread a realtime policy (SCHED_RR) and says so in metrics. Today it gives SCHED_OTHER.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).

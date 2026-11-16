@@ -36,3 +36,7 @@ The swap tests pass because their planners never resend.
 
 - **Contract change (§4.1, §3), with a library fix.** `lk.In(T, fresh=True)`: `forward` gets `None` for that input unless a value arrived since the last step. It is one new option of `In`, not a new public name. The backends already know the answer (each slot's sequence number). D4 keeps `take` C++-only because C++ needs "new-or-null without pointer identity". Python needs the same thing, as this case shows.
 - **New ruler test.** A planner that sends the same plan object twice, 0.5 s apart, to a Python and a C++ component that count arrivals: both count 2. Today a Python component is handed the plan on every step and cannot count arrivals at all; the identity guess counts 1.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).

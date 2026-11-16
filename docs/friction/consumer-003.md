@@ -52,3 +52,7 @@ SIGTERM: exit 143; last_targets.json: absent; arm_hold.resume: absent
 - **Library fix (inproc, the dora Python host, `lk-dora-host`).** `Deployment.start()` installs handlers for SIGTERM and SIGHUP in the main thread, if none is installed, that request `stop()` (SIGINT already reaches the `finally` through `KeyboardInterrupt`). `lk-dora-host` blocks them and takes them on a `sigwait` thread that calls `lk_stop`, as the raw node does. Restore the previous handlers on `stop()`.
 - **Library fix (facilities).** Drain the log, health and metrics ports once more after the last `deactivate`, so a component's last words reach the recorder and `lk top`.
 - **New ruler test.** A deployment of a component whose `deactivate` writes a file, in a child process ended by SIGTERM: the file exists, in `same_box` and in `target`.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).

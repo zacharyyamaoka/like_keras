@@ -34,3 +34,7 @@ Nothing: the port does not touch the export. Measured and reported, not judged; 
 
 - **Library fix (inproc).** Cache the per-type node layout of `_export` (buffer counts, child counts, formats are fixed per type), and fill a preallocated ctypes block per message with one `memmove` of the pointer table, instead of walking the schema per message. Or build the tree in C: a small exported `lk_export` in `abi.cpp` that takes the numpy buffer pointers, the only per-message data.
 - **New ruler test (timing tier).** Report `_export` and `lk_push` apart in T2, so a regression in either is visible.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).

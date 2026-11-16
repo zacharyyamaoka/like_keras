@@ -43,3 +43,7 @@ grep -n "joint_names and limits" /home/bam/like_keras/src/like_keras/codec.py
   - The decode cost is J string views per message.
 - **New ruler test.** A C++ echo box that reads `joint_names` of a pushed `JointTrajectory` and republishes them, e.g. as a `JointState` name. Compare in-process and over dora, with a non-ASCII name (the golden frame already has one).
 - **Contract.** §7.4's sentence on sample-major types gains "and their per-joint names".
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).

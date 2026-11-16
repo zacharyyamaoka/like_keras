@@ -32,3 +32,7 @@ g++ -std=c++20 -fsyntax-only -I/home/bam/like_keras/cpp/include $PKG/lk/friction
 
 - **Library fix (`lk.hpp` `Fields`, `abi.cpp`'s JSON).** Add `operator()(const char*, std::vector<Nested>&)` and `std::vector<double>&`. They are filled at `lk_create`, never on the RT thread, so allocation there is fine. Defaults emit `[]`. A fixed `std::array<Nested, N>` with a separate count serves components that want no heap.
 - **New ruler test.** A component with `std::vector<Row>` params round-trips through `lk.native(..., config={...rows...})`, and `describe()` shows every row. An unknown key inside a row is refused naming `rows[2].key`.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).

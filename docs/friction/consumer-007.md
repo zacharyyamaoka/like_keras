@@ -54,3 +54,7 @@ The chain will never command the arm again, yet `lk top` and every health observ
 - **Library fix.** `log.error` sets health `error` with code `ErrorLogged` until the next `ok` round with no error logged. The same for Python (`_LogPort.emit` at ≥ 40).
 - **Contract change (§6.1).** `Log` takes `const char*` arguments that are literals (`%s`), so an enum's name (`reason_name()`, static storage) can be logged without a table per format.
 - **New ruler test.** A C++ and a Python component that log one error and then nothing: health stays `error` (or carries the component's own level) in every round after it, under both backends.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).

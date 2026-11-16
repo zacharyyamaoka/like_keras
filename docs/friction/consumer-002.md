@@ -58,3 +58,7 @@ The raw node's mailbox + retire ring, rebuilt here as a pool on the RT thread, i
 - **`In<T>::keep()`, a library fix.** It returns a handle that pins the current message until the component drops it. The box retires pinned messages only when they are released, via the graveyard as today. Bound the number of pins per port, and refuse a push into a full set (counted).
 - **A host-side conversion, a contract change.** An `In<rm::JointTrajectory, Plan>` whose `Plan` is built by a component-provided function on the **pushing** thread inside `lk_push`, where allocation is allowed, and handed to the RT thread as a pointer, then retired. That is exactly the raw node's PlanMailbox. It keeps validation and O(N·J) work off the RT thread.
 - **New ruler test (either way).** A C++ box that keeps the first trajectory for 2 s while N more are pushed must read the first one's values intact (ASan build). Today that test would have to fail.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A16-A27); the frozen test comes in ruler M0.3 (A27).
