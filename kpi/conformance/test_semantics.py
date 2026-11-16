@@ -235,8 +235,9 @@ def test_lifecycle_order(make, tmp_path, backend):
 
 @pytest.mark.parametrize("backend", BACKENDS)
 def test_activate_raising_sends_nothing(make, tmp_path, backend):
-    """§5.7: activate raising: the group never starts and sends no data frame (inproc: start raises; dora: the
-    process exits non-zero)."""
+    """§5.7: activate raising: the group never starts and sends no data frame, and start() raises (inproc: the
+    launching process is the one refusing; dora, §15 A34/A39: the refused node holds, sending nothing, until dora's
+    Stop, and start() raises naming the refusal and stops the dataflow)."""
     s, deployment = make("refuse")
     refuser = s.add(make.parts.RefuseActivate(), "refuser")
     s.add(make.parts.QueueSink(path=sink(tmp_path)), "reader", value=refuser.value)
@@ -248,8 +249,10 @@ def test_activate_raising_sends_nothing(make, tmp_path, backend):
             with pytest.raises((Exception, SystemExit)):  # inproc: the launching process is the one refusing
                 dep.start(until=0.5)
         else:
-            dep.start()
-            time.sleep(2.0)
+            # WHY (ruler-009, §15 A40): M0 expected start() to return here; A34 makes a refusal final under dora too.
+            with pytest.raises(Exception, match="refused on purpose"):
+                dep.start()
+            time.sleep(2.0)  # M0's window, kept: no data frame may reach the reader after the raise either
     finally:
         dep.stop()
     assert rows(sink(tmp_path)) == [], "a refused component sent data"
