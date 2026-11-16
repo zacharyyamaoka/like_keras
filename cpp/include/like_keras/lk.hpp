@@ -47,6 +47,18 @@ struct Arg {
   const char* text = nullptr;
 };
 
+// An In<T, Converted>'s value (CONTRACT §15 A17): made by Converted::from on the pushing thread, inside lk_push,
+// and deleted off the RT thread once the input has moved on.
+struct Held {
+  virtual ~Held() = default;
+  const void* value = nullptr;  // the Converted inside
+};
+template <class Converted>
+struct Made final : Held {
+  explicit Made(Converted&& made);
+  Converted converted;
+};
+
 // What an In reads: a value, a count bumped on every write, and the writer's now() at that write. Atomic because
 // the facilities thread reads the stamp for input ages; every access is relaxed (a plain load on x86).
 struct Feed {
@@ -68,8 +80,9 @@ struct Port {
   Feed own;                 // Out: what it offers readers; In: what a ring, a lag or the boundary hands it
   const Feed* feed = &own;  // In: what it reads (a writer's `own` once wired)
   std::uint64_t seen = 0;   // In: the seq take() returned last
-  mutable std::atomic<bool> hid_stale{false};  // In: get() hid a stale value since the facilities last looked
-  void* plumbing = nullptr;                    // cpp/src: where a published Out also goes (queue rings, the boundary)
+  mutable std::atomic<bool> hid_stale{false};    // In: get() hid a stale value since the facilities last looked
+  void* plumbing = nullptr;                      // cpp/src: where a published Out also goes (queue rings, the boundary)
+  Held* (*convert)(const void* view) = nullptr;  // In<T, Converted>: Converted::from, on the pushing thread
 };
 
 void enroll(Component* owner, Port* port);
@@ -131,14 +144,19 @@ class Component {
   std::size_t index_ = 0;  // this leaf's place in the box (logs, metrics)
 };
 
-template <class T>
+// In<T>: a view of the received T, valid for the step. In<T, Converted> (CONTRACT §15 A17): like_keras calls the
+// static `Converted Converted::from(const T&)` on the PUSHING thread, inside lk_push (allocation and validation
+// allowed there), and the RT thread reads the result; it is deleted off the RT thread once the input has moved on,
+// so a component keeps what it needs past that by moving it out (the raw node's PlanMailbox, lifted). Fed from
+// outside the box only: an in-box wire would convert on the RT thread.
+template <class T, class Converted = T>
 class In : private detail::Port {
  public:
   In(Component* owner, const char* name, InOpts opts = {});
   In(const In&) = delete;
-  const T* get()
-      const;        // the current value: latest -> newest (nullptr if none, stale or retracted); queue -> this step's
-  const T* take();  // only what arrived since the last take(), else nullptr
+  const Converted* get()
+      const;  // the current value: latest -> newest (nullptr if none, stale or retracted); queue -> this step's
+  const Converted* take();  // only what arrived since the last take(), else nullptr
 
  private:
   friend class System;
@@ -164,8 +182,9 @@ class System : public Component {
   System(System&& other) noexcept;
   template <class T, class... Args>
   T& add(std::string_view name, Args&&... args);  // allocation happens here, never later
-  template <class T>
-  void wire(In<T>& dst, Out<T>& src);  // dst <- src (subscribe direction); a swapped or mistyped wire does not compile
+  template <class T, class Converted>
+  void wire(In<T, Converted>& dst, Out<T>& src);  // dst <- src (subscribe direction); a swapped or mistyped wire
+                                                  // does not compile
   template <detail::PortLike... Ports>
   void expose(Ports&... ports);  // boundary name = port name
   template <detail::PortLike P>
@@ -192,26 +211,39 @@ template <class Integer>
   requires std::is_integral_v<Integer>
 inline detail::Arg::Arg(Integer value) : number(static_cast<double>(value)) {}
 
-template <class T>
-In<T>::In(Component* owner, const char* name, InOpts opts) {
+template <class Converted>
+detail::Made<Converted>::Made(Converted&& made) : converted(std::move(made)) {
+  value = &converted;
+}
+
+namespace detail {
+template <class T, class Converted>
+Held* convert(const void* view) {  // on the pushing thread, inside lk_push (cpp/src/rt.cpp Box::push)
+  return new Made<Converted>(Converted::from(*static_cast<const T*>(view)));
+}
+}  // namespace detail
+
+template <class T, class Converted>
+In<T, Converted>::In(Component* owner, const char* name, InOpts opts) {
   static_assert(std::is_trivially_copyable_v<T>, "a port carries a trivially copyable view (like_keras/msgs/*.hpp)");
   this->owner = owner, this->name = name, this->type = detail::type_of<T>(), this->hash = detail::hash_of<T>();
   this->bytes = sizeof(T), this->opts = opts;
+  if constexpr (!std::is_same_v<T, Converted>) this->convert = &detail::convert<T, Converted>;
   detail::enroll(owner, this);
 }
 
-template <class T>
-const T* In<T>::get() const {
+template <class T, class Converted>
+const Converted* In<T, Converted>::get() const {
   const void* value = feed->value.load(std::memory_order_relaxed);
   if (value != nullptr && opts.stale > 0.0 && owner->now() - feed->stamp.load(std::memory_order_relaxed) > opts.stale) {
     hid_stale.store(true, std::memory_order_relaxed);
     return nullptr;  // CONTRACT §4.1: an old latest value reads as none, and health lists the input as stale
   }
-  return static_cast<const T*>(value);
+  return static_cast<const Converted*>(value);
 }
 
-template <class T>
-const T* In<T>::take() {
+template <class T, class Converted>
+const Converted* In<T, Converted>::take() {
   const std::uint64_t seq = feed->seq.load(std::memory_order_relaxed);
   if (seq == seen) return nullptr;
   seen = seq;
@@ -240,8 +272,11 @@ T& System::add(std::string_view name, Args&&... args) {
   return added;
 }
 
-template <class T>
-void System::wire(In<T>& dst, Out<T>& src) {
+template <class T, class Converted>
+void System::wire(In<T, Converted>& dst, Out<T>& src) {
+  static_assert(std::is_same_v<T, Converted>,
+                "an In<T, Converted> converts on the pushing thread: expose it; an in-box wire would convert on the RT "
+                "thread (CONTRACT §15 A17)");
   link(dst, src);
 }
 

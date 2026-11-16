@@ -81,10 +81,12 @@ struct Triple {
 
 struct Slot {  // one message: its view's bytes and the array it views into (released on a host thread)
   std::vector<std::byte> value;
-  ArrowArray owner{};
+  ArrowArray owner{};               // for a converted input (In<T, Converted>): its Held, which release() deletes
+  const void* converted = nullptr;  // that Held's value: what the reader sees instead of `value`
   double stamp = 0.0;
   bool empty = true;
   std::vector<char> arena;  // an exposed Out's strings
+  const void* data() const { return converted != nullptr ? converted : value.data(); }
 };
 
 struct Box;
@@ -196,6 +198,7 @@ struct Box {
   double clock() const;  // the box's own step clock: every stamp the box takes but a log line's wall time
   // the host side (abi.cpp, rt.cpp)
   int push(std::uint32_t port, ArrowArray* msg);
+  bool admit(Inlet& inlet, Slot& slot, ArrowArray& msg);
   int take(std::uint32_t port, ArrowArray* out);
   void facilities(int which);  // one round of log (0), health (1) or metrics (2) records into `pending`
 

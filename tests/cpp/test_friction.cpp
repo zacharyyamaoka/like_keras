@@ -80,6 +80,99 @@ std::vector<std::string> metric_names_of_the_box(Box& box) {
   return names;
 }
 
+// ---------------------------------------------------------------- A17: In<T, Converted>
+
+std::atomic<int> made{0}, freed{0}, freed_on_rt{0};
+std::atomic<std::thread::id> rt_thread{};
+
+struct Plan {  // what the RT thread reads: data made on the pushing thread, freed off the RT thread
+  std::vector<double> positions;
+  Plan() = default;
+  Plan(Plan&& other) noexcept : positions(std::move(other.positions)) { other.positions.clear(); }
+  ~Plan() {
+    if (positions.empty()) return;
+    freed.fetch_add(1);
+    if (std::this_thread::get_id() == rt_thread.load()) freed_on_rt.fetch_add(1);
+  }
+  static Plan from(const rm::JointState& state) {
+    if (state.position[0] < 0.0) throw std::invalid_argument("a negative plan is refused");  // validation
+    Plan plan;
+    plan.positions.assign(1000, state.position[0]);
+    made.fetch_add(1);
+    return plan;
+  }
+};
+
+struct Follower : lk::Component {
+  lk::In<rm::JointState, Plan> plans{this, "plans", {.queue = 4}};
+  std::atomic<int> read{0}, intact{0};
+  void forward() override {
+    rt_thread.store(std::this_thread::get_id());
+    const Plan* plan = plans.get();
+    read.fetch_add(1);
+    if (plan != nullptr && plan->positions.size() == 1000 && plan->positions.front() == plan->positions.back())
+      intact.fetch_add(1);
+  }
+};
+
+TEST(ConvertedInput, AQueueOfConvertedValuesIsFreedOffTheRtThreadAndNoneLeaks) {
+  made = 0, freed = 0, freed_on_rt = 0;
+  {
+    lk::System s{"follow"};
+    Follower& follower = s.add<Follower>("follower");
+    s.expose(follower.plans);
+    Box box{std::move(s)};
+    std::string error;
+    const lk_place realtime{500.0, nullptr, 0, 0, 0, 0};
+    ASSERT_TRUE(box.start(realtime, error)) << error;
+    for (int plan = 1; plan <= 200; ++plan) {
+      ArrowArray message = encoded(plan);
+      box.push(0, &message);  // a full ring refuses the newest (0); a refused one is never made
+      std::this_thread::sleep_for(std::chrono::microseconds(500));
+    }
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (follower.read.load() < 50 && std::chrono::steady_clock::now() < deadline) std::this_thread::yield();
+    box.stop();
+    EXPECT_GE(follower.read.load(), 50);
+    EXPECT_EQ(follower.intact.load(), follower.read.load()) << "a converted value read on the RT thread was not intact";
+  }
+  EXPECT_GT(made.load(), 50);
+  EXPECT_EQ(freed.load(), made.load()) << "converted values leaked";
+  EXPECT_EQ(freed_on_rt.load(), 0) << "a converted value was freed on the RT thread";
+}
+
+struct Latest : lk::Component {
+  lk::In<rm::JointState, Plan> plan{this, "plan"};
+  double seen = -1.0;
+  int taken = 0;
+  void forward() override {
+    if (const Plan* fresh = plan.take()) seen = fresh->positions[0], ++taken;
+  }
+};
+
+TEST(ConvertedInput, AConversionThatThrowsIsARefusedPushAndTheLastValueStays) {
+  made = 0, freed = 0;
+  {
+    lk::System s{"latest"};
+    Latest& latest = s.add<Latest>("latest");
+    s.expose(latest.plan);
+    Box box{std::move(s)};
+    std::string error;
+    ASSERT_TRUE(box.start(kStepped, error)) << error;
+    ArrowArray good = encoded(2.0), refused = encoded(-1.0);
+    ASSERT_EQ(box.push(0, &good), 0);
+    box.step(0.0);
+    EXPECT_EQ(box.push(0, &refused), -1) << "Converted::from threw: lk_push refuses it, it never throws into C";
+    EXPECT_EQ(refused.release, nullptr) << "a refused message is released (moved in) all the same";
+    box.step(0.02);
+    EXPECT_EQ(latest.taken, 1) << "a refused push is not an arrival";
+    EXPECT_EQ(latest.seen, 2.0);
+    box.stop();
+  }
+  EXPECT_EQ(made.load(), 1);
+  EXPECT_EQ(freed.load(), 1);
+}
+
 // ---------------------------------------------------------------- A20: period()
 
 std::atomic<double> period_in_activate{-1.0};

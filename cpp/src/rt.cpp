@@ -152,7 +152,7 @@ void Ring::pop(Box& box, Port& port) {  // this step's message moves into `curre
   box.retire(current.owner);
   std::swap(current, slots[at & mask]);
   tail.store(at + 1, std::memory_order_release);
-  port.own.value.store(current.value.data(), std::memory_order_relaxed);
+  port.own.value.store(current.data(), std::memory_order_relaxed);
   port.own.stamp.store(current.stamp, std::memory_order_relaxed);
   bump(port.own.seq);
 }
@@ -297,7 +297,7 @@ void Box::step(double at) {
     if (inlet->ring != nullptr || !inlet->triple.fresh()) continue;
     const Slot& slot = inlet->slots[inlet->triple.front];
     Feed& feed = inlet->port->own;
-    feed.value.store(slot.empty ? nullptr : slot.value.data(), std::memory_order_relaxed);
+    feed.value.store(slot.empty ? nullptr : slot.data(), std::memory_order_relaxed);
     feed.stamp.store(slot.stamp, std::memory_order_relaxed);
     bump(feed.seq);
   }
@@ -517,6 +517,35 @@ void Box::stop() {
   deactivate_all();  // CONTRACT §5.7: reverse order; idempotent
 }
 
+namespace {
+void drop_held(ArrowArray* array) {  // a converted value's release, run on a host thread like any other
+  delete static_cast<Held*>(array->private_data);
+  array->release = nullptr;
+}
+}  // namespace
+
+// On the pushing thread: msg decoded into the slot's view, and for an In<T, Converted> converted right here
+// (CONTRACT §15 A17: allocation and validation off the RT thread), its arrays then released at once. The slot's
+// owner is what a host thread releases once the reader has moved on. False: refused (msg released).
+bool Box::admit(Inlet& inlet, Slot& slot, ArrowArray& msg) {
+  slot.converted = nullptr;
+  if (!inlet.wire->decode(msg, slot.value.data())) return release(msg), false;
+  if (inlet.port->convert == nullptr) {
+    slot.owner = msg, msg.release = nullptr;
+    return true;
+  }
+  Held* held = nullptr;
+  try {
+    held = inlet.port->convert(slot.value.data());
+  } catch (...) {  // Converted::from refused it (validation): counted as a refused push, never thrown into C
+  }
+  release(msg);
+  if (held == nullptr) return false;
+  slot.owner = ArrowArray{0, 0, 0, 0, 0, nullptr, nullptr, nullptr, drop_held, held};
+  slot.converted = held->value;
+  return true;
+}
+
 int Box::push(std::uint32_t port, ArrowArray* msg) {
   bury();
   if (port >= ins.size()) {
@@ -532,12 +561,13 @@ int Box::push(std::uint32_t port, ArrowArray* msg) {
       return 0;
     }
     Slot* slot = ring.claim();
-    if (slot == nullptr || !inlet.wire->decode(*msg, slot->value.data())) {
-      if (slot == nullptr) bump(ring.refused);
+    if (slot == nullptr) {
+      bump(ring.refused);
       release(*msg);
-      return slot == nullptr ? 0 : -1;
+      return 0;
     }
-    slot->owner = *msg, msg->release = nullptr, slot->stamp = stamp;
+    if (!admit(inlet, *slot, *msg)) return -1;
+    slot->stamp = stamp;
     ring.commit();
     if (place.hz <= 0.0) {  // only a queued message triggers a rate-less box; latest never does
       arrivals.fetch_add(1, std::memory_order_release);
@@ -546,14 +576,12 @@ int Box::push(std::uint32_t port, ArrowArray* msg) {
     return 0;
   }
   Slot& slot = inlet.slots[inlet.triple.back];
-  release(slot.owner);  // the RT thread reads it no more (or never did: superseded)
+  // the RT thread reads it no more: it moved off this slot at an earlier step's start, or never read it (superseded)
+  release(slot.owner);
   slot.empty = true;
   if (msg != nullptr) {
-    if (!inlet.wire->decode(*msg, slot.value.data())) {
-      release(*msg);
-      return -1;
-    }
-    slot.owner = *msg, msg->release = nullptr, slot.empty = false;
+    if (!admit(inlet, slot, *msg)) return -1;
+    slot.empty = false;
   }
   slot.stamp = stamp;
   inlet.triple.publish();
