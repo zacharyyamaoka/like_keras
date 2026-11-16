@@ -173,6 +173,45 @@ TEST(ConvertedInput, AConversionThatThrowsIsARefusedPushAndTheLastValueStays) {
   EXPECT_EQ(freed.load(), 1);
 }
 
+// ---------------------------------------------------------------- A19: sched_policy while an RT thread runs
+
+struct Idle : lk::Component {
+  void forward() override {}
+};
+
+lk::System idle_box() {
+  lk::System s{"idle_box"};
+  s.add<Idle>("idle");
+  return s;
+}
+
+TEST(RtLadder, TheBoxRecordReportsThePolicyOnlyWhileAnRtThreadRuns) {
+  Box stepped{idle_box()};
+  std::string error;
+  ASSERT_TRUE(stepped.start(kStepped, error)) << error;
+  stepped.step(0.0);
+  const auto names = metric_names_of_the_box(stepped);
+  EXPECT_EQ(std::count(names.begin(), names.end(), "sched_policy"), 0) << "lockstep has no RT thread to report";
+  stepped.stop();
+
+  Box running{idle_box()};
+  const lk_place realtime{200.0, nullptr, 0, 0, 0, 0};  // fifo 0: no ladder asked, SCHED_OTHER honestly
+  ASSERT_TRUE(running.start(realtime, error)) << error;
+  ArrowArray array{};
+  bool reported = false;
+  while (running.take(facility_port(running, 2), &array) == 1) {
+    rm::Metrics view{};
+    lk::detail::find_wire(rm::Metrics::kHash)->decode(array, &view);
+    for (std::size_t at = 0; view.path.empty() && at < view.size; ++at)
+      if (view.names[at] == "sched_policy") reported = view.values[at] == SCHED_OTHER;
+    lk::detail::release(array);
+  }
+  running.stop();
+  EXPECT_TRUE(reported) << "the box record did not report the RT thread's SCHED_OTHER";
+  const auto after = metric_names_of_the_box(running);
+  EXPECT_EQ(std::count(after.begin(), after.end(), "sched_policy"), 0) << "no RT thread after stop: nothing to report";
+}
+
 // ---------------------------------------------------------------- A20: period()
 
 std::atomic<double> period_in_activate{-1.0};

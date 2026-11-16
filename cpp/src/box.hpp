@@ -188,6 +188,7 @@ struct Box {
   void step(double at);  // one step on the calling thread: the RT thread, or lk_step's caller
   void run();            // the RT thread
   bool start(const lk_place& placed, std::string& error);
+  void climb();  // host: the RT thread's scheduling ladder before its first step (CONTRACT §15 A19)
   void stop();
   bool send(Port& out, double at);
   void retire(ArrowArray& owner);  // RT: hand a consumed input to a host thread
@@ -221,6 +222,11 @@ struct Box {
   Spsc<LogEntry, 1024> logs;
   int wake_fd = -1;
   std::thread rt;
+  std::atomic<int> rt_tid{0};        // the RT thread's kernel id while it runs (metrics read its policy live)
+  std::atomic<int> rt_stage{0};      // 1: the RT thread tried SCHED_FIFO itself; 2: the host's ladder is done, go
+  int fifo_refused = 0;              // the RT thread's pthread_setschedparam answer (0: granted)
+  std::atomic<int> ladder_slot{-1};  // its place among the threads a SIGXCPU demotes (rt.cpp's Ladder)
+  std::uint32_t demotions_seen = 0;
   std::atomic<bool> running{false};
   std::atomic<std::uint32_t> arrivals{0};
   lk_place place{};

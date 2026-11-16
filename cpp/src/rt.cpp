@@ -1,21 +1,30 @@
 // The C++ runtime of one box (CONTRACT §5, §6.1, §8): the Component and System API, the derived order, the RT
 // thread on absolute deadlines, the lock-free slots between it and the host, and the facilities (the RT thread only
 // bumps counters and histogram bins; records are built on the host thread that takes them).
+#include <fcntl.h>
+#include <poll.h>
 #include <pthread.h>
 #include <sched.h>
+#include <signal.h>
+#include <spawn.h>
 #include <sys/eventfd.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
 #include <algorithm>
 #include <bit>
+#include <cerrno>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <like_keras/msgs/std.hpp>
 #include <limits>
 #include <map>
+#include <mutex>
 #include <set>
 #include <stdexcept>
 
@@ -430,6 +439,165 @@ double Box::clock() const {
   return started ? epoch0 + static_cast<double>(mono_ns() - mono0) * 1e-9 : epoch_s();
 }
 
+// ---------------------------------------------------------------- the RT thread's scheduling ladder (CONTRACT §15 A19)
+//
+// SCHED_FIFO at place.fifo, else rtkit's SCHED_RR, else SCHED_OTHER, reported in the box's metrics (sched_policy as
+// Linux numbers it, sched_priority). Lifted, with credit, from the controller lane's raw-dora node
+// (moteus_controller_node cpp/src/rt.cpp and rt_sentinel.cpp, fix rounds 3-6), where it took six verify-and-fix
+// rounds to make safe; what carried over, and why:
+// - rtkit is asked from a host thread, with the RT thread's id, before the RT thread's first step: a busctl call
+//   takes 10-18 ms here, never on the RT thread. Through busctl, not a D-Bus library (§2.1: the standard library
+//   only), and only from the host's PID namespace: rtkit names threads by their host ids, so from a private one
+//   (kpi/run.py) it would name another process's thread.
+// - rtkit grants only under RLIMIT_RTTIME with hard <= its RTTimeUSecMax, so it is set soft < hard (100 / 200 ms
+//   here): at the soft limit the kernel sends SIGXCPU, which demotes instead of killing (on_sigxcpu); soft == hard
+//   gave SIGKILL with no SIGXCPU first. The kernel raises the soft limit by 1 s on each SIGXCPU, past the hard one,
+//   so the handler puts it back. The hard limit cannot be raised again unprivileged: a process that once got an
+//   rtkit grant keeps it, which only bites a thread that is realtime and never blocks.
+// - Every grant ends with the run: the RT thread demotes itself before it exits, and no request is in flight after
+//   lk_start (each one is waited for, 1 s at most, then SIGKILLed).
+// WHY a handler, not the raw node's signalfd sentinel: a component runs in someone's process (a Python one under
+// inproc), whose threads cannot all block SIGXCPU. The kernel hands it to the thread that ran over, which runs the
+// handler on its way back to user space and demotes itself; any other thread that takes it demotes it by id.
+namespace {
+
+constexpr ino_t kHostPidNamespace = 0xEFFFFFFC;  // PROC_PID_INIT_INO
+
+struct Ladder {  // process-wide: every RT thread a SIGXCPU demotes, whichever thread takes the signal
+  std::array<std::atomic<int>, 16> threads{};
+  std::array<std::atomic<std::uint32_t>, 16> demotions{};
+  rlimit budget{RLIM_INFINITY, RLIM_INFINITY};  // what each SIGXCPU puts back
+  struct sigaction previous {};
+  int users = 0;
+  std::mutex mutex;  // host threads only (Box::climb, Box::stop)
+} ladder;
+
+bool realtime(int thread) {  // 0: the calling thread
+  const int policy = ::sched_getscheduler(thread) & ~SCHED_RESET_ON_FORK;
+  return policy == SCHED_FIFO || policy == SCHED_RR;
+}
+
+bool demote(int thread) {
+  const sched_param normal{};
+  // WHY keep SCHED_RESET_ON_FORK: rtkit grants with it set, and an unprivileged thread may not clear it (EPERM)
+  return ::sched_setscheduler(thread, SCHED_OTHER | SCHED_RESET_ON_FORK, &normal) == 0 ||
+         ::sched_setscheduler(thread, SCHED_OTHER, &normal) == 0;
+}
+
+void on_sigxcpu(int number, siginfo_t* info, void* context) {  // async-signal-safe: syscalls and atomics only
+  const int saved = errno;
+  for (std::size_t slot = 0; slot < ladder.threads.size(); ++slot) {
+    const int thread = ladder.threads[slot].load(std::memory_order_acquire);
+    if (thread != 0 && realtime(thread) && demote(thread))
+      ladder.demotions[slot].fetch_add(1, std::memory_order_release);
+  }
+  ::setrlimit(RLIMIT_RTTIME, &ladder.budget);
+  const struct sigaction& previous = ladder.previous;
+  if ((previous.sa_flags & SA_SIGINFO) && previous.sa_sigaction != nullptr)
+    previous.sa_sigaction(number, info, context);
+  else if (!(previous.sa_flags & SA_SIGINFO) && previous.sa_handler != SIG_DFL && previous.sa_handler != SIG_IGN)
+    previous.sa_handler(number);
+  errno = saved;
+}
+
+// `busctl --system <arguments>`: true when it answered within 1 s and exited 0, its stdout in `out`. WHY the bound:
+// a stuck request must never hold lk_start, and one SIGKILLed is reaped here, so none is in flight after it.
+bool busctl(std::vector<std::string> arguments, std::string& out) {
+  arguments.insert(arguments.begin(), {"busctl", "--system"});
+  std::vector<char*> argv;
+  for (std::string& argument : arguments) argv.push_back(argument.data());
+  argv.push_back(nullptr);
+  int ends[2];
+  if (::pipe2(ends, O_CLOEXEC) != 0) return false;
+  posix_spawn_file_actions_t actions;
+  posix_spawn_file_actions_init(&actions);
+  posix_spawn_file_actions_adddup2(&actions, ends[1], 1);
+  posix_spawn_file_actions_addopen(&actions, 2, "/dev/null", O_WRONLY, 0);
+  pid_t child = 0;
+  const int spawned = ::posix_spawnp(&child, "busctl", &actions, nullptr, argv.data(), environ);
+  posix_spawn_file_actions_destroy(&actions);
+  ::close(ends[1]);
+  bool ended = false;
+  for (const std::int64_t deadline = mono_ns() + 1'000'000'000; spawned == 0 && !ended;) {
+    pollfd ready{ends[0], POLLIN, 0};
+    const int waited = ::poll(&ready, 1, static_cast<int>(std::max<std::int64_t>(0, deadline - mono_ns()) / 1'000'000));
+    if (waited < 0 && errno == EINTR) continue;
+    if (waited <= 0) break;
+    char chunk[256];
+    const ssize_t got = ::read(ends[0], chunk, sizeof chunk);
+    if (got > 0) out.append(chunk, static_cast<std::size_t>(got));
+    ended = got == 0 || (got < 0 && errno != EINTR);
+  }
+  ::close(ends[0]);
+  if (spawned != 0) return false;
+  if (!ended) ::kill(child, SIGKILL);
+  int status = 0;
+  while (::waitpid(child, &status, 0) < 0 && errno == EINTR) {
+  }
+  return ended && WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+
+// rtkit's SCHED_RR for `thread` at min(wanted, rtkit's highest): nullptr when granted, else why not
+const char* ask_rtkit(int thread, int wanted) {
+  struct stat namespace_of {};
+  if (::stat("/proc/self/ns/pid", &namespace_of) != 0 || namespace_of.st_ino != kHostPidNamespace)
+    return "rtkit cannot name the RT thread from a private PID namespace";
+  const std::vector<std::string> rtkit{"org.freedesktop.RealtimeKit1", "/org/freedesktop/RealtimeKit1",
+                                       "org.freedesktop.RealtimeKit1"};
+  std::string answer;
+  int highest = 0;
+  long long rttime_max = 0;
+  auto ask = rtkit;
+  ask.insert(ask.begin(), "get-property"), ask.insert(ask.end(), {"MaxRealtimePriority", "RTTimeUSecMax"});
+  if (!busctl(ask, answer) || std::sscanf(answer.c_str(), "i %d x %lld", &highest, &rttime_max) != 2 || highest < 1 ||
+      rttime_max < 2)
+    return "no rtkit answered on the system bus";
+  rlimit limit{};
+  ::getrlimit(RLIMIT_RTTIME, &limit);
+  const rlim_t hard = std::min<rlim_t>(limit.rlim_max, static_cast<rlim_t>(rttime_max));
+  const rlimit budget{limit.rlim_cur < hard ? limit.rlim_cur : hard / 2, hard};
+  if (::setrlimit(RLIMIT_RTTIME, &budget) != 0) return "RLIMIT_RTTIME could not be set";
+  ask = rtkit;
+  ask.insert(ask.begin(), "call");
+  ask.insert(ask.end(), {"MakeThreadRealtimeWithPID", "ttu", std::to_string(::getpid()), std::to_string(thread),
+                         std::to_string(std::min(wanted, highest))});
+  busctl(ask, answer);
+  return realtime(thread) ? nullptr : "rtkit refused the RT thread";
+}
+
+}  // namespace
+
+void Box::climb() {
+  while (rt_stage.load(std::memory_order_acquire) == 0) rt_stage.wait(0, std::memory_order_acquire);
+  const int thread = rt_tid.load(std::memory_order_relaxed);
+  try {
+    const char* refused = place.fifo > 0 && fifo_refused != 0 ? ask_rtkit(thread, place.fifo) : nullptr;
+    if (refused != nullptr)
+      write_log(system, 30, "SCHED_FIFO %g refused, and %s: the RT thread runs SCHED_OTHER", place.fifo, refused);
+    else if (place.fifo > 0 && fifo_refused != 0)
+      write_log(system, 20, "SCHED_FIFO %g refused: rtkit granted SCHED_RR under RLIMIT_RTTIME", place.fifo);
+    if (realtime(thread)) {  // enlisted for on_sigxcpu, whatever granted it
+      std::lock_guard guard(ladder.mutex);
+      ::getrlimit(RLIMIT_RTTIME, &ladder.budget);
+      for (std::size_t slot = 0; slot < ladder.threads.size() && ladder_slot.load() < 0; ++slot) {
+        if (ladder.threads[slot].load() != 0) continue;
+        demotions_seen = ladder.demotions[slot].load();
+        ladder.threads[slot].store(thread), ladder_slot.store(static_cast<int>(slot));
+      }
+      if (ladder_slot.load() >= 0 && ladder.users++ == 0) {
+        struct sigaction action {};
+        action.sa_sigaction = on_sigxcpu, action.sa_flags = SA_SIGINFO | SA_RESTART;
+        sigemptyset(&action.sa_mask);
+        ::sigaction(SIGXCPU, &action, &ladder.previous);
+      }
+    }
+  } catch (const std::exception&) {  // never fatal: the thread runs on whatever it has
+  }
+  mono0 = mono_ns(), epoch0 = epoch_s();  // after the ladder: tick 0 is not already late
+  rt_stage.store(2, std::memory_order_release);
+  rt_stage.notify_all();
+}
+
 bool Box::start(const lk_place& placed, std::string& error) {
   place = placed;
   cpus.assign(placed.cpus, placed.cpus + (placed.cpus ? placed.ncpus : 0));
@@ -453,6 +621,7 @@ bool Box::start(const lk_place& placed, std::string& error) {
     write_log(system, 30, "mlockall refused (errno %g): pages may fault on the RT thread", errno);
   running.store(true, std::memory_order_release);
   rt = std::thread([this] { run(); });
+  climb();
   return true;
 }
 
@@ -464,15 +633,18 @@ void Box::run() {
     if (const int refused = pthread_setaffinity_np(pthread_self(), sizeof set, &set))
       write_log(system, 30, "the RT thread's cpus were refused (errno %g): it runs on the process's", refused);
   }
-  // WHY a fallback, not a refusal: SCHED_FIFO needs CAP_SYS_NICE or an rtprio limit, which a lane or a user session
-  // often lacks (`ulimit -r` is 0 here). The thread then runs SCHED_OTHER on the same absolute deadlines, and the
-  // refusal is logged at warning, so health shows it rather than the jitter alone (CONTRACT §4.3: never silently).
+  // WHY a ladder, not a refusal: SCHED_FIFO needs CAP_SYS_NICE or an rtprio limit, which a lane or a user session
+  // often lacks (`ulimit -r` is 0 here). Then climb() asks rtkit, and else the thread runs SCHED_OTHER on the same
+  // absolute deadlines, logged at warning, so health shows it rather than the jitter alone (§4.3: never silently).
+  rt_tid.store(static_cast<int>(::gettid()), std::memory_order_relaxed);
   if (place.fifo > 0) {
     sched_param priority{};
     priority.sched_priority = place.fifo;
-    if (const int refused = pthread_setschedparam(pthread_self(), SCHED_FIFO, &priority))
-      write_log(system, 30, "SCHED_FIFO %g refused (errno %g): the RT thread runs SCHED_OTHER", place.fifo, refused);
+    fifo_refused = pthread_setschedparam(pthread_self(), SCHED_FIFO, &priority);
   }
+  rt_stage.store(1, std::memory_order_release);
+  rt_stage.notify_all();
+  while (rt_stage.load(std::memory_order_acquire) != 2) rt_stage.wait(1, std::memory_order_acquire);
   volatile std::byte stack[256 * 1024];  // pre-fault the stack the steps will use
   for (std::size_t at = 0; at < sizeof stack; at += 4096) stack[at] = std::byte{0};
   std::int64_t tick = 0;
@@ -501,11 +673,10 @@ void Box::run() {
     bump(overruns, static_cast<std::uint64_t>(next - tick - 1));
     tick = next;
   }
-  if (failed.load(std::memory_order_acquire)) {  // the group deactivates; this thread is no longer real time
-    const sched_param normal{};
-    pthread_setschedparam(pthread_self(), SCHED_OTHER, &normal);
-    deactivate_all();
-  }
+  if (realtime(0)) demote(0);  // CONTRACT §15 A19: no grant outlives the run, a failed one included
+  if (const int slot = ladder_slot.load(); slot >= 0) ladder.threads[static_cast<std::size_t>(slot)].store(0);
+  rt_tid.store(0, std::memory_order_release);
+  if (failed.load(std::memory_order_acquire)) deactivate_all();  // §5.7: the group deactivates
 }
 
 void Box::stop() {
@@ -514,6 +685,14 @@ void Box::stop() {
     arrivals.notify_all();
   }
   if (rt.joinable()) rt.join();
+  if (ladder_slot.load() >= 0) {  // the last box of this runtime puts SIGXCPU back as it found it
+    std::lock_guard guard(ladder.mutex);
+    struct sigaction current {};
+    ::sigaction(SIGXCPU, nullptr, &current);
+    if (--ladder.users == 0 && (current.sa_flags & SA_SIGINFO) && current.sa_sigaction == on_sigxcpu)
+      ::sigaction(SIGXCPU, &ladder.previous, nullptr);
+    ladder_slot = -1;
+  }
   deactivate_all();  // CONTRACT §5.7: reverse order; idempotent
 }
 
@@ -682,12 +861,22 @@ std::pair<const char*, const char*> own_health(const Child& child) {
 
 void Box::facilities(int which) {
   LogEntry entry{};
-  while (logs.pop(entry)) {
+  const auto take_in = [&] {
     for (std::uint32_t index = 0; entry.level >= 30 && index < children.size(); ++index)  // a box line warns them all
       if (entry.child == index || entry.child == kBoxLog)
         (entry.level >= 40 ? children[index].logged_error : children[index].warning) = formatted(entry);
     backlog.push_back(entry);
     if (backlog.size() > 4096) backlog.pop_front(), ++log_trimmed;  // nobody takes the log port: keep the newest
+  };
+  while (logs.pop(entry)) take_in();
+  if (const int slot = ladder_slot.load(); slot >= 0) {  // CONTRACT §15 A19: what on_sigxcpu did, said here
+    const std::uint32_t demoted = ladder.demotions[static_cast<std::size_t>(slot)].load(std::memory_order_acquire);
+    if (demoted != std::exchange(demotions_seen, demoted)) {
+      entry = {kBoxLog, 30, "the RT thread ran past RLIMIT_RTTIME's soft limit (SIGXCPU): demoted to SCHED_OTHER",
+               {},      {}, epoch_s(),
+               0};
+      take_in();
+    }
   }
   const double at = clock();
   const auto encode = [&](const auto& record, std::uint64_t hash) {
@@ -738,6 +927,12 @@ void Box::facilities(int which) {
     Values box = standard(step_time, step_seen, steps.load(std::memory_order_relaxed));
     box.emplace_back("drops.log", static_cast<double>(log_refused.load(std::memory_order_relaxed) + log_trimmed));
     box.emplace_back("unreleased", static_cast<double>(unreleased.load(std::memory_order_relaxed)));
+    sched_param param{};  // CONTRACT §15 A19: what the RT thread runs under now, read from the thread itself
+    if (const int thread = rt_tid.load(std::memory_order_acquire);
+        thread != 0 && ::sched_getparam(thread, &param) == 0) {
+      box.emplace_back("sched_policy", ::sched_getscheduler(thread) & ~SCHED_RESET_ON_FORK);
+      box.emplace_back("sched_priority", param.sched_priority);
+    }
     publish("", box);
   }
   for (std::uint32_t index = 0; index < children.size(); ++index) {
