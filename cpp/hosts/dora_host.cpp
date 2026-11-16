@@ -512,7 +512,10 @@ int run_lockstep(::DoraNode& node) {
       if (!dead && host.box.step(host.box.box, now) != 0) dead = true;  // §5.7: the box deactivated itself
     }
     for (Output& output : host.outputs) {
-      if ((output.port < host.exposed_outs) == facilities) continue;
+      // WHY the log port after every step too: a reader gets a Python component's line in the step that logs it, and
+      // must get a native box's alike, in another process as in one (fix round 1 after the first consumer, item 3)
+      const bool log = output.port == host.exposed_outs;
+      if (!log && (output.port < host.exposed_outs) == facilities) continue;
       ArrowArray array{};
       while (host.box.take(host.box.box, output.port, &array) == 1) {
         if (output.port > host.exposed_outs) restamp(array, output.tree, now);  // health, metrics; never a log line

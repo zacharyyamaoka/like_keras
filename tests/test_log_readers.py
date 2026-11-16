@@ -5,9 +5,10 @@ in the same deployment sees what a native box logged between two facility rounds
 
 WHY: a native box's log lines reached readers only at the 1 Hz facility rounds, and the last partial second's only at
 the final drain, after the readers' groups had stopped; a Python component's reach them at once. So a log tap read a
-line in `fallback` that it never read in `same_box` (verifier probe a28_swap: ['brake held: J2'] against []). Under
-lockstep the box's log port is now drained after each step, so the reader sees the line at the step that logged it;
-in real time the facilities thread drains it every 0.1 s.
+line in `fallback` that it never read in `same_box` (verifier probe a28_swap: ['brake held: J2'] against []), nor in
+`target`. Under lockstep the box's log port is now drained after each step, in one process (inproc) and in
+lk-dora-host, so the reader sees the line at the step that logged it; in real time inproc's facilities thread drains
+it every 0.1 s. The dora case needs a private dora (bwrap --unshare-net, as kpi/run.py runs the dora suites).
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ import pytest
 
 import like_keras as lk
 from kpi.facilities.parts import LogLog
+from kpi.support.lk import backend
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build" / "tests-cpp"
@@ -52,17 +54,17 @@ def library() -> pathlib.Path:
     return BUILD / "liblog_once.so"
 
 
-def read(directory: pathlib.Path, library: pathlib.Path, language: str, realtime: bool) -> list[tuple]:
+def read(directory: pathlib.Path, library: pathlib.Path, language: str, realtime: bool, backend_name="inproc") -> list:
     """(the reader's step time, message) of every error line a rate-less reader got from the box or its twin."""
-    s = lk.System(f"log_readers_{language}_{'rt' if realtime else 'ls'}")
+    s = lk.System(f"log_readers_{language}_{'rt' if realtime else 'ls'}_{backend_name}")
     if language == "cpp":
         says = s.add(lk.native(library, config={"at_s": 0.45 if not realtime else 0.1}), "says")
     else:
         says = s.add(LogOnce(at_s=0.45 if not realtime else 0.1), "says")
     s.add(LogLog(path=str(directory / f"{language}.jsonl")), "reader", value=says.log)
-    dep = lk.Deployment(s, realtime=realtime)
-    dep.place(s.says, hz=20)
-    dep.place(s.reader)  # rate-less: a step per line, at its send time under lockstep
+    dep = lk.Deployment(s, backend=backend(backend_name), realtime=realtime)
+    dep.place(s.says, process="says", hz=20)
+    dep.place(s.reader, process="reader")  # rate-less: a step per line, at its send time under lockstep
     if realtime:
         dep.start()
         time.sleep(0.6)  # the line at 0.1 s, the next facility round at 1.0 s: never reached
@@ -77,8 +79,13 @@ def read(directory: pathlib.Path, library: pathlib.Path, language: str, realtime
     return [(round(row["now"], 9) if not realtime else None, row["message"]) for row in rows if row["level"] >= 40]
 
 
-def test_under_lockstep_a_reader_gets_a_native_line_at_the_step_that_logged_it(library, tmp_path):
-    python, cpp = read(tmp_path, library, "python", False), read(tmp_path, library, "cpp", False)
+@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+def test_under_lockstep_a_reader_gets_a_native_line_at_the_step_that_logged_it(backend_name, library, tmp_path,
+                                                                                request):
+    if backend_name == "dora":
+        request.getfixturevalue("private_dora")
+    python = read(tmp_path, library, "python", False, backend_name)
+    cpp = read(tmp_path, library, "cpp", False, backend_name)
     assert python == [(0.45, "brake held: J2")], python
     assert cpp == python
 
