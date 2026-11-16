@@ -13,6 +13,10 @@ import math
 import os
 import pkgutil
 import re
+import signal
+import sys
+import threading
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from types import ModuleType
@@ -62,6 +66,7 @@ class Deployment:
         self._places: list[tuple[tuple[Component, ...], dict[str, Any], str]] = []
         self._recordings: list[tuple[str, list[PortRef], str]] = []
         self._run = None
+        self._stopping = threading.RLock()  # a stop in progress on another thread finishes before a signal ends us
 
     def place(
         self,
@@ -92,16 +97,42 @@ class Deployment:
             raise RuntimeError(f"{path(self._system)} is running: stop() it before starting again")
         if not self._realtime and until is None:
             raise ValueError("lockstep (realtime=False) runs to a logical time: start(until=<seconds>)")
-        self._run = self._backend.start(self._plan(), until)
-        if until is not None:
+        main = threading.current_thread() is threading.main_thread()
+        if main:
+            _ending.install()
+        _ending.starting += main
+        try:
+            self._run = self._backend.start(self._plan(), None if self._realtime else until)
+            _ending.running.append(self)
+        except _Ended as ended:  # a signal unwound the start; the backend stopped what it had started
             self.stop()
+            _ending.end(ended.signal)
+        finally:
+            _ending.starting -= main
+        if until is not None:
+            try:  # WHY short sleeps, not an Event: a signal handler may stop() meanwhile, and must take no lock here
+                deadline = time.monotonic() + until if self._realtime else 0.0
+                while self._run is not None and (left := deadline - time.monotonic()) > 0:
+                    time.sleep(min(left, 0.05))
+            finally:
+                self.stop()
         return self
 
     def stop(self) -> None:
         """Deactivate in reverse order, join the threads, close the recordings. Idempotent."""
-        run, self._run = self._run, None
-        if run is not None:
-            run.stop()
+        main = threading.current_thread() is threading.main_thread()
+        with self._stopping:
+            run, self._run = self._run, None
+            _ending.stops += main
+            try:
+                if run is not None:
+                    run.stop()
+            finally:
+                _ending.stops -= main
+                if self in _ending.running:
+                    _ending.running.remove(self)
+        if main and not _ending.stops:
+            _ending.after_stop()
 
     def describe(self) -> dict[str, Any]:
         """Run every check (CONTRACT §4.3), then return the plan: the device datasheet."""
@@ -291,6 +322,72 @@ def _check_processes(groups: list[Group], backend: ModuleType, realtime: bool, a
             if "<locals>" in type(leaf).__qualname__ or json.loads(json.dumps(params, default=str)) != params:
                 failures.append(problem("rebuild", child=path(leaf), at=leaf._lk.site))
     return failures
+
+
+# ---------------------------------------------------------------- SIGTERM and SIGHUP (CONTRACT §15 A18)
+
+
+class _Ended(BaseException):
+    """Raised by the signal handler into a start() in progress on the main thread, so it unwinds through the backend,
+    which stops what it had started."""
+
+    def __init__(self, number: int) -> None:
+        super().__init__(f"signal {number}")
+        self.signal = number
+
+
+class _Ending:
+    """SIGTERM and SIGHUP end a deployment the way SIGINT does: every running deployment stops (each component's
+    deactivate runs: a controller hands the arm back), then the process ends as the signal would have ended it.
+    WHY (consumer-003): systemctl stop, kill and a dora stop of a Python node send SIGTERM, which ended a process
+    with no deactivate. Installed by start() only where the application installed nothing (SIG_DFL: never over its
+    own handler, nor over nohup's SIG_IGN); put back once no deployment runs. WHY re-raise rather than exit(143):
+    systemd counts death by SIGTERM or SIGHUP as a clean stop, and an exit code of 143 as a failure."""
+
+    SIGNALS = (signal.SIGTERM, signal.SIGHUP)
+
+    def __init__(self) -> None:
+        self.running: list[Deployment] = []
+        self.starting = self.stops = 0  # start()s and stop()s in progress on the main thread
+        self.pending: int | None = None  # a signal that came during a stop on the main thread
+
+    def install(self) -> None:
+        for number in self.SIGNALS:
+            if signal.getsignal(number) == signal.SIG_DFL:
+                signal.signal(number, self.handler)
+
+    def handler(self, number: int, frame) -> None:
+        if self.stops:
+            self.pending = number  # the main thread is stopping a deployment: it ends the process when done
+        elif self.starting:
+            raise _Ended(number)
+        else:
+            self.end(number)
+
+    def end(self, number: int) -> None:
+        for deployment in reversed(self.running[:]):
+            deployment.stop()
+        self.restore()
+        for stream in (sys.stdout, sys.stderr):
+            try:
+                stream.flush()
+            except (AttributeError, OSError, ValueError):
+                pass
+        signal.raise_signal(number)  # SIG_DFL again: the process ends as the signal ends it
+
+    def after_stop(self) -> None:
+        if self.pending is not None:
+            self.end(self.pending)
+        elif not self.running:
+            self.restore()
+
+    def restore(self) -> None:
+        for number in self.SIGNALS:
+            if signal.getsignal(number) == self.handler:
+                signal.signal(number, signal.SIG_DFL)
+
+
+_ending = _Ending()
 
 
 # ---------------------------------------------------------------- the datasheet (CONTRACT §4.4)

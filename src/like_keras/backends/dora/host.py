@@ -22,6 +22,7 @@ import json
 import math
 import os
 import pathlib
+import signal
 import sys
 import threading
 import time
@@ -614,6 +615,18 @@ class Host:
         return 0
 
 
+def stop_on_signals(link: Link) -> None:
+    """SIGTERM, SIGHUP and SIGINT end this node the way dora's Stop does: its groups stop and every component's
+    deactivate runs (CONTRACT §15 A18, as lk-dora-host). WHY a thread sets the event: the handler runs on the main
+    thread, which may hold that event's lock inside wait() at that very moment."""
+
+    def handler(number: int, frame) -> None:
+        threading.Thread(target=link.stopping.set, name="lk-signal", daemon=True).start()
+
+    for number in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+        signal.signal(number, handler)
+
+
 def log_to(document: dict, node: str) -> None:
     """stderr to <dataflow>/logs/<node>.log as well: refusals stay readable after dora restarts the node."""
     folder = pathlib.Path(document["directory"]) / "logs"
@@ -628,6 +641,7 @@ def main(argv: list[str]) -> int:
     log_to(document, process)
     try:
         link = Link(document, process)
+        stop_on_signals(link)
         try:
             host = Host(document, process, link)
         except Exception as error:  # noqa: BLE001 - a component that cannot be rebuilt here never will be: say so

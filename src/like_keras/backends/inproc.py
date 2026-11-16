@@ -32,7 +32,11 @@ CAPABILITIES = ("latest", "queue", "lagged", "lockstep", "mixed_process")
 
 def start(plan, until: float | None):
     run = Run(plan)
-    run.start(until)
+    try:
+        run.start(until)
+    except BaseException:  # WHY: a signal (CONTRACT §15 A18) or Ctrl-C may unwind a lockstep run; never leave it half up
+        run.stop()
+        raise
     return run
 
 
