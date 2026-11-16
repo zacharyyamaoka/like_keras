@@ -16,6 +16,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 
 from like_keras.backends import address  # noqa: F401  (the attach socket describe() prints)
@@ -26,6 +27,13 @@ VERSION = "0.5.0"  # CONTRACT §2.2: the one place the dora version is written
 # no mixed_process: a native .so runs in lk-dora-host, a process of its own (CONTRACT §4.3 check 3).
 CAPABILITIES = ("latest", "queue", "lagged", "host", "lockstep", "processes")
 SKEW_TIMEOUT_S = 2.0  # T11: a refusal within 2 s, never a hang
+# WHY hidden: dora 0.5.0 builds its version string each time it parses its arguments (binaries/cli/src/lib.rs:23,
+# 62-88), so every call (--version, list, start, stop) first runs `uv pip show dora-rs`, then `pip show dora-rs`,
+# off PATH. Outside a .venv that is pip's start-up, 0.8-2.6 s on the powered rig, and the skew check refused healthy
+# starts 27 of 50 times (M3 verifier r1). like_keras reads only the `dora-cli X` line, so the CLI runs with these two
+# shadowed by `false` and the rest of PATH kept: the same line in a median 0.03-0.06 s, and a CLI that really hangs
+# still hangs, so T11's 2 s refusal still covers it (tests/test_dora_cli.py).
+HIDDEN_HELPERS = ("uv", "pip")
 
 
 def start(plan, until: float | None):
@@ -40,21 +48,27 @@ def cli() -> str:
 
 
 def call(*arguments: str, timeout: float, cwd: str | None = None) -> tuple[int, str]:
-    """Run the dora CLI; on timeout kill its whole process group (a child holding the pipe would hang us)."""
-    process = subprocess.Popen(
-        [cli(), *arguments],
-        cwd=cwd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        start_new_session=True,
-    )
-    try:
-        output, _ = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        os.killpg(process.pid, signal.SIGKILL)
-        process.communicate()
-        raise
+    """Run the dora CLI with HIDDEN_HELPERS shadowed; on timeout kill its whole process group (a child holding the
+    pipe would hang us)."""
+    with tempfile.TemporaryDirectory(prefix="lk-dora-cli-") as hidden:
+        for helper in HIDDEN_HELPERS:
+            os.symlink(shutil.which("false") or "/bin/false", os.path.join(hidden, helper))
+        path = os.pathsep.join([hidden, os.environ.get("PATH", os.defpath)])
+        process = subprocess.Popen(
+            [cli(), *arguments],
+            cwd=cwd,
+            env={**os.environ, "PATH": path},
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            start_new_session=True,
+        )
+        try:
+            output, _ = process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.communicate()
+            raise
     return process.returncode, output
 
 
