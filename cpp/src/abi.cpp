@@ -598,7 +598,8 @@ std::string Box::sheet() const {  // lk_describe(): the exposed ports, in expose
              "\", \"type\": " + quoted(port->type) + ", \"hash\": \"" + hash +
              "\", \"queue\": " + (in && port->opts.queue > 0 ? std::to_string(port->opts.queue) : "null") +
              ", \"stale\": " + (in && port->opts.stale > 0.0 ? number(port->opts.stale) : "null") +
-             ", \"lagged\": " + (in && port->opts.lagged ? "true" : "false") + "}";
+             ", \"lagged\": " + (in && port->opts.lagged ? "true" : "false") +
+             (in && port->opts.optional ? ", \"optional\": true}" : "}");  // CONTRACT §15 A23
   }
   return "{\"like_keras\": \"0.1.0\", \"abi\": " + std::to_string(LK_ABI_VERSION) +
          ", \"system\": " + quoted(system.name_) + ", \"ports\": {" + ports +

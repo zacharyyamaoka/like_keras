@@ -208,8 +208,10 @@ Box::Box(System built) : system(std::move(built)) {
     for (Port* port : component->ports_) {
       (port->output ? child.outs : child.ins).push_back(port);
       if (!port->output && port->opts.queue > 0) child.queued.push_back(port);
-      if (!port->output && !writer.count(port) && !exposed_in.count(port))
-        throw std::invalid_argument(where(port) + " is unbound: wire it (s.wire) or expose it (s.expose)");
+      if (!port->output && !port->opts.optional && !writer.count(port) && !exposed_in.count(port))
+        throw std::invalid_argument(where(port) +
+                                    " is unbound: wire it (s.wire), expose it (s.expose) or declare "
+                                    "it {.optional = true}");
       if (!port->output && port->opts.queue > 0 && port->opts.lagged)
         throw std::invalid_argument(where(port) +
                                     ": a lagged input reads the previous step's latest value, not a queue");

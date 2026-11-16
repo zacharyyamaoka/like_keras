@@ -24,6 +24,7 @@ struct InOpts {  // same meaning as Python In(...): queue = 0 is latest; stale =
   int queue = 0;
   double stale = 0.0;
   bool lagged = false;
+  bool optional = false;  // may stay unwired: it then reads nullptr (CONTRACT §15 A23)
 };
 
 class Component;

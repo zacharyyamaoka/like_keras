@@ -106,6 +106,48 @@ TEST(Period, IsTheGroupsPeriodFromActivateAndZeroRateLessOrEager) {
   }
 }
 
+// ---------------------------------------------------------------- A23: an optional input
+
+struct Guarded : lk::Component {
+  lk::In<rm::DiagnosticRecord> verdict{this, "verdict", {.optional = true}};
+  lk::In<rm::JointState> state{this, "state"};
+  bool unwired_reads_null = false;
+  void forward() override { unwired_reads_null = verdict.get() == nullptr; }
+};
+
+TEST(OptionalInput, MayStayUnwiredAndUnexposedAndReadsNull) {
+  lk::System s{"guarded"};
+  Guarded& guarded = s.add<Guarded>("guarded");
+  s.expose(guarded.state);
+  Box box{std::move(s)};
+  EXPECT_EQ(box.sheet().find("\"optional\": true"), std::string::npos) << "an unexposed input is not on the sheet";
+  std::string error;
+  ASSERT_TRUE(box.start(kStepped, error)) << error;
+  box.step(0.0);
+  EXPECT_TRUE(guarded.unwired_reads_null);
+  box.stop();
+
+  lk::System exposed{"exposed"};
+  Guarded& other = exposed.add<Guarded>("guarded");
+  exposed.expose(other.state, other.verdict);
+  EXPECT_NE(Box{std::move(exposed)}.sheet().find("\"verdict\": {\"dir\": \"in\""), std::string::npos);
+
+  lk::System unbound{"unbound"};
+  unbound.add<Guarded>("guarded");  // state is neither wired nor exposed, nor optional
+  EXPECT_THROW(Box{std::move(unbound)}, std::invalid_argument);
+}
+
+TEST(OptionalInput, IsListedOptionalOnTheSheet) {
+  lk::System s{"listed"};
+  Guarded& guarded = s.add<Guarded>("guarded");
+  s.expose(guarded.state, guarded.verdict);
+  const std::string sheet = Box{std::move(s)}.sheet();
+  const auto verdict = sheet.find("\"verdict\"");
+  ASSERT_NE(verdict, std::string::npos);
+  EXPECT_NE(sheet.find("\"optional\": true", verdict), std::string::npos) << sheet;
+  EXPECT_EQ(sheet.find("\"optional\""), sheet.find("\"optional\": true", verdict)) << "only the optional one";
+}
+
 }  // namespace
 
 // ---------------------------------------------------------------- A24: vectors and tables of LK_PARAMS (the C ABI)

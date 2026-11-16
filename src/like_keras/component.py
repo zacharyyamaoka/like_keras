@@ -291,6 +291,7 @@ def native(path: str | Any, config: Any = None) -> Component:
             else Out(spec["type"])
         )
         port.hash = int(spec["hash"], 16)
+        port.optional = bool(spec.get("optional"))  # a C++ InOpts{.optional = true} may stay unwired (§15 A23)
         ports[name] = port
     if config is not None and not hasattr(config, "keys"):
         import tomllib
