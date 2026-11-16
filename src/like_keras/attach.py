@@ -6,10 +6,11 @@
 
 Frames: `u32 length (kind + payload) | u8 kind | payload`. HELLO and DESCRIBE carry JSON, SUB a JSON list of port
 names, DATA and WRITE a u16 port index (into the datasheet's `exposed`, in order) and one LKF message, LEASE nothing,
-REFUSED JSON {reason, holder}. A subscriber gets each Out's cached latest value at once; a client whose 16-frame send
-queue fills is dropped; the deployment never waits on a client. One client at a time holds the write lease (its
-first WRITE or LEASE takes it; every WRITE and the proxy's heartbeat, each lease_s / 3, renew it); a holder silent for
-lease_s loses it and every input it wrote is retracted, so the controller holds (R5).
+REFUSED JSON {reason, holder, port}. A subscriber gets each Out's cached latest value at once; a client whose 16-frame
+send queue fills is dropped; the deployment never waits on a client. Each exposed input has its own write lease
+(CONTRACT §15 A36): one client at a time writes it (its first WRITE on it takes it; every WRITE and the proxy's
+heartbeat LEASE, each lease_s / 3, renew every lease the client holds); a holder silent for lease_s loses them, and
+each input it held is retracted, so the controller holds (R5).
 
 The wire format is not public (CONTRACT §3): `lk ls` and `lk top` (like_keras.cli) are its other readers.
 """
@@ -91,7 +92,7 @@ def request(address: str, timeout_s: float = 1.0) -> tuple[dict, dict, socket.so
 class _Client:
     def __init__(self, connection: socket.socket) -> None:
         self.connection, self.inbox, self.outbox = connection, bytearray(), collections.deque()
-        self.name, self.lease_s, self.subscribed, self.wrote = "?", 0.25, set(), set()
+        self.name, self.lease_s, self.subscribed = "?", 0.25, set()
 
 
 class Server:
@@ -103,7 +104,10 @@ class Server:
         self.ports = exposed_ports(sheet)
         self.cached: dict[int, Any] = {}  # port index -> its latest value
         self.news: collections.deque = collections.deque()
-        self.holder, self.expires, self.refused = None, 0.0, collections.Counter()
+        # WHY per exposed input (CONTRACT §15 A36, consumer-019): a planner holding `trajectory` and a guard holding
+        # `verdict` are two processes; one lease per socket refused the guard while the planner wrote
+        self.leases: dict[str, tuple[_Client, float]] = {}  # input -> (holder, when its lease lapses)
+        self.refused = collections.Counter()
         self.heard = {name: time.monotonic() for name, port in self.ports.items() if port["dir"] == "out"}
         self.rates = {leaf: group["hz"] for group in sheet["groups"] for leaf in group["order"]}
         self.path = socket_path(sheet["attach"]["socket"])
@@ -170,12 +174,12 @@ class Server:
         next_record = time.monotonic() + 1.0
         while not self.closed:
             now = time.monotonic()
-            if self.holder is not None and now > self.expires:
-                self._retract(self.holder)  # the holder went silent for lease_s (crashed, killed, slow)
+            for name in [name for name, (_, expires) in self.leases.items() if now > expires]:
+                self._retract(name)  # its holder went silent for lease_s (crashed, killed, slow)
             if now >= next_record:
                 self._records()
                 next_record += 1.0
-            timeout = min(next_record, self.expires if self.holder else next_record) - now
+            timeout = min([next_record, *(expires for _, expires in self.leases.values())]) - now
             for key, events in self.selector.select(max(0.0, timeout)):
                 if key.data is None:
                     self._accept()
@@ -299,35 +303,34 @@ class Server:
                 )
                 return
         now = time.monotonic()
-        if self.holder is not None and self.holder is not client and now <= self.expires:
-            if name is not None:
-                self.refused[name] += 1
+        if name is None:  # the heartbeat: it renews every lease this client holds, and takes none
+            for held, (holder, _) in self.leases.items():
+                if holder is client:
+                    self.leases[held] = (client, now + client.lease_s)
+            return
+        holder, expires = self.leases.get(name, (client, 0.0))
+        if holder is not client and now <= expires:
+            self.refused[name] += 1
             self._send(
                 client,
-                frame(REFUSED, json.dumps({"reason": "lease held", "holder": self.holder.name, "port": name}).encode()),
+                frame(REFUSED, json.dumps({"reason": "lease held", "holder": holder.name, "port": name}).encode()),
             )
             return
-        self.holder, self.expires = client, now + client.lease_s
-        if name is None:
-            return
+        self.leases[name] = (client, now + client.lease_s)
         value = codec.decode(payload[2:], message_type(self.ports[name]["type"]))
-        client.wrote.add(name)
         sent = self.clock()
         for slot in self.inputs.get(name, []):
             (slot.push if hasattr(slot, "ready") else slot.write)(value, sent)
 
-    def _retract(self, holder: _Client) -> None:
-        """The lease lapsed: every input the holder wrote reads None (a queue is emptied) until its next value."""
-        sent = self.clock()
-        for name in holder.wrote:
-            for slot in self.inputs.get(name, []):
-                if hasattr(slot, "ready"):
-                    slot.ready.clear()
-                    slot.arriving.clear()
-                else:
-                    slot.write(None, sent)
-        holder.wrote.clear()
-        self.holder = None
+    def _retract(self, name: str) -> None:
+        """The input's lease lapsed: it reads None (a queue is emptied) until its next value."""
+        del self.leases[name]
+        for slot in self.inputs.get(name, []):
+            if hasattr(slot, "ready"):
+                slot.ready.clear()
+                slot.arriving.clear()
+            else:
+                slot.write(None, self.clock())
 
     def _send(self, client: _Client, data: bytes) -> None:
         if len(client.outbox) >= QUEUE_FRAMES:
@@ -361,8 +364,8 @@ class Server:
             pass
 
     def _drop(self, client: _Client) -> None:
-        if self.holder is client:
-            self._retract(client)
+        for name in [name for name, (holder, _) in self.leases.items() if holder is client]:
+            self._retract(name)
         try:
             self.selector.unregister(client.connection)
         except (KeyError, ValueError):

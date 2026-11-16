@@ -93,6 +93,9 @@ class Recorder:
                 )
             )
         self._file.write(b"".join(records))
+        # WHY to the file, not the buffer: a recording must hold every round up to the last one when its process is
+        # killed (an attach client's health under kill -9, CONTRACT §15 A36, T5); an unflushed small file was empty
+        self._file.flush()
 
     def close(self) -> None:
         if self._file.closed:
