@@ -36,21 +36,24 @@ def start(plan, until: float | None):
 
 
 class Latest:
-    """latest (CONTRACT §5.4): the newest value and its send time, and the one before it, so a reader stepping at t
-    sees only what was sent strictly before t. One tuple swap per write: no lock, no wait on either side."""
+    """latest (CONTRACT §5.4): the newest value, its send time and its write count, and the same of the one before
+    it, so a reader stepping at t sees only what was sent strictly before t. One tuple swap per write: no lock, no
+    wait on either side. WHY a count: In(fresh=True) (§15 A25) asks whether a write arrived since the last step,
+    which a send time cannot say when one writer sends twice at the same logical time."""
 
     __slots__ = ("cell",)
 
     def __init__(self) -> None:
-        self.cell = (None, -math.inf, None, -math.inf)
+        self.cell = (None, -math.inf, 0, None, -math.inf, 0)
 
     def write(self, value: Any, sent: float) -> None:
         current = self.cell
-        self.cell = (value, sent, *current[:2]) if sent > current[1] else (value, sent, *current[2:])
+        written = current[2] + 1
+        self.cell = (value, sent, written, *current[:3]) if sent > current[1] else (value, sent, written, *current[3:])
 
-    def read(self, now: float, strict: bool) -> tuple[Any, float]:
-        value, sent, before, before_sent = self.cell
-        return (value, sent) if not strict or sent < now else (before, before_sent)
+    def read(self, now: float, strict: bool) -> tuple[Any, float, int]:
+        cell = self.cell
+        return cell[:3] if not strict or cell[1] < now else cell[3:]
 
 
 class Queue:
@@ -98,6 +101,7 @@ class Box:
         self.outs = type(component)._lk_outs
         self.queues: list[tuple[str, Queue, bool]] = []
         self.latest: list[tuple[str, Latest, bool, float | None]] = []
+        self.fresh: dict[str, int] = {}  # In(fresh=True) inputs -> the write count forward saw last (§15 A25)
         self.sinks = {name: [] for name, port in type(component)._lk_ports.items() if port.output}
         self.upstream: list[Box] = []  # same-group writers: in a rate-less group they let this one step (§5.2)
 
@@ -107,13 +111,16 @@ class Box:
     def step(self, now: float) -> None:
         state = self.state
         inputs = {name: slot.take(now, strict) for name, slot, strict in self.queues}
+        fresh = self.fresh
         for name, slot, strict, stale in self.latest:
-            value, sent = slot.read(now, strict)
+            value, sent, written = slot.read(now, strict)
             if value is not None:
                 state.ages[name] = now - sent
                 if stale is not None and now - sent > stale:  # §4.1: delivered as None, reported in health
                     value = None
                     state.stale.add(name)
+            if name in fresh:  # §15 A25: None unless a write arrived since the last step
+                value, fresh[name] = (value if written != fresh[name] else None), written
             inputs[name] = value
         state.now = now
         self.entered = time.monotonic()  # when forward really began: Group.loop's burst rule reads it (§5.2)
@@ -705,6 +712,8 @@ class Run:
             return slot
         slot = Latest()
         box.latest.append((name, slot, port.lagged or not same, port.stale))
+        if port.fresh:
+            box.fresh[name] = 0
         return slot
 
     def _connect(self, edge, producer, consumer) -> None:

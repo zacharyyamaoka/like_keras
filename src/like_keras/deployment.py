@@ -308,6 +308,7 @@ def _port_sheet(port) -> dict[str, Any]:
         "queue": port.queue,
         "stale": port.stale,
         "lagged": port.lagged,
+        "fresh": port.fresh,
     }
 
 

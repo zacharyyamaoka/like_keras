@@ -55,9 +55,16 @@ class _Port(Generic[T]):
     """A port declared as a class attribute; on an instance it reads back as a PortRef, used only for wiring."""
 
     def __init__(
-        self, kind, output: bool, queue: int | None = None, stale: float | None = None, lagged: bool = False
+        self,
+        kind,
+        output: bool,
+        queue: int | None = None,
+        stale: float | None = None,
+        lagged: bool = False,
+        fresh: bool = False,
     ) -> None:
         self.type, self.output, self.queue, self.stale, self.lagged = kind, output, queue, stale, lagged
+        self.fresh = fresh
         self.name, self.hash = "", None  # hash: what a native .so declared (CONTRACT §6.3), checked against ours
         # WHY optional (CONTRACT §15 A11): an attach proxy mirrors every exposed In before anyone knows whether this
         # client writes; such an input may stay unwired, gets no slot, and its forward never sees it.
@@ -71,14 +78,20 @@ class _Port(Generic[T]):
 
 
 class In(_Port[T]):
-    def __init__(self, type: type[T], *, queue: int | None = None, stale: float | None = None, lagged=False) -> None:
+    def __init__(
+        self, type: type[T], *, queue: int | None = None, stale: float | None = None, lagged=False, fresh=False
+    ) -> None:
         if queue is not None and (isinstance(queue, bool) or not isinstance(queue, int) or queue < 1):
             raise ValueError(f"In(queue={queue!r}): a queue holds n >= 1 messages; queue=None is latest")
         if stale is not None and not stale > 0:
             raise ValueError(f"In(stale={stale!r}): stale is an age in seconds, > 0")
         if lagged and queue is not None:
             raise ValueError("In(lagged=True, queue=...): a lagged input reads the previous step's latest value")
-        super().__init__(type, False, queue, stale, lagged)
+        # WHY fresh (CONTRACT §15 A25): forward gets None unless a value arrived since its last step, as C++ take()
+        # says, so a plan sent again counts again and a swap counts the same; a queue's messages are each new already
+        if fresh and queue is not None:
+            raise ValueError("In(fresh=True, queue=...): every queued message is new already; fresh is for a latest input")
+        super().__init__(type, False, queue, stale, lagged, bool(fresh))
 
 
 class Out(_Port[T]):
