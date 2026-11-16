@@ -473,7 +473,7 @@ Fields::Fields(const void* json, std::string* out) : json_(json), out_(out) {}
 
 void Fields::enter(const char* key) {
   if (out_ != nullptr) {
-    if (!out_->empty() && out_->back() != '{') *out_ += ", ";
+    if (!out_->empty() && out_->back() != '{' && out_->back() != '[') *out_ += ", ";
     *out_ += key ? quoted(key) + ": {" : "{";
     return;
   }
@@ -496,12 +496,39 @@ void Fields::leave() {
     std::string known;
     for (auto at = seen_.begin() + static_cast<std::ptrdiff_t>(mark); at != seen_.end(); ++at)
       known += (known.empty() ? "" : ", ") + *at;
-    throw std::invalid_argument("params" + (path_.empty() ? "" : "." + path_) + ": unknown key '" + name +
-                                "' (known: " + known + ")");
+    // WHY the full path to the key: in a table the row is what the author must find (rows[2].valu, CONTRACT §15 A24)
+    throw std::invalid_argument("params." + (path_.empty() ? "" : path_ + ".") + name +
+                                ": unknown key (known: " + known + ")");
   }
   seen_.resize(mark), stack_.pop_back(), marks_.pop_back();
   const auto dot = path_.rfind('.');
   path_.resize(dot == std::string::npos ? 0 : dot);
+}
+
+std::size_t Fields::open_rows(const char* key, std::size_t count) {
+  if (out_ != nullptr) {
+    if (out_->back() != '{') *out_ += ", ";
+    *out_ += quoted(key) + ": [";
+    return count;
+  }
+  const auto* array = static_cast<const Json*>(find(key, Json::kArray));
+  rows_.emplace_back(array, key);
+  return array != nullptr ? array->members.size() : count;  // absent: the default rows stay
+}
+
+void Fields::enter_row(std::size_t at) {
+  if (out_ != nullptr) return void(*out_ += out_->back() == '[' ? "{" : ", {");
+  const auto* array = static_cast<const Json*>(rows_.back().first);
+  const Json* row = array != nullptr ? &array->members[at].second : nullptr;
+  path_ += (path_.empty() ? "" : ".") + rows_.back().second + "[" + std::to_string(at) + "]";
+  if (row != nullptr && row->kind != Json::kObject)
+    throw std::invalid_argument("params." + path_ + ": expected an object, got " + kKinds[row->kind]);
+  stack_.push_back(row), marks_.push_back(seen_.size());
+}
+
+void Fields::close_rows() {
+  if (out_ != nullptr) return void(*out_ += "]");
+  rows_.pop_back();
 }
 
 const void* Fields::find(const char* key, int kind) {
@@ -542,6 +569,23 @@ void Fields::operator()(const char* key, bool& value) {
 void Fields::operator()(const char* key, std::string& value) {
   if (out_ != nullptr) return emit(key, quoted(value));
   if (const auto* found = static_cast<const Json*>(find(key, Json::kString))) value = found->text;
+}
+
+void Fields::operator()(const char* key, std::vector<double>& values) {
+  if (out_ != nullptr) {
+    std::string json;
+    for (const double value : values) json += (json.empty() ? "" : ", ") + number(value);
+    return emit(key, "[" + json + "]");
+  }
+  const auto* found = static_cast<const Json*>(find(key, Json::kArray));
+  if (found == nullptr) return;
+  values.clear();
+  for (const auto& [_, item] : found->members) {
+    if (item.kind != Json::kNumber)
+      throw std::invalid_argument("params." + (path_.empty() ? "" : path_ + ".") + key + "[" +
+                                  std::to_string(values.size()) + "]: expected a number, got " + kKinds[item.kind]);
+    values.push_back(item.number);
+  }
 }
 
 std::string Box::sheet() const {  // lk_describe(): the exposed ports, in expose() order (the ports' indices)

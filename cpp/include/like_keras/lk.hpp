@@ -240,20 +240,27 @@ class Fields {
   void operator()(const char* key, int& value);
   void operator()(const char* key, bool& value);
   void operator()(const char* key, std::string& value);
+  void operator()(const char* key, std::vector<double>& value);  // CONTRACT §15 A24
   template <class Nested>
   void operator()(const char* key, Nested& value);  // a nested LK_PARAMS aggregate; key nullptr is the root
+  template <class Nested>
+  void operator()(const char* key, std::vector<Nested>& rows);  // rows of a nested LK_PARAMS aggregate (A24)
 
  private:
   void enter(const char* key);
   void leave();
+  std::size_t open_rows(const char* key, std::size_t count);  // reading: the array's length (`count` when absent)
+  void enter_row(std::size_t at);                             // its object; the path an error names: key[at]
+  void close_rows();
   const void* find(const char* key, int kind);  // reading: the member `key` of the object being filled, or nullptr
   void emit(const char* key, const std::string& json);
   const void* json_ = nullptr;      // reading: the parsed JSON root (cpp/src/abi.cpp's Json)
   std::vector<const void*> stack_;  // reading: the objects being filled (nullptr: absent, keep the defaults)
   std::vector<std::size_t> marks_;  // reading: where each object's keys start in seen_
   std::vector<std::string> seen_;   // reading: the keys visited, to name an unknown one
-  std::string* out_ = nullptr;      // writing: the defaults as JSON
-  std::string path_;                // "bus.joints": the key an error names
+  std::vector<std::pair<const void*, std::string>> rows_;  // reading: the arrays of rows being filled, their keys
+  std::string* out_ = nullptr;                             // writing: the defaults as JSON
+  std::string path_;                                       // "bus.joints[2]": the key an error names
 };
 
 template <class Nested>
@@ -261,6 +268,17 @@ void Fields::operator()(const char* key, Nested& value) {
   enter(key);
   lk_fields(value, *this);  // found by argument-dependent lookup: LK_PARAMS defines it beside the type
   leave();
+}
+
+template <class Nested>
+void Fields::operator()(const char* key, std::vector<Nested>& rows) {
+  rows.resize(open_rows(key, rows.size()));  // filled at lk_create, never on the RT thread
+  for (std::size_t at = 0; at < rows.size(); ++at) {
+    enter_row(at);
+    lk_fields(rows[at], *this);
+    leave();
+  }
+  close_rows();
 }
 
 template <auto factory, class Params>
@@ -273,8 +291,8 @@ System make(Fields& fields) {
 }  // namespace detail
 }  // namespace lk
 
-// LK_PARAMS(Type, field, ...): reflects an aggregate's fields (std::string, bool, double, int or a nested LK_PARAMS
-// aggregate) so JSON params reach it at lk_create, never on the RT thread.
+// LK_PARAMS(Type, field, ...): reflects an aggregate's fields (std::string, bool, double, int, a nested LK_PARAMS
+// aggregate, std::vector<double> or a std::vector of one) so JSON params reach it at lk_create, never on the RT thread.
 #define LK_PARAMS(Type, ...)                                                               \
   [[maybe_unused]] inline void lk_fields(Type& lk_value, ::lk::detail::Fields& lk_visit) { \
     LKX_EACH(LKX_FIELD, __VA_ARGS__)                                                       \
