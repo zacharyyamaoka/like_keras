@@ -360,8 +360,20 @@ def native(path: str | Any, config: Any = None) -> Component:
         {**ports, "__module__": __name__, "_lk_impl": os.fspath(path), "_lk_description": description},
     )
     box = cls()
-    box._lk_config = dict(config or {})
+    # WHY the defaults beneath (CONTRACT §15 A41, consumer-020): the datasheet shows every field the box runs with, as
+    # a Python component's does, and lk_create gets that same mapping in both hosts
+    box._lk_config = _overlaid(description.get("params", {}), config or {})
     return box
+
+
+def _overlaid(defaults: dict[str, Any], given: Any) -> dict[str, Any]:
+    """`given` laid over `defaults` as LK_PARAMS fills the box: a nested aggregate given in part keeps its other
+    defaults; any other value given (a number, a row table) replaces its default whole."""
+    shown = dict(defaults)
+    for key, value in given.items():
+        nested = isinstance(shown.get(key), dict) and hasattr(value, "keys")
+        shown[key] = _overlaid(shown[key], value) if nested else value
+    return shown
 
 
 class _Native(Component):

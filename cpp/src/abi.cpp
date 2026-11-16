@@ -439,7 +439,11 @@ std::string number(double value) {
   if (std::isnan(value)) return "NaN";
   if (std::isinf(value)) return value > 0 ? "Infinity" : "-Infinity";
   char text[32];
-  return std::string(text, std::to_chars(text, text + sizeof text, value).ptr);  // the shortest exact form
+  char* end = std::to_chars(text, text + sizeof text, value).ptr;  // the shortest exact form
+  // WHY a point on an integral double (CONTRACT §15 A41): Python reads 10 as an int, so a double default of 10.0 made
+  // the box's datasheet differ in JSON kind from its Python twin's 10.0
+  const bool integral = std::find_if(text, end, [](char c) { return c == '.' || c == 'e'; }) == end;
+  return std::string(text, end) + (integral ? ".0" : "");
 }
 
 const Json* member(const Json& object, std::string_view key) {

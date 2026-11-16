@@ -542,7 +542,7 @@ std::string created_error(const char* params) {
 
 TEST(TableParams, DefaultsAreShownAndEveryErrorNamesItsRow) {
   const std::string sheet = lk_describe();
-  EXPECT_NE(sheet.find("\"params\": {\"joints\": [], \"gains\": [1.5, -2], \"bounds\": [-Infinity, Infinity, NaN], "
+  EXPECT_NE(sheet.find("\"params\": {\"joints\": [], \"gains\": [1.5, -2.0], \"bounds\": [-Infinity, Infinity, NaN], "
                        "\"window\": 4}"),
             std::string::npos)
       << sheet;
