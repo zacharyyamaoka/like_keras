@@ -286,20 +286,24 @@ def _cpp_struct(cls: type) -> list[str]:
         f"  static constexpr std::uint64_t kHash = 0x{schema_hash(cls):016x}ULL;",
     ]
     if trajectory:
-        lines.append("  // read-only views over the received buffers, row-major (N, J); N = t.size()")
+        lines.append("  // read-only views over the received buffers, valid for the step; row-major (N, J); N = t.size()")
     elif any(node.format == "+l" for node in nodes):
         lines.append("  std::size_t size = 0;  // how many joints (names) the arrays below hold")
     for node in nodes:
         item = node.children[0].format if node.children else ""
         if node.format == "+s" and node.message is robot_msgs.std.Header:
             declaration = "Header"
+        elif trajectory and node.format == "+l" and item == "u":
+            # WHY (CONTRACT §15 A16): a C++ controller maps a plan by name, as its Python peer does, never by column
+            lines.append("  std::size_t joints = 0;  // how many names joint_names holds (one per column of the arrays)")
+            declaration = f"std::array<std::string_view, {capacity}>"
         elif trajectory:
             declaration = "std::span<const double>" if node.format == "+l" and item == "g" else ""
         elif node.format == "+l":
             declaration = f"std::array<{CPP_TYPES[item]}, {capacity}>"
         else:
             declaration = CPP_TYPES.get(node.format, "")
-        if declaration:  # maps (Header.meta, channels), joint_names and limits of a plan stay Python-side in v0
+        if declaration:  # maps (Header.meta, channels) and limits of a plan stay Python-side in v0
             lines.append(f"  {f'std::optional<{declaration}>' if node.nullable else declaration} {node.name}{{}};")
     return lines + ["};"]
 

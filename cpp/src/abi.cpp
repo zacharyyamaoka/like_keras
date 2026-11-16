@@ -27,7 +27,7 @@ namespace {
 
 // One function per type walks its wire children in robot_msgs' field order (the schema-hash order, CONTRACT §7.1),
 // with one visitor to decode, one to encode and one to pin strings. Fields a view leaves out (Header.meta, a plan's
-// channels, joint_names and limits) are skipped on the way in and sent empty on the way out.
+// channels and limits) are skipped on the way in and sent empty on the way out.
 template <class V>
 void fields(rm::Header& m, V& v) {
   v.scalar(m.stamp), v.text(m.frame_id), v.empty_map();
@@ -51,7 +51,7 @@ void fields(rm::ServoCommand& m, V& v) {
 }
 template <class V>
 void fields(rm::JointTrajectory& m, V& v) {
-  v.span(m.t), v.skip(), v.nest(m.header), v.skip(), v.span(m.positions), v.span(m.velocities);
+  v.span(m.t), v.skip(), v.nest(m.header), v.names(m.joint_names, m.joints), v.span(m.positions), v.span(m.velocities);
   v.span(m.accelerations), v.span(m.effort), v.skip();
 }
 template <class V>
