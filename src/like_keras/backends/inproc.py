@@ -107,6 +107,7 @@ class Box:
         self.queues: list[tuple[str, Queue, bool]] = []
         self.latest: list[tuple[str, Latest, bool, float | None]] = []
         self.fresh: dict[str, int] = {}  # In(fresh=True) inputs -> the write count forward saw last (§15 A25)
+        self.unwired = dict.fromkeys(type(component)._lk_ins)  # forward gets None for an input with no slot (§15 A32)
         self.sinks = {name: [] for name, port in type(component)._lk_ports.items() if port.output}
         self.upstream: list[Box] = []  # same-group writers: in a rate-less group they let this one step (§5.2)
 
@@ -115,7 +116,8 @@ class Box:
 
     def step(self, now: float) -> None:
         state = self.state
-        inputs = {name: slot.take(now, strict) for name, slot, strict in self.queues}
+        inputs = self.unwired.copy()
+        inputs.update((name, slot.take(now, strict)) for name, slot, strict in self.queues)
         fresh = self.fresh
         for name, slot, strict, stale in self.latest:
             value, sent, written = slot.read(now, strict)

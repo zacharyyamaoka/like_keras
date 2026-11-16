@@ -312,7 +312,7 @@ def graph(top: System) -> Graph:
             elif binding is None and outermost.owner is top:
                 exposed_in.setdefault(outermost.name, []).append(ref)
             elif binding is None:
-                if not type(leaf)._lk_ports[name].optional:  # an optional In (A11) stays unwired: no slot, no value
+                if not type(leaf)._lk_ports[name].optional:  # an optional In (A11, A32) stays unwired: no slot, None
                     failures.append(problem("unbound", port=ref, name=name, at=leaf._lk.site))
             elif not (sources := leaf_outs(binding.src)):
                 exposed_in.setdefault(find_writer(binding.src)[1].name, []).append(ref)

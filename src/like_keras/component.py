@@ -67,7 +67,7 @@ class _Port(Generic[T]):
         self.fresh = fresh
         self.name, self.hash = "", None  # hash: what a native .so declared (CONTRACT §6.3), checked against ours
         # WHY optional (CONTRACT §15 A11): an attach proxy mirrors every exposed In before anyone knows whether this
-        # client writes; such an input may stay unwired, gets no slot, and its forward never sees it.
+        # client writes; such an input may stay unwired, gets no slot, and forward gets None for it (A32).
         self.optional = False
 
     def __set_name__(self, owner: type, name: str) -> None:
@@ -79,7 +79,14 @@ class _Port(Generic[T]):
 
 class In(_Port[T]):
     def __init__(
-        self, type: type[T], *, queue: int | None = None, stale: float | None = None, lagged=False, fresh=False
+        self,
+        type: type[T],
+        *,
+        queue: int | None = None,
+        stale: float | None = None,
+        lagged=False,
+        fresh=False,
+        optional=False,
     ) -> None:
         if queue is not None and (isinstance(queue, bool) or not isinstance(queue, int) or queue < 1):
             raise ValueError(f"In(queue={queue!r}): a queue holds n >= 1 messages; queue=None is latest")
@@ -92,6 +99,9 @@ class In(_Port[T]):
         if fresh and queue is not None:
             raise ValueError("In(fresh=True, queue=...): every queued message is new already; fresh is for a latest input")
         super().__init__(type, False, queue, stale, lagged, bool(fresh))
+        # WHY optional= (CONTRACT §15 A32, consumer-015): A23's meaning in Python, so the Python peer of a C++ box with
+        # an optional input swaps in one line: it may stay unwired, and forward then gets None for it
+        self.optional = bool(optional)
 
 
 class Out(_Port[T]):

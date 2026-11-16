@@ -25,21 +25,18 @@ LIBRARY = pathlib.Path(__file__).resolve().parents[1] / "build" / "kpi" / "libem
 
 
 class Proxy(lk.Component):
-    """An attach proxy's shape: an input it may never be sent (marked optional below, as lk.attach marks every
-    mirrored In) and an output it forwards."""
+    """An attach proxy's shape: an input it may never be sent (optional, as lk.attach marks every mirrored In) and
+    an output it forwards. It notes, each step, every input forward got and whether it was None."""
 
-    command = lk.In(Header)
+    command = lk.In(Header, optional=True)
     state = lk.Out(Header)
 
     def activate(self) -> None:
-        self.seen: list[list[str]] = []
+        self.seen: list[list[tuple[str, bool]]] = []
 
     def forward(self, **inputs):
-        self.seen.append(sorted(inputs))
+        self.seen.append([(name, inputs[name] is None) for name in sorted(inputs)])
         return Header(stamp=self.now())
-
-
-Proxy.command.optional = True
 
 
 class Source(lk.Component):
@@ -94,7 +91,7 @@ class Refused(lk.Component):
 # ---------------------------------------------------------------- (a) an optional In may stay unwired
 
 
-def test_an_optional_input_may_stay_unwired_and_forward_never_sees_it():
+def test_an_optional_input_may_stay_unwired_and_forward_gets_none_for_it():  # A11, as A32 reads it
     s = lk.System("optional_unwired")
     proxy = s.add(Proxy(), "proxy")
     keep = s.add(Keep(), "keep", value=proxy.state)
@@ -104,7 +101,7 @@ def test_an_optional_input_may_stay_unwired_and_forward_never_sees_it():
     assert dep.describe()["system"] == "optional_unwired"  # no "is not bound" refusal
     dep.start(until=1.0)
     dep.stop()
-    assert len(proxy.seen) == 10 and all(names == [] for names in proxy.seen), proxy.seen
+    assert proxy.seen == [[("command", True)]] * 10, proxy.seen
     assert len(keep.rows) == 10
 
 
@@ -116,7 +113,7 @@ def test_an_optional_input_that_is_wired_is_delivered():
     dep.place(source, proxy, hz=10)
     dep.start(until=1.0)
     dep.stop()
-    assert proxy.seen == [["command"]] * 10
+    assert proxy.seen == [[("command", False)]] * 10
 
 
 def test_an_input_not_marked_optional_is_still_refused_unbound():
