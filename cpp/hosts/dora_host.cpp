@@ -13,6 +13,8 @@
 // allocate_data_sample / DataSampleHandle / send_data_sample* or init_dora_node_from_id / init_dora_node_flexible /
 // node_id / dataflow_id (removed in dora 1.0), never operators.
 #include <dlfcn.h>
+#include <pthread.h>
+#include <signal.h>
 #include <unistd.h>
 
 #include <atomic>
@@ -196,6 +198,7 @@ struct Host {
   std::mutex lock;
   std::condition_variable arrived;
   bool ready = false, stopping = false, started = false;
+  int signalled = 0;  // SIGTERM, SIGHUP or SIGINT, taken on the sigwait thread (CONTRACT §15 A18)
   std::map<Input*, ArrowArray> held;  // real time, before lk_start: the newest frame of each input
   struct Frame {
     Input* input;
@@ -524,6 +527,22 @@ int main(int argc, char** argv) {
   g_node = argv[2];
   std::string plan = argv[1];
   host.read(plan.substr(0, plan.rfind('/') + 1) + g_node + ".host");
+  // CONTRACT §15 A18: SIGTERM (systemctl stop, kill), SIGHUP and SIGINT end the node the way dora's Stop does, so
+  // every component's deactivate (the controller's hand-back) runs. Blocked here, before any thread exists (dora's
+  // inherit the mask), and taken on one sigwait thread; the stop itself runs on main once TX has returned, so lk_take
+  // never runs on two threads at once (as the raw-dora node's node_main.cpp does, credit).
+  sigset_t ending;
+  sigemptyset(&ending);
+  for (int number : {SIGTERM, SIGHUP, SIGINT}) sigaddset(&ending, number);
+  pthread_sigmask(SIG_BLOCK, &ending, nullptr);
+  std::thread([ending] {
+    int number = 0;
+    while (sigwait(&ending, &number) != 0) {
+    }
+    std::lock_guard guard(g_host.lock);
+    g_host.signalled = number, g_host.stopping = true;
+    g_host.arrived.notify_all();
+  }).detach();
   std::thread([] {  // a 2 s watchdog around init_dora_node (CONTRACT §6.4: exit 4 naming the pinned version)
     std::this_thread::sleep_for(std::chrono::duration<double>(kHelloTimeoutS));
     if (!g_initialized.load())
@@ -581,6 +600,11 @@ int main(int argc, char** argv) {
     tx.join();
   }
   box.stop(box.box);  // the RT thread joined, the components deactivated in reverse order
+  if (host.signalled != 0) {  // RX may wait in next_event for good: neither joined nor raced by lk_destroy
+    mark("exit");
+    std::fflush(nullptr);
+    _exit(128 + host.signalled);
+  }
   rx.join();
   box.destroy(box.box);
   mark("exit");
