@@ -92,6 +92,7 @@ def test_the_heartbeat_keeps_every_held_input_and_a_bare_lease_takes_none(tmp_pa
         planner.beating = False  # silent from here, its socket open: a lapses, b is the guard's and stays
         silent = time.time()
         time.sleep(1.2)
+        ended = time.time()  # closing the guard's socket below retracts b: the window ends here
     finally:
         for client in clients:
             client.close()
@@ -103,7 +104,7 @@ def test_the_heartbeat_keeps_every_held_input_and_a_bare_lease_takes_none(tmp_pa
     )
     assert [refusal["holder"] for refusal in rival.refused] == ["planner"], rival.refused
     assert not planner.refused and not guard.refused, (planner.refused, guard.refused)
-    after = [row for row in rows if row["wall"] >= silent + LEASE_S + 0.5]
+    after = [row for row in rows if silent + LEASE_S + 0.5 <= row["wall"] <= ended]
     assert after and all(row["a"] is None and row["b"] == 2.0 for row in after), (
         f"the silent planner's input a, and only it, must be retracted: {[(row['a'], row['b']) for row in after][:5]}"
     )
