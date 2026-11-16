@@ -957,7 +957,12 @@ class Run:
         for group in self.groups:
             group.wake.set()
         for thread in self.threads:
-            thread.join()
+            for _ in range(1000):  # WHY: a signal (§15 A18) can unwind start() inside Thread.start(), whose thread then
+                try:  # starts a moment later or never, and join() refuses one that has not started yet
+                    thread.join()
+                    break
+                except RuntimeError:
+                    time.sleep(0.001)
         if self.server is not None:
             self.server.close()
         if not self.lockstep:

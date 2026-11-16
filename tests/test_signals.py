@@ -52,6 +52,19 @@ def test_a_signal_inside_start_stops_the_run_and_ends_the_process_by_that_signal
     assert any("handed back" in row["message"] for row in recorded(tmp_path / "run.mcap", "log"))
 
 
+def test_a_signal_while_start_starts_a_thread_still_hands_back_and_ends_by_that_signal(tmp_path):
+    """A SIGTERM that unwinds start() while it is starting a thread: stop() must not refuse to join a thread that never
+    started ("cannot join thread before it is started", exit 1, nothing handed back: tests/test_signals.py's until
+    cases failed 2 in 2, then 1 in 3, at c8d43b9 on the loaded host, fix round 1 after the first consumer)."""
+    process = child("starting", tmp_path)
+    try:
+        code = process.process.wait(timeout=30)
+    finally:
+        process.stop()
+    assert code == -signal.SIGTERM, code
+    assert handed_back(tmp_path)
+
+
 def test_the_applications_own_handler_is_left_alone(tmp_path):
     process = child("own", tmp_path)
     try:
