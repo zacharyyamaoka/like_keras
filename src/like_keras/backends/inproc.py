@@ -135,6 +135,8 @@ class Group:
     def __init__(self, run: Run, placed, index: int) -> None:
         self.run, self.index, self.hz, self.dead = run, index, placed.hz, False
         self.boxes = [run.boxes[id(leaf)] for leaf in placed.order]
+        for box in self.boxes:
+            box.state.period = 1.0 / placed.hz if placed.hz else 0.0  # period(), from activate() on (§15 A20)
         self.wake = threading.Event()
 
     def activate(self, now: float) -> None:

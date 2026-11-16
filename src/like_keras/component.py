@@ -18,7 +18,7 @@ ABI = 1
 STANDARD_METRICS = frozenset({"steps", "step_p50_s", "step_p99_s", "step_max_s", "period_error_p99_s", "overruns"})
 PER_PORT_METRICS = ("input_age_s.", "drops.", "refused_writes.")
 FACILITY_PORTS = ("log", "health", "metrics")
-MEMBERS = frozenset({"forward", "Params", "params", "activate", "deactivate", "now", "metric"})
+MEMBERS = frozenset({"forward", "Params", "params", "activate", "deactivate", "now", "period", "metric"})
 
 
 def site(depth: int = 2) -> str:
@@ -130,6 +130,7 @@ class ComponentState:
 
     def reset(self) -> None:
         self.mode, self.now, self.steps, self.started = "initialization", 0.0, 0, 0.0
+        self.period = 0.0  # the group's, set before activate (CONTRACT §15 A20)
         self.durations: list[float] = []
         self.period_errors: list[float] = []
         self.overruns = self.overruns_reported = 0
@@ -204,6 +205,12 @@ class Component:
     def now(self) -> float:
         """This step's scheduled time in seconds: epoch in real time, logical under lockstep, 0.0 when eager."""
         return self._lk.now
+
+    def period(self) -> float:
+        """The group's period in seconds (1 / hz), 0.0 in a rate-less group or eager; valid from activate() on.
+        WHY (CONTRACT §15 A20): a component refuses in activate a placement it cannot serve (a bus exchange
+        longer than the tick), before anything moves, instead of showing it as overruns afterwards."""
+        return self._lk.period
 
     def metric(self, name: str, value: float) -> None:
         """A custom metric, published on `metrics` at 1 Hz with the standard ones (which it may not shadow)."""
