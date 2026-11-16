@@ -29,3 +29,7 @@ Nothing ships that needs both. The twin config keeps the deadman off (`guard_tim
 
 - **Contract change.** Keep the lease per **exposed input** (the holder table keyed by port), not per socket. The planner holds `trajectory`, the guard holds `verdict`, and each lapses and retracts on its own. T8 is unchanged for two planners on `trajectory`.
 - **New ruler test.** In the always-on form, an attached planner and an attached guard write at once: both land, and killing the guard retracts only `verdict` (the chain's deadman then stops the plan), not `trajectory`.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A31-A36); its frozen test comes in ruler M0.5 (A38).

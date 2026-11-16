@@ -49,3 +49,7 @@ It works. The attribute `lk.native()` and `attach` already set is honoured by `s
 
 - **Library fix.** `lk.In(T, *, ..., optional=False)`, with A23's meaning: unwired is legal, `forward` gets `None` for it, and `describe()` lists it.
 - **New ruler test.** A Python component with an optional input that stays unwired passes `describe()`, and `forward` gets `None`; the same component wired gets the values.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A31-A36); its frozen test comes in ruler M0.5 (A38).

@@ -58,3 +58,7 @@ Nothing in the library's place: the controller cannot reach `lk-dora-host`'s thr
 - **Library fix.** `lk-dora-host` asks rtkit for SCHED_RR at a priority below the RT thread's for its RX and TX threads, and for the dora threads its process spawns, through the same ladder as A19, reported in the box record (`io_sched_policy`). The Python dora host's RX and TX threads could follow, though the GIL limits what that buys.
 - **Library fix.** Count superseded and refused sends per exposed `Out` in the TX thread (`drops.<port>`, as queues already do), plus the worst gap between two sends, and publish both in the box record, in both backends.
 - **New ruler test.** `kpi/bench_overhead` under `kpi/load.py --cpu 24`: the subscriber's loss on a 100 Hz `ServoState` stream over dora must not exceed raw dora's by more than its noise band, and `drops.state` must equal the subscriber's own count of missing steps.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A31-A36); its frozen test comes in ruler M0.5 (A38).

@@ -47,3 +47,7 @@ A second finding, a pattern rather than a defect, is for the docs. A17 says a co
 - **Library fix (preferred).** The conversion takes its owner: `static Converted from(const T&, const Owner&)`, where `Owner` is the component class that declares the input. like_keras passes the component, and calls it only between `activate()` and `deactivate()`; outside that window the push is refused as now. No new public name. The config is then the component's own, and the global and the one-per-process limit go away.
 - **Contract.** §15 A17's text says when `from` may run (only while the owner is operational), and documents the swap pattern for a value the component keeps past its slot.
 - **New ruler test.** Two boxes of one `.so` in one process, each converting with its own params (e.g. a different joint set), must each validate against their own.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A31-A36); its frozen test comes in ruler M0.5 (A38).

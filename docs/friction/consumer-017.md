@@ -44,3 +44,7 @@ In my first version of the test I expected `start()` to raise. When it did not, 
 - **Library fix.** In real time too, `Deployment.start()` raises when a node marked `refused` and never `started`, naming the refusal (the marker's text), and stops the dataflow, as the inproc backend does. A refusal is final in both modes: the host writes `failed` on an activate refusal whatever `stepped` is.
 - **Contract (§9.2).** State that supervision restarts a node that *crashed* (T6) but not one that *refused*. With dora 0.5's policies (`always`, `on-failure`, `never`), that means the host must exit a refusal with a code like_keras treats as final, or the launcher must stop the dataflow on the first `refused` marker.
 - **New ruler test.** T7 in `target`: `start()` of the second deployment raises within 2 s, naming the refusal, and the second node was started at most once.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A31-A36); its frozen test comes in ruler M0.5 (A38).

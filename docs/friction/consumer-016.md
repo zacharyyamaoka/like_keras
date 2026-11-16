@@ -42,3 +42,7 @@ A related reading of A6 that also cost a workaround: `lk_describe()` constructs 
 - **Library fix.** In `abi.cpp`'s `number()`, write `NaN`, `Infinity` and `-Infinity` (what `strtod` and Python both read), or `null` for NaN. Then a component's natural "NaN = off" default round-trips.
 - **New ruler test.** A component with a NaN and an infinite default passes `lk.native()`, and `describe()` shows both.
 - **Contract (A6).** State that defaults must construct, and that a component should refuse a missing table in `activate()`, not in its constructor. Better: let `lk_describe()` skip running a factory that throws on its defaults and list the ports from a second, documented `describe` path.
+
+## Resolution (2026-11-16, dispatcher)
+
+Decided in CONTRACT.md §15 (A31-A36); its frozen test comes in ruler M0.5 (A38).
