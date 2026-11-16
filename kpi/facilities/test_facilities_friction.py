@@ -6,8 +6,12 @@ when every one of its tests passes):
   A21 test_system_facility_ports         metrics: a Python System's log/health/metrics carry every inner component
   A22 test_health_set_by_the_component   health: health(level, code), held; log.error -> error / ErrorLogged
   A24 test_vector_params                 params: LK_PARAMS reflects vectors and vectors of rows
-The C++ boxes (hand_back.cpp, self_health.cpp, table_params.cpp) are built on demand (kpi/support/lk.feature_library):
-until a decision lands, its box does not compile, or the library does not do it, and its test FAILS, never skips.
+Ruler M0.4 adds two, from the library verifier's round 1:
+  A28 test_dora_stop_drains_to_live_readers      lifecycle: a plain real-time dora stop() delivers the final drain
+  A22 test_health_tie_keeps_the_facility_message health: on a tie the component's code, the facility's message
+The C++ boxes (hand_back.cpp, self_health.cpp, table_params.cpp, tie_health.cpp) are built on demand
+(kpi/support/lk.feature_library): until a decision lands, its box does not compile, or the library does not do it,
+and its test FAILS, never skips.
 """
 
 from __future__ import annotations
@@ -17,12 +21,13 @@ import json
 import os
 import signal
 import subprocess
+import threading
 import time
 
 import pytest
 
 from kpi.support import cells, procs
-from kpi.support.lk import (backend, feature_library, kpi_cpus, like_keras, native_library, recorded,
+from kpi.support.lk import (backend, dora_backend, feature_library, kpi_cpus, like_keras, native_library, recorded,
                             subprocess_env)
 
 
@@ -235,3 +240,107 @@ def test_vector_params(backend_name, tmp_path, request):
             dep.start(until=0.1)
         dep.stop()
         assert "rows[2].valu" in str(refused.value), str(refused.value)
+
+
+# ---------------------------------------------------------------- A28 under dora (M0.4; library verifier, round 1)
+
+
+def test_dora_stop_drains_to_live_readers(tmp_path, request):
+    """CONTRACT §15 A28 as A30 orders it: every stop of a native box drains its log, health and metrics once more
+    after the last deactivate(), and a real-time dora stop() signals the native nodes first, so that drain reaches
+    live readers. hand_back.cpp (its deactivate logs "handed back") in its own process at 20 Hz, real time, with its
+    log and health wired to reader components in another process and recorded; once the readers hold a health record
+    of the running box, a plain dep.stop() (no signal from the test). Then: deactivate ran once; the reader and the
+    recording each hold the "handed back" line once, and the box's last health record says offline, with nothing
+    operational after it; and the box's lk-dora-host kept one pid from start to stop (dora never restarted it).
+    WHY (library verifier, round 1): `dora stop` ended the readers and the gateway together with lk-dora-host, so
+    over 3 of 3 runs the drain reached nobody: no "handed back" line, the last health operational."""
+    lk = like_keras()
+    dora = dora_backend()
+    request.getfixturevalue("private_dora")
+    from kpi.facilities.parts import HealthLog, LogLog
+
+    library = feature_library("hand_back")
+    name = f"drain_{os.getpid()}"
+    handed_back = tmp_path / "handed_back"
+    s = lk.System(name)
+    box = s.add(lk.native(library, config={"path": str(handed_back)}), "box")
+    s.add(LogLog(path=str(tmp_path / "log.jsonl")), "log_reader", value=box.log)
+    s.add(HealthLog(path=str(tmp_path / "health.jsonl")), "health_reader", value=box.health)
+    dep = lk.Deployment(s, backend=dora)
+    dep.record(tmp_path / "run.mcap", box.log, box.health)
+    dep.place(s.box, process="box", hz=20)
+    dep.place(s.log_reader, s.health_reader, process="readers")
+    node_pids: set[int] = set()
+    watching = threading.Event()
+
+    def watch() -> None:  # every pid the box's node had, from start() until stop() returned
+        while not watching.is_set():
+            node_pids.update(procs.pids_with("lk-dora-host", name))
+            time.sleep(0.02)
+
+    watcher = threading.Thread(target=watch, daemon=True)
+    dep.start()
+    watcher.start()
+    try:
+        procs.wait_for(lambda: any(row["path"].endswith("hand_back") for row in rows(tmp_path / "health.jsonl")),
+                       30.0, "a health record of the running box at the reader")
+    finally:
+        dep.stop()
+        watching.set()
+        watcher.join(timeout=5)
+    assert handed_back.read_text() == "handed back\n"
+    read_lines = [row["message"] for row in rows(tmp_path / "log.jsonl")]
+    assert read_lines.count("handed back") == 1, f"the live reader got {read_lines}"
+    read_health = [row for row in rows(tmp_path / "health.jsonl") if row["path"].endswith("hand_back")]
+    _assert_ends_offline([row["mode"] for row in read_health], "the live reader")
+    recorded_lines = [row["message"] for row in recorded(tmp_path / "run.mcap", "log")]
+    assert recorded_lines.count("handed back") == 1, f"the recording holds {recorded_lines}"
+    recorded_health = [row for row in recorded(tmp_path / "run.mcap", "health") if row["path"].endswith("hand_back")]
+    _assert_ends_offline([row["mode"] for row in recorded_health], "the recording")
+    assert len(node_pids) == 1, f"the box's lk-dora-host had pids {sorted(node_pids)}: dora restarted it during the stop"
+
+
+def _assert_ends_offline(modes: list[str], where: str) -> None:
+    assert modes and modes[-1] == "offline", f"{where}: the box's health modes were {modes}"
+    first = modes.index("offline")
+    assert all(mode == "offline" for mode in modes[first:]), f"{where}: the box ran again after offline: {modes}"
+
+
+# ---------------------------------------------------------------- A22 with §4.5 (M0.4; library verifier, round 1)
+
+TIE_ROUNDS = {1.0: ("error", "Braked", ""), 2.0: ("error", "Braked", "brake held: J2"),
+              3.0: ("warn", "Slipping", "slipping: J3"), 4.0: ("warn", "Slipping", "")}
+
+
+@pytest.mark.parametrize("combination", ["python-inproc", "cpp-inproc"])
+def test_health_tie_keeps_the_facility_message(combination, tmp_path):
+    """CONTRACT §15 A22 with §4.5: health reports the worse of the component's own health(level, code) and the
+    facility's; on a tie the component's code wins and the facility's message is kept. In both languages, lockstep
+    (rounds at 1 s, 2 s, ...): round 1 error / Braked (the component alone); round 2, a log.error in the period:
+    error / Braked with the logged text; round 3, health("warn", "Slipping") and a warning in the period: warn /
+    Slipping with the warning's text; round 4 warn / Slipping, nothing logged, no message. WHY (library verifier,
+    round 1): A22's tie rule cleared the message, so the attach proxy's LeaseHeld health, whose holder travels only
+    in its log.error line, no longer named the holder (§4.5; T8 checks that one)."""
+    lk = like_keras()
+    from kpi.facilities.parts import HealthLog
+
+    s = lk.System("tie_health")
+    if combination.startswith("cpp"):
+        subject = s.add(lk.native(feature_library("tie_health"), config={"unused": 0}), "box")
+    else:
+        from kpi.facilities.friction_parts import TieHealth
+
+        subject = s.add(TieHealth(), "subject")
+    s.add(HealthLog(path=str(tmp_path / "health.jsonl")), "health_sink", value=subject.health)
+    dep = lk.Deployment(s, realtime=False)
+    dep.place(subject, process="subject", hz=50)
+    dep.place(s.health_sink, process="sinks")
+    try:
+        dep.start(until=4.6)
+    finally:
+        dep.stop()
+    found = {round(row["stamp"], 6): (row["level"], row["code"], row["message"])
+             for row in rows(tmp_path / "health.jsonl") if row["path"].endswith("subject") and row["mode"] == "operational"}
+    wrong = {stamp: (found.get(stamp), want) for stamp, want in TIE_ROUNDS.items() if found.get(stamp) != want}
+    assert not wrong, f"health round: (sent, expected): {wrong}"

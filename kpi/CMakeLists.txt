@@ -39,8 +39,12 @@ if(COMMAND lk_component AND TARGET like_keras::rt)
   lk_component(verdict polyglot/verdict.cpp)              # A23 (consumer-008)
   lk_component(table_params facilities/table_params.cpp)  # A24 (consumer-009)
   lk_component(arrivals consumer/arrivals.cpp)            # A25 (consumer-010)
+  # Ruler M0.4: the library fix round 1's defects, built the same way.
+  lk_component(optional_queue polyglot/optional_queue.cpp)  # A23 for a queue input (A30)
+  lk_component(log_steps consumer/log_steps.cpp)            # A30, T1: a native log line at the step that logged it
+  lk_component(tie_health facilities/tie_health.cpp)        # A22, §4.5: a tie keeps the facility's message
   set_target_properties(joint_names kept_plan hand_back rt_ladder period_probe self_health verdict table_params
-                        arrivals PROPERTIES EXCLUDE_FROM_ALL ON)
+                        arrivals optional_queue log_steps tie_health PROPERTIES EXCLUDE_FROM_ALL ON)
 
   find_package(GTest REQUIRED)
   add_executable(alloc_probe alloc_probe.cpp)

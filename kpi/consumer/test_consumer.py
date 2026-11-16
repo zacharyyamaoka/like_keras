@@ -574,9 +574,16 @@ def test_T7_exclusivity(placement, tmp_path, request):
         dep.stop()
 
 
+HOLDER = "t8_holder"  # T8's lease holder: the name its rival's LeaseHeld health must carry (§4.5)
+
+
 def test_T8_claim(tmp_path):
     """Two attached planners write at once: only the lease holder's trajectories run; the other gets REFUSED (its
-    proxy's health error, code LeaseHeld); when the holder stops, the inputs retract and the arm holds."""
+    proxy's health error, code LeaseHeld, naming the holder: CONTRACT §4.5); when the holder stops, the inputs
+    retract and the arm holds.
+    WHY the holder is named t8_holder, and the LeaseHeld health must carry that name (ruler M0.4): §4.5 always asked
+    for it, and A22's tie rule once dropped it (library verifier, round 1: all three records "('error', 'LeaseHeld',
+    '')"); a name no generic message holds tells naming the holder from saying "the lease is held"."""
     like_keras()
     from kpi.support.parts import observe
 
@@ -592,7 +599,7 @@ def test_T8_claim(tmp_path):
     holder = second = observer = None
     try:
         observer = observe(address, log)
-        holder = procs.Child("kpi.tasks.arm_cell.attached_planner", "--address", address, "--name", "holder",
+        holder = procs.Child("kpi.tasks.arm_cell.attached_planner", "--address", address, "--name", HOLDER,
                              "--record", str(tmp_path / "holder.mcap"))
         holder.wait_ready()
         _wait_commands(log, 100, 15.0)
@@ -620,6 +627,12 @@ def test_T8_claim(tmp_path):
     assert not any(tuple(np.round([-x for x in target], 6)) in reached for target in targets), "the second planner's plan ran"
     health = recorded(tmp_path / "second.mcap", "health")
     assert any(record["level"] == "error" and record["code"] == "LeaseHeld" for record in health), "no LeaseHeld refusal"
+    # WHY not every record: a round with no refusal in it may hold LeaseHeld with no text, which is not the defect
+    lease_held = [(record["level"], record["code"], record["message"]) for record in health if record["code"] == "LeaseHeld"]
+    assert any(HOLDER in message for _, _, message in lease_held), \
+        f"no LeaseHeld health names the holder {HOLDER!r} (CONTRACT §4.5): {lease_held}"
+    assert all(HOLDER in message for _, _, message in lease_held if message), \
+        f"a LeaseHeld health names someone else: {lease_held}"
     _assert_holds(log, holder_stopped + 0.25 + 0.5, holder_stopped + 2.0)
 
 

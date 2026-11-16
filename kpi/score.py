@@ -18,6 +18,9 @@ node's absolute tick rate with bad clients; criterion 9's health also needs its 
 Since M0.3 (CONTRACT §15 A27) each of the first consumer's eleven decisions (A16-A26) has one frozen test, counted as
 a companion of an id or part its criterion already scores (FRICTION_* below): that id or part counts only when its
 companions pass as well. Weights, gates, formulas and denominators are unchanged.
+M0.4 adds four companions the same way, one per defect of the library's fix round 1 (A22 with §4.5, A23, A28, A30),
+and T8 asserts that the LeaseHeld health names the holder (§4.5); weights, gates, formulas and denominators again
+stay as they are.
 """
 
 from __future__ import annotations
@@ -64,7 +67,8 @@ TIMING_TWINS = {"test_T5_planner_crash": "test_T5_planner_crash_within_1s",
 # a companion of what its decision serves. Criterion 1: an id of CONSUMER counts only when its companions in the
 # consumer suite pass too.
 FRICTION_CONSUMER = {
-    "test_T1_swap": ["test_fresh_input_counts_arrivals"],  # A25: Python and C++ count the same arrivals
+    "test_T1_swap": ["test_fresh_input_counts_arrivals",  # A25: Python and C++ count the same arrivals
+                     "test_log_reaches_readers_at_its_step"],  # M0.4, A30: a log tap reads the swap the same way
     "test_T2_send_cost": ["test_T2_export_and_push_apart"],  # A26: the send split into export and lk_push (timing)
     "test_T7_exclusivity": ["test_period_in_activate"],  # A20: refused in activate when a tick is too short
 }
@@ -73,14 +77,17 @@ FRICTION_BLACK_BOX = ["test_rt_ladder_is_the_librarys"]  # A19: the RT ladder is
 # Criterion 8: a part counts only when its companions (polyglot suite) pass too.
 FRICTION_REACH = {
     "mixed_chain": ["test_converted_input_keeps_a_plan_off_the_rt_thread",  # A17: In<T, Converted>
-                    "test_optional_verdict_input"],  # A23: an optional C++ In; a verdict as a DiagnosticRecord
+                    "test_optional_verdict_input",  # A23: an optional C++ In; a verdict as a DiagnosticRecord
+                    "test_optional_queue_input"],  # M0.4, A23/A30: an optional C++ queue In gates only when wired
     "codec_bit_exact": ["test_T10_trajectory_joint_names"],  # A16: a JointTrajectory view's joint names
 }
 # Criterion 9: a facility counts only when its companions (facilities suite) pass too.
 FRICTION_FACILITIES = {
-    "lifecycle": ["test_sigterm_runs_deactivate"],  # A18: SIGTERM and SIGHUP end a deployment as SIGINT does
+    "lifecycle": ["test_sigterm_runs_deactivate",  # A18: SIGTERM and SIGHUP end a deployment as SIGINT does
+                  "test_dora_stop_drains_to_live_readers"],  # M0.4, A28/A30: a dora stop's final drain reaches readers
     "metrics": ["test_system_facility_ports"],  # A21: a Python System's log/health/metrics, as a native box's
-    "health": ["test_health_set_by_the_component"],  # A22: health(level, code); log.error -> ErrorLogged
+    "health": ["test_health_set_by_the_component",  # A22: health(level, code); log.error -> ErrorLogged
+               "test_health_tie_keeps_the_facility_message"],  # M0.4, A22 with §4.5: a tie keeps the message
     "params": ["test_vector_params"],  # A24: LK_PARAMS reflects vectors and vectors of rows
 }
 VALID_GRAPHS = [("test_valid_graph_accepted", name) for name in (

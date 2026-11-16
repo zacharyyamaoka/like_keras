@@ -1,25 +1,30 @@
-"""Criterion 8 (Python + C++ reach), ruler M0.3 (CONTRACT §15 A27): the first consumer's friction on the C++ side.
+"""Criterion 8 (Python + C++ reach), ruler M0.3 (CONTRACT §15 A27) and M0.4: the first consumer's friction on the
+C++ side.
 
 Each test judges one decision of §15 and counts with a part kpi/score.py already scores (a part passes only when
 every one of its tests passes):
   A16 test_T10_trajectory_joint_names                    part 4, the codec: a JointTrajectory view's joint names
   A17 test_converted_input_keeps_a_plan_off_the_rt_thread  part 1, the mixed chain: In<T, Converted>
   A23 test_optional_verdict_input                       part 1, the mixed chain: an optional C++ In, a guard's verdict
-Their C++ boxes (joint_names.cpp, kept_plan.cpp, verdict.cpp) are built on demand (kpi/support/lk.feature_library):
-until a decision lands, its box does not compile and its test FAILS, never skips.
+  A23 test_optional_queue_input (M0.4)                  part 1, the mixed chain: an optional C++ queue In (A30)
+Their C++ boxes (joint_names.cpp, kept_plan.cpp, verdict.cpp, optional_queue.cpp) are built on demand
+(kpi/support/lk.feature_library): until a decision lands, its box does not compile and its test FAILS, never skips.
+M0.4 (CONTRACT §15 A29) moves A16's source to module level (friction_parts.GoldenPlan), so its dora case can start.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import struct
+import subprocess
 import time
 
 import numpy as np
 import pytest
 
 from kpi.golden import make_golden
-from kpi.support.lk import backend, feature_library, kpi_cpus, like_keras
+from kpi.support.lk import backend, feature_library, kpi_cpus, like_keras, python, subprocess_env
 
 
 def rows(path) -> list[dict]:
@@ -38,17 +43,19 @@ def test_T10_trajectory_joint_names(backend_name, tmp_path, request):
     into the received buffer, valid for the step). The golden plan (a 2-byte and a 3-byte UTF-8 name) goes Python ->
     C++ in one process and across processes; the box sends back each joint's name with its last position. WHY
     (consumer-001): a C++ controller could only map a plan by column order while its Python peer mapped it by name,
-    so the same plan moved different boards in same_box and fallback."""
+    so the same plan moved different boards in same_box and fallback.
+    WHY GoldenPlan, a module-level source (M0.4, CONTRACT §15 A29, ruler-008): under dora the source runs in a process
+    of its own, which rebuilds it as module:qualname (§4.1); kpi/golden/instances.py's emitter() defines its class
+    inside a function, so the dora case was refused before it started. Both cases send the same golden plan."""
     lk = like_keras()
     if backend_name == "dora":
         request.getfixturevalue("private_dora")
     chosen = backend(backend_name)
     library = feature_library("joint_names")
-    from kpi.golden.instances import emitter
-    from kpi.polyglot.friction_parts import JointStateLog
+    from kpi.polyglot.friction_parts import GoldenPlan, JointStateLog
 
     s = lk.System(f"plan_names_{backend_name}")
-    emit = s.add(emitter(lk, "trajectory/JointTrajectory")(), "emit")
+    emit = s.add(GoldenPlan(), "emit")
     box = s.add(lk.native(library, config={"unused": 0}), "box", trajectory=emit.value)
     s.add(JointStateLog(path=str(tmp_path / "names.jsonl")), "sink", value=box.names)
     dep = lk.Deployment(s, backend=chosen, realtime=False)
@@ -188,3 +195,70 @@ def test_optional_verdict_input(placement, tmp_path, request):
     held = _first_hold(stopped)
     assert held is not None and 0.5 < held <= 0.5 + BOX_TICK_S + 1e-6, \
         f"a level error verdict sent at 0.5 s held the box at {held}"
+
+
+# ---------------------------------------------------------------- A23 for a queue input (M0.4; library verifier, round 1)
+
+OPTIONAL_QUEUE_TIMEOUT_S = 240.0  # WHY this long: a dora dataflow starts in tens of seconds on the loaded cores
+
+
+def _optional_queue_run(backend_name: str, wiring: str, directory, library, dora) -> dict:
+    """kpi/polyglot/optional_queue_child.py in a process of its own: its exit status, its reports and the box's
+    ports. A run that hangs is killed (and its dataflow stopped by name) and reported as such."""
+    directory.mkdir(parents=True, exist_ok=True)
+    name = f"optq_{backend_name}_{wiring}_{os.getpid()}"
+    command = [python(), "-m", "kpi.polyglot.optional_queue_child", "--library", str(library), "--backend",
+               backend_name, "--wiring", wiring, "--directory", str(directory), "--name", name]
+    with open(directory / "child.log", "wb") as log:
+        child = subprocess.Popen(command, env=subprocess_env(), stdout=log, stderr=subprocess.STDOUT,
+                                 start_new_session=True)
+        try:
+            returncode = child.wait(timeout=OPTIONAL_QUEUE_TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            child.kill()
+            child.wait(timeout=30)
+            returncode = "hung"
+    if dora is not None and returncode != 0:  # a launcher that died or hung leaves its dataflow running
+        subprocess.run([dora.cli, "stop", "--name", name], cwd=dora.workdir, env=subprocess_env(),
+                       capture_output=True, timeout=60)
+    ports = directory / "ports.json"
+    return {"returncode": returncode, "log": (directory / "child.log").read_text(errors="replace")[-1500:],
+            "ports": json.loads(ports.read_text()) if ports.exists() else None,
+            "idle": [row["position"] for row in rows(directory / "idle.jsonl")],
+            "gated": [row["position"] for row in rows(directory / "gated.jsonl")]}
+
+
+def _stepped_every_tick_reading_nullptr(reports: list, what: str) -> None:
+    assert len(reports) >= 10, f"{what}: {len(reports)} steps in 1.05 s at 10 Hz, lockstep (11 ticks): {reports}"
+    assert [report[0] for report in reports] == [float(step) for step in range(1, len(reports) + 1)], reports
+    assert all(report[1] == 1.0 for report in reports), f"{what}: an input nothing writes did not read nullptr: {reports}"
+
+
+@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+def test_optional_queue_input(backend_name, tmp_path, request):
+    """CONTRACT §15 A23 for a QUEUE input (InOpts{.queue = 4, .optional = true}), as A30 ratifies it: unwired is
+    legal and reads nullptr, so an optional queue input nothing writes never holds the gather of §5.2. One box
+    (optional_queue.cpp), lockstep at 10 Hz for 1.05 s, in one process and across processes:
+      - `idle`, an optional queue input neither wired nor exposed inside the box: steps every tick, reads nullptr;
+      - `gated`, an optional queue input the box exposes: left unwired by the deployment, steps every tick and reads
+        nullptr; wired to a source that sends on its steps 1, 2 and 6, it gates as a queue does: exactly one step
+        per message, reading that message (values 1, 2, 6).
+    describe() lists the exposed one as an input. Each deployment runs in a child process, so a crash fails this
+    test only. WHY (library verifier, round 1): left unwired and unexposed, the box crashed on its first step (a
+    SIGSEGV in the gather, on a queue with no ring); exposed and left unwired, it never stepped (0 ticks)."""
+    like_keras()
+    backend(backend_name)
+    dora = request.getfixturevalue("private_dora") if backend_name == "dora" else None
+    library = feature_library("optional_queue")
+    runs = {wiring: _optional_queue_run(backend_name, wiring, tmp_path / wiring, library, dora)
+            for wiring in ("unwired", "wired")}
+    for wiring, run in runs.items():
+        assert run["returncode"] == 0, f"{wiring}: the deployment exited {run['returncode']}:\n{run['log']}"
+        assert run["ports"] is not None and run["ports"].get("extra", {}).get("dir") == "in", \
+            f"{wiring}: describe() does not list the optional input: {run['ports']}"
+        _stepped_every_tick_reading_nullptr(run["idle"], f"{wiring}: idle (neither wired nor exposed)")
+    _stepped_every_tick_reading_nullptr(runs["unwired"]["gated"], "gated, exposed and left unwired")
+    expected = [[1.0, 0.0, 1.0], [2.0, 0.0, 2.0], [3.0, 0.0, 6.0]]  # steps, read nullptr, the value it read
+    assert runs["wired"]["gated"] == expected, (
+        f"gated, wired to a source that sent 1, 2 and 6: one step per message expected {expected}, "
+        f"got {runs['wired']['gated']}")

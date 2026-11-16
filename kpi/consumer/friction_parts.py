@@ -65,3 +65,19 @@ class SameObjectSource(lk.Component):
         step, self._steps = self._steps, self._steps + 1
         return self._plan if step in (1, 6) else None
 
+
+
+class LogSteps(lk.Component):
+    """The Python twin of log_steps.cpp (ruler M0.4; CONTRACT §15 A30, T1): "line 0" (info) at 0.3 s, "line 1"
+    (warning) at 1.0 s, "line 2" (error) at 1.7 s on the logical clock, then nothing."""
+
+    AT = (0.3, 1.0, 1.7)
+
+    def forward(self):
+        index = getattr(self, "_next", 0)
+        # WHY - 1e-9: logical times are sums of ticks; 15 x 0.02 need not be exactly 0.3 in binary
+        if index >= len(self.AT) or self.now() < self.AT[index] - 1e-9:
+            return None
+        (self.log.info, self.log.warning, self.log.error)[index]("line %g", float(index))
+        self._next = index + 1
+        return None

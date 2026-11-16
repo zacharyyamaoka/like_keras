@@ -43,3 +43,21 @@ class SelfHealth(lk.Component):
         elif phase == 3 and now >= 7.5:
             self.log.error("refused: %s", "StartTooFar")
             self._phase = 4
+
+
+class TieHealth(lk.Component):
+    """The Python twin of tie_health.cpp (ruler M0.4; CONTRACT §15 A22, §4.5): health("error", "Braked") at the
+    first step, log.error("brake held: %s", "J2") from 1.5 s, health("warn", "Slipping") with a warning from 2.5 s."""
+
+    def forward(self):
+        phase, now = getattr(self, "_phase", 0), self.now()
+        if phase == 0:
+            self.health("error", "Braked")
+            self._phase = 1
+        elif phase == 1 and now >= 1.5:
+            self.log.error("brake held: %s", "J2")
+            self._phase = 2
+        elif phase == 2 and now >= 2.5:
+            self.health("warn", "Slipping")
+            self.log.warning("slipping: %s", "J3")
+            self._phase = 3

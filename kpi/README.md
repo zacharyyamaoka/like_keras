@@ -20,6 +20,7 @@ nice -n 19 ionice -c3 cmake --build /home/bam/like_keras/build -j 2
 ```
 
 - **`kpi/run.py <suite>`** runs pytest in a private network and PID namespace (`bwrap --unshare-net --unshare-pid`). The dora suites start their own dora 0.5.0 coordinator and daemon there, never the production one on 127.0.0.1:6012. If a dora fixture finds anything listening on 6012, it refuses and skips. The run writes `build/kpi/junit/<suite>.xml`.
+  - Since M0.4 each run also gets a private `XDG_RUNTIME_DIR` under `build/kpi/xdg/`, removed when the run ends. That is where like_keras serves attach sockets (CONTRACT §9.3), and a socket file is not separated by a network namespace: a peer's live deployment named `pick_cell` once failed `test_swap_variant` here.
 - **`kpi/score.py`** writes `kpi/scoreboard.json` (gitignored): the four gates, the 12-number vector and the total. It compares them with the committed `kpi/baseline.json` (the empty repo, all 0). It runs `kpi/bench_overhead.py` in the same private namespace as the suites (`--pin 20,21` in the timing tier), so the cross-process A/B gets its private dora.
 - **What counts as a pass:**
   - Every denominator is a frozen list of test ids, so a test that skips, errors or is missing counts as failed. A test id counts only if every one of its parametrizations passes.
@@ -47,8 +48,17 @@ nice -n 19 ionice -c3 cmake --build /home/bam/like_keras/build -j 2
   | A25 `In(T, fresh=True)` | `consumer::test_fresh_input_counts_arrivals[4 combinations]` | criterion 1, T1 |
   | A26 T2 reports the export and `lk_push` apart | `consumer::test_T2_export_and_push_apart[same_box]` (`timing`) | criterion 1, T2 |
 
+  M0.4 (the library's fix round 1, checked independently from the library verifier's findings) adds four more companions the same way, corrects A16's dora case (A29: its source `GoldenPlan` is module level, so another process can rebuild it), and makes T8 assert that the refused planner's `LeaseHeld` health names the holder (§4.5). Each new test fails on the library at `c8d43b9` and passes on the fixed one.
+
+  | Decision | Test | Counts with |
+  |---|---|---|
+  | A23 for a queue input: unwired reads `nullptr` and never gates; wired, it gates | `polyglot::test_optional_queue_input[inproc,dora]` (each deployment in a child process, so a crash fails this test only) | criterion 8, the mixed-chain part |
+  | A28 / A30: a plain real-time dora `stop()` delivers the final drain to live readers, with no restart | `facilities::test_dora_stop_drains_to_live_readers` | criterion 9, lifecycle |
+  | A30 / T1: under lockstep a reader gets a native log line at the step that logged it, as the Python twin's | `consumer::test_log_reaches_readers_at_its_step` (fallback, same_box, target) | criterion 1, T1 |
+  | A22 with §4.5: on a tie, the component's code and the facility's message | `facilities::test_health_tie_keeps_the_facility_message[python-inproc,cpp-inproc]`; and T8's holder check | criterion 9, health; criterion 1, T8 |
+
   A19's test asks the host what it offers first (`kpi/blackbox/rt_ladder_child.py --oracle`). Under `kpi/run.py`'s private PID namespace rtkit cannot name our threads, so there the honest answer is `SCHED_OTHER`, reported; run outside that namespace (plain pytest in the device sandbox) it expects rtkit's `SCHED_RR` on this host.
-- **Where kpi writes:** nothing outside the repo. Temporary files go to `build/kpi/tmp` and the private dora's working directory is `build/kpi/dora-<pid>`.
+- **Where kpi writes:** nothing outside the repo. Temporary files go to `build/kpi/tmp`, the private dora's working directory is `build/kpi/dora-<pid>`, and attach sockets go under `build/kpi/xdg/` (M0.4).
 
 ## What is here
 
@@ -57,12 +67,12 @@ nice -n 19 ionice -c3 cmake --build /home/bam/like_keras/build -j 2
 | `tasks/arm_cell/` | The reference consumer (§10): `planner.py`, `plan.py`, `targets.py`, `arm_controller.cpp` (+ `jtc_core.hpp`, `guard.hpp`, the vendored robot_controllers `joint_trajectory_controller.hpp`), `arm_controller_py.py` (+ `jtc_law.py`, `guard_law.py`), `fake_bus.{hpp,py}`, `cell.py` (target / same_box / fallback), `always_on.py`, `attached_planner.py`, `swaps/` (criterion 5's frozen variants) |
 | `tasks/empty`, `tasks/cpp_gain`, `tasks/relay`, `tasks/pipeline` | Criterion 9's empty-step components; criterion 8's C++ boilerplate; criterion 4's workflow tasks, each against its raw-dora or plain-Python baseline |
 | `contract/` | The equivalence gate |
-| `consumer/` | Criterion 1: A1-A3, T1-T12; and `test_guard_recovers_after_a_runaway` (A14: the reference guard's runaway hold ends at the next plan that starts where the arm is; C++ = Python to 1e-9 rad; not scored); `test_consumer_friction.py` (A20, A25, A26) |
+| `consumer/` | Criterion 1: A1-A3, T1-T12; and `test_guard_recovers_after_a_runaway` (A14: the reference guard's runaway hold ends at the next plan that starts where the arm is; C++ = Python to 1e-9 rad; not scored); `test_consumer_friction.py` (A20, A25, A26, A30) |
 | `conformance/` | §5 on `inproc` and `dora` (criterion 6, part 5) |
 | `churn/` | Criterion 6, parts 1-4 (T11) |
 | `golden/` | §7 LKF goldens, written by `make_golden.py` with the ruler's own codec (`lkf.py`, numpy + struct). pyarrow validates each golden in full. |
 | `polyglot/` | Criterion 8 (T10); `test_polyglot_friction.py` (A16, A17, A23) |
-| `facilities/` | Criterion 9; `test_facilities_friction.py` (A18, A21, A22, A24) |
+| `facilities/` | Criterion 9; `test_facilities_friction.py` (A18, A21, A22, A24, A28) |
 | `twin/` | Criterion 10 |
 | `attach/` | Criterion 11 |
 | `blackbox/` + `blackbox.py` + `/.importlinter` | Criterion 3; `test_blackbox_friction.py` (A19) |

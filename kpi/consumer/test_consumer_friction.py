@@ -6,8 +6,9 @@ test counts only when its companion passes too):
   A20 test_period_in_activate            T7: refused in activate before any step, when one exchange cannot fit a tick
   A25 test_fresh_input_counts_arrivals   T1: Python and C++ count the same arrivals (the swap changes nothing)
   A26 test_T2_export_and_push_apart      T2 (timing tier): the send split into the export and lk_push
-The C++ boxes (period_probe.cpp, arrivals.cpp) are built on demand (kpi/support/lk.feature_library): until a decision
-lands, its box does not compile, or the library does not do it, and its test FAILS, never skips.
+  A30 test_log_reaches_readers_at_its_step (M0.4)  T1: a native log line reaches a reader as a Python twin's does
+The C++ boxes (period_probe.cpp, arrivals.cpp, log_steps.cpp) are built on demand (kpi/support/lk.feature_library):
+until a decision lands, its box does not compile, or the library does not do it, and its test FAILS, never skips.
 """
 
 from __future__ import annotations
@@ -221,3 +222,60 @@ def test_T2_export_and_push_apart(placement, tmp_path, monkeypatch):
     over = [f"{name} p99 {split[name]['p99_s'] * 1e3:.3f} ms" for name in ("export", "lk_push", "send")
             if split[name]["p99_s"] > 0.1e-3]
     assert not over, f"over T2's in-process 0.1 ms: {', '.join(over)}"
+
+
+# ---------------------------------------------------------------- A30 (contract-007 item 3; M0.4): T1's log tap
+
+LOG_STEPS = [(0.3, 20, "line 0"), (1.0, 30, "line 1"), (1.7, 40, "line 2")]  # log_steps.cpp: when, level, text
+LOG_STEPS_UNTIL_S = 1.9  # WHY: "line 2" falls after the last facility round (1.0 s), as consumer-012's brake line did
+
+
+def _log_tap(placement: str, directory) -> list[tuple[float, int, str, int]]:
+    """log_steps.cpp (same_box, target) or its Python twin LogSteps (fallback) at 50 Hz, lockstep until 1.9 s, its
+    `log` port wired to a reader in a rate-less group of its own process. What the reader got: (its now() at the
+    step it got the record, level, message, the record's tick), in order."""
+    lk = like_keras()
+    from kpi.facilities.parts import LogLog
+
+    directory.mkdir(parents=True, exist_ok=True)
+    s = lk.System(f"log_tap_{placement}")
+    if placement == "fallback":
+        from kpi.consumer.friction_parts import LogSteps
+
+        talker = s.add(LogSteps(), "talker")
+    else:
+        talker = s.add(lk.native(feature_library("log_steps"), config={"unused": 0}), "talker")
+    s.add(LogLog(path=str(directory / "log.jsonl")), "reader", value=talker.log)
+    dep = lk.Deployment(s, backend=backend("dora" if placement == "target" else "inproc"), realtime=False)
+    dep.place(s.talker, process="talker", hz=50)
+    dep.place(s.reader, process="reader")
+    try:
+        dep.start(until=LOG_STEPS_UNTIL_S)
+    finally:
+        dep.stop()
+    return [(row["now"], row["level"], row["message"], row["tick"]) for row in rows(directory / "log.jsonl")]
+
+
+def test_log_reaches_readers_at_its_step(tmp_path, request):
+    """CONTRACT §15 A30 (contract-007 item 3), T1's swap seen through a log tap: under lockstep a reader component
+    gets a native box's log line at the step that logged it, the same as a Python twin's. log_steps.cpp and its
+    Python twin log "line 0" (info) at 0.3 s, "line 1" (warning) at 1.0 s and "line 2" (error) at 1.7 s, at 50 Hz,
+    until 1.9 s; a reader in a rate-less group of its own process gets, in fallback (the Python twin), each line at
+    the step that logged it; in same_box and in target (the C++ box, inproc and dora) exactly the same (its now(),
+    to 1e-9 s, and the record's level, message and tick). WHY (library verifier, round 1; consumer-012): the box's log ring was drained only
+    with health and metrics, once a second, so a reader got a C++ line up to a second late, and a line logged after
+    the last facility round never, while the Python twin's arrived at once: a log tap read a swap differently."""
+    request.getfixturevalue("private_dora")
+    taps = {placement: _log_tap(placement, tmp_path / placement) for placement in ("fallback", "same_box", "target")}
+    fallback = taps["fallback"]
+    assert [(level, message) for _, level, message, _ in fallback] == [(level, message) for _, level, message in LOG_STEPS], \
+        f"fallback: the reader got {fallback}"
+    for (got_at, _, message, _), (logged_at, _, _) in zip(fallback, LOG_STEPS):
+        assert abs(got_at - logged_at) <= 1e-9, f"fallback: {message!r}, logged at {logged_at} s, read at {got_at} s"
+    for placement in ("same_box", "target"):
+        got = taps[placement]
+        assert [row[1:] for row in got] == [row[1:] for row in fallback], \
+            f"{placement}: the reader got {got}; with the Python twin (fallback) it got {fallback}"
+        late = [(message, at, twin_at) for (at, _, message, _), (twin_at, _, _, _) in zip(got, fallback)
+                if abs(at - twin_at) > 1e-9]
+        assert not late, f"{placement}: (line, read at, read at with the Python twin): {late}"
