@@ -37,3 +37,7 @@ In the port's own CMake (`lk/CMakeLists.txt`, fix round 1): `CMAKE_CXX_VISIBILIT
 
 - **Library fix.** `lk_component()` links every component with a version script that like_keras ships (`global: lk_*; local: *;`, since every C ABI entry point is `lk_*`), and with `-Wl,--exclude-libs,ALL`. Then any .so it builds exports the C ABI and nothing else, whatever it links, and no consumer writes those lines. The runtime's own 5 symbols go with it.
 - **New ruler test.** For every .so that `lk_component` builds in `kpi/` (cpp_gain, arm_controller, empty, echo, ...) and for one that links a static library with default visibility, `nm -D --defined-only` lists only `lk_*`. Today the count of other symbols is 5 for the reference components.
+
+## Resolution (2026-11-16, dispatcher)
+
+CONTRACT.md §15 A28 (library fix).

@@ -48,3 +48,7 @@ Health and metrics have the same gap: the last partial second is never published
 
 - **Library fix (A18, for every stop, not only signals).** In `Run.stop()`, after the last `group.deactivate()`, call each native box's `publish(now)` once more, in lockstep at the logical time of the last step and in real time at the wall time, and flush the recorders. `lk-dora-host` does the same before it closes its outputs.
 - **New ruler test.** A native box logs one line in its last partial second and one in `deactivate()`. A log tap sees both lines, in lockstep (`until` between two facility rounds) and in real time, and the same lines from a Python twin of the box.
+
+## Resolution (2026-11-16, dispatcher)
+
+CONTRACT.md §15 A28 (library fix).
