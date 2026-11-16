@@ -6,3 +6,4 @@ build/
 target/
 kpi/scoreboard.json
 out/
+reports/media/

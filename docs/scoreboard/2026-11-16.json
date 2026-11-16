@@ -1,0 +1,461 @@
+{
+ "generated": "2026-11-16T22:51:31+00:00",
+ "commit": "34c40b9",
+ "host": "bam-GPU",
+ "tier": "rack powered, cores 22-23, not the timing tier",
+ "suites_run": [
+  "contract",
+  "consumer",
+  "conformance",
+  "churn",
+  "golden",
+  "polyglot",
+  "facilities",
+  "twin",
+  "attach",
+  "blackbox",
+  "miswire",
+  "validgraphs"
+ ],
+ "gates": {
+  "equivalence": {
+   "pass": true,
+   "checks": {
+    "test_one_process_matches_schedule": true,
+    "test_across_processes": true,
+    "test_cpp_replacement": true,
+    "test_sent_equals_received": true,
+    "test_reference_solutions": true,
+    "test_swap_variant": true
+   },
+   "python_inproc": true
+  },
+  "fallback_untouched": {
+   "pass": false,
+   "files_changed": [],
+   "like_keras_required": [],
+   "suite": "not run"
+  },
+  "realtime_hot_path": {
+   "pass": true,
+   "tail": [
+    "guard: 4040 runaway holds and 4040 releases logged over 2020 plans",
+    "[==========] 2 tests from 1 test suite ran. (714 ms total)",
+    "[  PASSED  ] 2 tests."
+   ]
+  },
+  "lean_core": {
+   "pass": true,
+   "dependencies": [
+    "robot-msgs"
+   ],
+   "loaded_forbidden": [],
+   "import_ms": 22.845,
+   "from": "/home/bam/like_keras/src/like_keras/__init__.py"
+  }
+ },
+ "criteria": {
+  "1_consumer_fit": {
+   "score": 0.4,
+   "measured": "6/9",
+   "passing": [
+    "test_T1_swap",
+    "test_T5_planner_crash",
+    "test_T6_node_crash",
+    "test_T7_exclusivity",
+    "test_T8_claim",
+    "test_T12_introspection"
+   ],
+   "acceptance": {
+    "test_A1_handoff_over_dora": false,
+    "test_A2_same_planner_in_one_process": false,
+    "test_A3_fallback_matches_reference": true
+   },
+   "outcomes": {
+    "test_T1_swap": [
+     "passed"
+    ],
+    "test_T2_send_cost": [
+     "target=skipped",
+     "same_box=skipped"
+    ],
+    "test_T3_isolation": [
+     "target=skipped",
+     "same_box=skipped"
+    ],
+    "test_T4_boundary_stall": [
+     "skipped"
+    ],
+    "test_T5_planner_crash": [
+     "target=passed",
+     "attached=passed"
+    ],
+    "test_T6_node_crash": [
+     "target=passed"
+    ],
+    "test_T7_exclusivity": [
+     "target=passed",
+     "same_box=passed"
+    ],
+    "test_T8_claim": [
+     "passed"
+    ],
+    "test_T12_introspection": [
+     "target=passed",
+     "same_box=passed"
+    ],
+    "test_A1_handoff_over_dora": [
+     "skipped"
+    ],
+    "test_A2_same_planner_in_one_process": [
+     "skipped"
+    ],
+    "test_A3_fallback_matches_reference": [
+     "passed"
+    ],
+    "test_fresh_input_counts_arrivals": [
+     "python-inproc=passed",
+     "python-dora=passed",
+     "cpp-inproc=passed",
+     "cpp-dora=passed"
+    ],
+    "test_log_reaches_readers_at_its_step": [
+     "passed"
+    ],
+    "test_optional_input_in_python": [
+     "inproc=passed",
+     "dora=passed"
+    ],
+    "test_T2_export_and_push_apart": [
+     "same_box=skipped"
+    ],
+    "test_A35_boundary_within_noise_of_raw_dora": [
+     "skipped"
+    ],
+    "test_period_in_activate": [
+     "python-inproc=passed",
+     "python-dora=passed",
+     "cpp-inproc=passed",
+     "cpp-dora=passed"
+    ],
+    "test_refused_activate_is_final_under_dora": [
+     "realtime=passed",
+     "lockstep=passed"
+    ],
+    "test_attach_lease_per_input": [
+     "passed"
+    ]
+   },
+   "weight": 15
+  },
+  "2_speed": {
+   "score": 0.0,
+   "parts": {
+    "cross_process": 0.0,
+    "per_edge": 0.9525969795779221,
+    "copies_cpu": 0.0,
+    "import": 0.8957662337662338
+   },
+   "scored": false,
+   "note": "rack powered, cores 22-23, not the timing tier: reported, scored 0",
+   "measured": {
+    "import_ms": 28.026,
+    "python_per_edge_ns": 1853.2543675974011,
+    "cxx_per_edge_ns": 45.08869571925671,
+    "tier": "rack powered, cores 22-23, not the timing tier"
+   },
+   "weight": 13
+  },
+  "3_black_box": {
+   "score": 0.9999999999999998,
+   "measured": "20/20",
+   "controller_violations": [],
+   "library_env_reads": [],
+   "import_linter": {
+    "pass": true,
+    "tail": [
+     "Only like_keras.backends.dora imports dora or pyarrow; nothing imports yaml ",
+     "(CONTRACT \u00a72) KEPT (2 ignored imports)",
+     "",
+     "Contracts: 2 kept, 0 broken."
+    ]
+   },
+   "friction": {
+    "test_rt_ladder_is_the_librarys": [
+     "passed"
+    ]
+   },
+   "weight": 11
+  },
+  "4_succinctness": {
+   "score": 0.7413926282051282,
+   "parts": {
+    "concepts": 0.8846153846153846,
+    "widest_signature": 1.0,
+    "workflow": 0.33956250000000004
+   },
+   "measured": {
+    "top_level": 8,
+    "total": 33,
+    "widest": {
+     "callable": "In.__init__",
+     "params": 6
+    },
+    "tasks": {
+     "relay": {
+      "kind": "cross_process",
+      "solution_tokens": 339,
+      "baseline_tokens": 448,
+      "ratio": 0.7567
+     },
+     "pipeline": {
+      "kind": "in_process",
+      "solution_tokens": 301,
+      "baseline_tokens": 169,
+      "ratio": 1.7811
+     }
+    }
+   },
+   "weight": 11
+  },
+  "5_swap_cost": {
+   "score": 1.0,
+   "per_swap": {
+    "process": 1.0,
+    "language": 1.0,
+    "backend": 1.0,
+    "host": 1.0
+   },
+   "measured": {
+    "backend": {
+     "deployment_lines": 1,
+     "component_lines": 0,
+     "files": [
+      "deploy.py"
+     ]
+    },
+    "host": {
+     "deployment_lines": 1,
+     "component_lines": 0,
+     "files": [
+      "deploy.py"
+     ]
+    },
+    "language": {
+     "deployment_lines": 1,
+     "component_lines": 0,
+     "files": [
+      "deploy.py"
+     ]
+    },
+    "process": {
+     "deployment_lines": 1,
+     "component_lines": 0,
+     "files": [
+      "deploy.py"
+     ]
+    }
+   },
+   "weight": 9
+  },
+  "6_dora_insulation": {
+   "score": 1.0,
+   "parts": {
+    "named_only_in_backend": true,
+    "wire_owned": true,
+    "nodes_only": true,
+    "skew_refused_2s": true,
+    "conformance_both_backends": true
+   },
+   "weight": 8
+  },
+  "7_compactness": {
+   "score": 0.10285714285714286,
+   "parts": {
+    "core": 0.0,
+    "backend_inproc": 0.0,
+    "backend_dora": 0.0,
+    "attach_cli": 0.0,
+    "cpp_runtime": 0.0,
+    "generated_views": 0.72,
+    "total": 0.0
+   },
+   "measured": {
+    "core": 1346,
+    "backend_inproc": 812,
+    "backend_dora": 1020,
+    "attach_cli": 617,
+    "cpp_runtime": 3019,
+    "generated_views": 128,
+    "other": 222,
+    "total": 7164
+   },
+   "formatted": true,
+   "weight": 8
+  },
+  "8_reach": {
+   "score": 1.0,
+   "parts": {
+    "mixed_chain": true,
+    "cpp_needs_no_python": true,
+    "one_so_three_placements": true,
+    "codec_bit_exact": true,
+    "boilerplate": true
+   },
+   "friction": {
+    "test_converted_input_keeps_a_plan_off_the_rt_thread": [
+     "passed"
+    ],
+    "test_optional_verdict_input": [
+     "same_box=passed",
+     "target=passed"
+    ],
+    "test_optional_queue_input": [
+     "inproc=passed",
+     "dora=passed"
+    ],
+    "test_conversion_sees_its_owner": [
+     "passed"
+    ],
+    "test_T10_trajectory_joint_names": [
+     "inproc=passed",
+     "dora=passed"
+    ]
+   },
+   "weight": 7
+  },
+  "9_facilities": {
+   "score": 1.0,
+   "measured": "7/7",
+   "facilities": {
+    "log": true,
+    "metrics": true,
+    "health": true,
+    "params": true,
+    "lifecycle": true,
+    "recording": true,
+    "introspection": true
+   },
+   "facility_sloc_share": 0.0773,
+   "friction": {
+    "test_sigterm_runs_deactivate": [
+     "py-inproc-SIGTERM=passed",
+     "py-inproc-SIGHUP=passed",
+     "cpp-inproc-SIGTERM=passed",
+     "cpp-inproc-SIGHUP=passed",
+     "cpp-dora-SIGTERM=passed",
+     "cpp-dora-node-SIGTERM=passed"
+    ],
+    "test_dora_stop_drains_to_live_readers": [
+     "passed"
+    ],
+    "test_dora_stop_drains_python_to_live_readers": [
+     "passed"
+    ],
+    "test_system_facility_ports": [
+     "passed"
+    ],
+    "test_dora_boundary_accounting": [
+     "passed"
+    ],
+    "test_refused_pushes_are_counted_and_logged": [
+     "inproc=passed",
+     "dora=passed",
+     "before_activate=passed"
+    ],
+    "test_health_set_by_the_component": [
+     "python-inproc=passed",
+     "cpp-inproc=passed"
+    ],
+    "test_health_tie_keeps_the_facility_message": [
+     "python-inproc=passed",
+     "cpp-inproc=passed"
+    ],
+    "test_vector_params": [
+     "inproc=passed",
+     "dora=passed"
+    ],
+    "test_non_finite_params_defaults": [
+     "inproc=passed",
+     "dora=passed"
+    ],
+    "test_native_describe_lists_param_defaults": [
+     "inproc=passed",
+     "dora=passed"
+    ],
+    "test_partly_given_rows_run_as_described": [
+     "inproc=passed",
+     "dora=passed"
+    ]
+   },
+   "weight": 6
+  },
+  "10_testability": {
+   "score": 1.0,
+   "parts": {
+    "twin_swap": true,
+    "deterministic_10x": true,
+    "replay": true,
+    "isolation": true
+   },
+   "no_wall_clock_sleep": true,
+   "same_box_deterministic": true,
+   "weight": 5
+  },
+  "11_attach": {
+   "score": 0.75,
+   "parts": {
+    "test_list_ports_within_1s": true,
+    "test_attach_receive_and_write": true,
+    "test_clients_cannot_hurt_the_node": false,
+    "test_attach_needs_an_explicit_address": true
+   },
+   "weight": 4
+  },
+  "12_wiring_checks": {
+   "score": 1.0,
+   "measured": "28/28",
+   "false_positives": [],
+   "weight": 3
+  }
+ },
+ "vector": [
+  0.4,
+  0.0,
+  1.0,
+  0.7414,
+  1.0,
+  1.0,
+  0.1029,
+  1.0,
+  1.0,
+  1.0,
+  0.75,
+  1.0
+ ],
+ "weighted_if_gates_green": 66.978,
+ "total": 0.0,
+ "baseline": {
+  "total": 0.0,
+  "vector": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ "land": {
+  "ok": false,
+  "reasons": [
+   "a gate is red"
+  ]
+ }
+}

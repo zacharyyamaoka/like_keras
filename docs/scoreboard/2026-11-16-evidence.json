@@ -1,0 +1,718 @@
+{
+ "generated": "2026-11-16T16:15:10-0700",
+ "tier": "rack powered, cores 22-23, not the timing tier",
+ "note": "extracted by docs/build_report.py extract; every number from a real run on bam-GPU",
+ "ratchet": [
+  {
+   "file": "scoreboard-m0-verify.json",
+   "label": "M0",
+   "what": "ruler: the empty repo scores 0",
+   "kind": "ruler",
+   "generated": "2026-11-15T17:42:39+00:00",
+   "commit": "b76d5b2",
+   "weighted_if_gates_green": 0.0,
+   "total": 0.0,
+   "vector": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "gates": {
+    "equivalence": false,
+    "fallback_untouched": false,
+    "realtime_hot_path": false,
+    "lean_core": false
+   }
+  },
+  {
+   "file": "scoreboard-m1.json",
+   "label": "M1",
+   "what": "core: Python API, inproc, codec, lockstep",
+   "kind": "library",
+   "generated": "2026-11-15T18:41:54+00:00",
+   "commit": "84c1e21",
+   "weighted_if_gates_green": 20.341,
+   "total": 0.0,
+   "vector": [
+    0.0,
+    0.0,
+    0.0,
+    0.6012,
+    0.0,
+    0.2,
+    0.5161,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    1.0
+   ],
+   "gates": {
+    "equivalence": false,
+    "fallback_untouched": false,
+    "realtime_hot_path": false,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard-m0.1.json",
+   "label": "M2 \u00b7 M0.1",
+   "what": "C++ runtime; ruler amendment A7",
+   "kind": "library",
+   "generated": "2026-11-16T03:43:01+00:00",
+   "commit": "425153e",
+   "weighted_if_gates_green": 39.255,
+   "total": 0.0,
+   "vector": [
+    0.0,
+    0.0,
+    1.0,
+    0.6866,
+    0.25,
+    0.4,
+    0.3815,
+    0.6,
+    0.0,
+    1.0,
+    0.0,
+    1.0
+   ],
+   "gates": {
+    "equivalence": false,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard.json",
+   "label": "M3",
+   "what": "dora backend, attach, lk ls / lk top",
+   "kind": "library",
+   "generated": "2026-11-16T08:36:25+00:00",
+   "commit": "6ae8bec",
+   "weighted_if_gates_green": 68.364,
+   "total": 0.0,
+   "vector": [
+    0.4,
+    0.0,
+    1.0,
+    0.7542,
+    1.0,
+    1.0,
+    0.1335,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gates": {
+    "equivalence": true,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard-m0.2.json",
+   "label": "M0.2",
+   "what": "ruler A14: the guard recovers",
+   "kind": "ruler",
+   "generated": "2026-11-16T09:15:29+00:00",
+   "commit": "4ec4526",
+   "weighted_if_gates_green": 68.364,
+   "total": 0.0,
+   "vector": [
+    0.4,
+    0.0,
+    1.0,
+    0.7542,
+    1.0,
+    1.0,
+    0.1335,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gates": {
+    "equivalence": true,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard-m0.3-before.json",
+   "label": "A16-A27",
+   "what": "consumer notes 001-011 decided",
+   "kind": "library",
+   "generated": "2026-11-16T11:13:44+00:00",
+   "commit": "c6ab053",
+   "weighted_if_gates_green": 67.364,
+   "total": 0.0,
+   "vector": [
+    0.4,
+    0.0,
+    1.0,
+    0.7542,
+    1.0,
+    1.0,
+    0.1335,
+    1.0,
+    1.0,
+    1.0,
+    0.75,
+    1.0
+   ],
+   "gates": {
+    "equivalence": true,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard-m0.3-after.json",
+   "label": "M0.3",
+   "what": "11 consumer tests frozen, failing first",
+   "kind": "ruler",
+   "generated": "2026-11-16T11:39:15+00:00",
+   "commit": "b402a9c",
+   "weighted_if_gates_green": 42.564,
+   "total": 0.0,
+   "vector": [
+    0.0,
+    0.0,
+    0.0,
+    0.7542,
+    1.0,
+    1.0,
+    0.1335,
+    0.6,
+    0.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gates": {
+    "equivalence": true,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard-lane-cpp.json",
+   "label": "cpp lane",
+   "what": "A17, A19, A20, A22-A24, A28",
+   "kind": "library",
+   "generated": "2026-11-16T12:41:24+00:00",
+   "commit": "c52d709",
+   "weighted_if_gates_green": 55.322,
+   "total": 0.0,
+   "vector": [
+    0.0,
+    0.0,
+    1.0,
+    0.7414,
+    1.0,
+    1.0,
+    0.1333,
+    0.8,
+    0.25,
+    1.0,
+    0.75,
+    1.0
+   ],
+   "gates": {
+    "equivalence": true,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard-lane-core-dbff127.json",
+   "label": "core lane",
+   "what": "A16, A20-A22, A25, A26",
+   "kind": "library",
+   "generated": "2026-11-16T13:31:13+00:00",
+   "commit": "dbff127",
+   "weighted_if_gates_green": 64.978,
+   "total": 0.0,
+   "vector": [
+    0.4,
+    0.0,
+    1.0,
+    0.7414,
+    1.0,
+    0.8,
+    0.1029,
+    0.8,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gates": {
+    "equivalence": true,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard-lane-core.json",
+   "label": "core fix",
+   "what": "A18 signals",
+   "kind": "library",
+   "generated": "2026-11-16T13:37:40+00:00",
+   "commit": "7b9fd9a",
+   "weighted_if_gates_green": 66.578,
+   "total": 0.0,
+   "vector": [
+    0.4,
+    0.0,
+    1.0,
+    0.7414,
+    1.0,
+    1.0,
+    0.1029,
+    0.8,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gates": {
+    "equivalence": true,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard-fix-lib-r1.json",
+   "label": "fix round 1",
+   "what": "the library verifier's defects",
+   "kind": "library",
+   "generated": "2026-11-16T14:57:24+00:00",
+   "commit": "ef03537",
+   "weighted_if_gates_green": 66.578,
+   "total": 0.0,
+   "vector": [
+    0.4,
+    0.0,
+    1.0,
+    0.7414,
+    1.0,
+    1.0,
+    0.1029,
+    0.8,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gates": {
+    "equivalence": true,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard-m0.4-after.json",
+   "label": "M0.4",
+   "what": "ruler: fix round 1's defects, A29",
+   "kind": "ruler",
+   "generated": "2026-11-16T15:27:55+00:00",
+   "commit": "2a6e4c7",
+   "weighted_if_gates_green": 67.978,
+   "total": 0.0,
+   "vector": [
+    0.4,
+    0.0,
+    1.0,
+    0.7414,
+    1.0,
+    1.0,
+    0.1029,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gates": {
+    "equivalence": true,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard-m0.5-after.json",
+   "label": "M0.5",
+   "what": "tests for A31-A37 frozen, failing first",
+   "kind": "ruler",
+   "generated": "2026-11-16T16:17:46+00:00",
+   "commit": "cede79b",
+   "weighted_if_gates_green": 56.078,
+   "total": 0.0,
+   "vector": [
+    0.0,
+    0.0,
+    1.0,
+    0.7414,
+    1.0,
+    1.0,
+    0.1029,
+    0.8,
+    0.25,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gates": {
+    "equivalence": true,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard-lib2a.json",
+   "label": "A31-A37",
+   "what": "consumer round 2 lands",
+   "kind": "library",
+   "generated": "2026-11-16T16:53:02+00:00",
+   "commit": "94bb51e",
+   "weighted_if_gates_green": 64.878,
+   "total": 0.0,
+   "vector": [
+    0.4,
+    0.0,
+    1.0,
+    0.7414,
+    1.0,
+    0.8,
+    0.1029,
+    1.0,
+    0.75,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gates": {
+    "equivalence": true,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard-lib3.json",
+   "label": "A35 A41 A42",
+   "what": "dora boundary RT, datasheet, refusals",
+   "kind": "library",
+   "generated": "2026-11-16T20:40:35+00:00",
+   "commit": "41ce82d",
+   "weighted_if_gates_green": 67.978,
+   "total": 0.0,
+   "vector": [
+    0.4,
+    0.0,
+    1.0,
+    0.7414,
+    1.0,
+    1.0,
+    0.1029,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "gates": {
+    "equivalence": true,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  },
+  {
+   "file": "scoreboard-lib4.json",
+   "label": "A44 \u00b7 HEAD",
+   "what": "partly given rows (ruler M0.8)",
+   "kind": "library",
+   "generated": "2026-11-16T22:51:31+00:00",
+   "commit": "34c40b9",
+   "weighted_if_gates_green": 66.978,
+   "total": 0.0,
+   "vector": [
+    0.4,
+    0.0,
+    1.0,
+    0.7414,
+    1.0,
+    1.0,
+    0.1029,
+    1.0,
+    1.0,
+    1.0,
+    0.75,
+    1.0
+   ],
+   "gates": {
+    "equivalence": true,
+    "fallback_untouched": false,
+    "realtime_hot_path": true,
+    "lean_core": true
+   }
+  }
+ ],
+ "a35_ab": [
+  {
+   "label": "kpi A35 test \u00b7 before A35",
+   "detail": "library cede79b, ruler M0.5 (the test fails first)",
+   "phase": "before",
+   "lk_lost_pct": [
+    0.49726504226752855,
+    0.6454816285998014,
+    2.9629629629629632,
+    6.075697211155378,
+    1.0437375745526838
+   ],
+   "raw_lost_pct": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "lk_p99_ms": [
+    176.80473804473874,
+    26.887764930725062,
+    119.80229854583732,
+    14.848680496215826,
+    29.07499790191649
+   ],
+   "raw_p99_ms": [
+    17.055733203887936,
+    20.602989196777333,
+    16.518676280975335,
+    12.106318473815916,
+    15.510489940643305
+   ],
+   "load": [
+    21.2529296875,
+    27.90478515625
+   ],
+   "within": {
+    "states": false,
+    "handoff": false,
+    "states_upper_pct": 4.337463927739325,
+    "states_band_pct": 0.1,
+    "handoff_upper_ms": 117.76308250427243,
+    "handoff_band_ms": 8.496670722961415
+   }
+  },
+  {
+   "label": "consumer A/B \u00b7 before A35",
+   "detail": "first set: .so on pre-A35 like_keras, 5 \u00d7 30 s, 3 sides",
+   "phase": "before",
+   "lk_lost_pct": [
+    0.7986688851913478,
+    0.8982035928143712,
+    3.5642904730179876,
+    0.1332001332001332,
+    0.36593479707252163
+   ],
+   "raw_lost_pct": [
+    0.0,
+    0.0,
+    1.2131147540983607,
+    0.0,
+    1.1853803095159698
+   ],
+   "lk_p99_ms": [
+    17.16316223144533,
+    16.657309532165513,
+    64.07624959945656,
+    11.754338741302478,
+    42.26398706436133
+   ],
+   "raw_p99_ms": [
+    8.3922367382,
+    8.211668357699972,
+    12.671952838000001,
+    31.595742110999822,
+    22.01339678200001
+   ],
+   "load": [
+    28.91455078125,
+    53.47607421875
+   ],
+   "within": null
+  },
+  {
+   "label": "kpi A35 test \u00b7 after",
+   "detail": "library bda76d9 (A35 in), 5 pairs \u00d7 20 s",
+   "phase": "after",
+   "lk_lost_pct": [
+    0.0496031746031746,
+    0.049800796812749,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "raw_lost_pct": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "lk_p99_ms": [
+    36.74065589904782,
+    17.68180847167968,
+    38.505773544311516,
+    19.83355522155758,
+    11.503496170043944
+   ],
+   "raw_p99_ms": [
+    21.480257511138916,
+    16.131856441497796,
+    40.386531352996805,
+    19.958457946777344,
+    16.987752914428707
+   ],
+   "load": [
+    13.9677734375,
+    18.111328125
+   ],
+   "within": {
+    "states": true,
+    "handoff": true,
+    "states_upper_pct": 0.039801113008284324,
+    "states_band_pct": 0.1,
+    "handoff_upper_ms": 8.755106925964336,
+    "handoff_band_ms": 24.254674911499006
+   }
+  },
+  {
+   "label": "consumer A/B \u00b7 final",
+   "detail": "like_keras 41ce82d, consumer a99338289, 5 pairs \u00d7 30 s",
+   "phase": "after",
+   "lk_lost_pct": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "raw_lost_pct": [
+    0.03288391976323578,
+    0.0,
+    0.0,
+    0.06533812479581835,
+    0.0327653997378768
+   ],
+   "lk_p99_ms": [
+    12.636313438415527,
+    12.216875553131095,
+    11.839661598205565,
+    28.510262966155988,
+    21.564993858337388
+   ],
+   "raw_p99_ms": [
+    10.543252359,
+    8.6713075177,
+    7.8058500782,
+    16.606783985899945,
+    13.36649936
+   ],
+   "load": [
+    9.7119140625,
+    23.10791015625
+   ],
+   "within": {
+    "states": true,
+    "handoff": false,
+    "states_upper_pct": -0.00655307994757536,
+    "states_band_pct": 0.1,
+    "handoff_upper_ms": 9.20039850370421,
+    "handoff_band_ms": 8.800933907699944
+   }
+  }
+ ],
+ "surface": {
+  "available": true,
+  "top_level": 8,
+  "total": 33,
+  "python_names": [
+   "Component",
+   "Deployment",
+   "In",
+   "Out",
+   "Params",
+   "System",
+   "activate",
+   "add",
+   "attach",
+   "deactivate",
+   "describe",
+   "expose",
+   "forward",
+   "health",
+   "log",
+   "metric",
+   "metrics",
+   "native",
+   "now",
+   "period",
+   "place",
+   "record",
+   "replay",
+   "start",
+   "stop",
+   "wire"
+  ],
+  "backends": [
+   "dora",
+   "inproc"
+  ],
+  "cpp_only": [
+   "LK_EXPORT",
+   "LK_PARAMS",
+   "get",
+   "take",
+   "write"
+  ],
+  "widest": {
+   "callable": "In.__init__",
+   "params": 6
+  },
+  "kwargs_bags": 0,
+  "string_enums": 0
+ },
+ "sources": {
+  "kpi_before": "/tmp/claude-1000/-home-bam-bam-ws--claude-worktrees-cpp-controller-nodes-f9a521/8d63efe5-dad3-48eb-87e4-ce978b961621/scratchpad/lk-build/lib2-b/a35_ab_before_m05_ruler.json",
+  "consumer_first_set": "/tmp/claude-1000/-home-bam-bam-ws--claude-worktrees-cpp-controller-nodes-f9a521/8d63efe5-dad3-48eb-87e4-ce978b961621/scratchpad/lk-build/lib2-b/ab_5x30.json",
+  "kpi_head": "/tmp/claude-1000/-home-bam-bam-ws--claude-worktrees-cpp-controller-nodes-f9a521/fe9045e3-39d0-43e6-952b-a6b60a112c96/scratchpad/a35_ab_head.json",
+  "consumer_final": "/tmp/claude-1000/-home-bam-bam-ws--claude-worktrees-cpp-controller-nodes-f9a521/fe9045e3-39d0-43e6-952b-a6b60a112c96/scratchpad/ab_final.json"
+ }
+}
