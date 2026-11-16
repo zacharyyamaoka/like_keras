@@ -2,8 +2,8 @@
 
 A backend module declares what it can honour as data (NAME, VERSION, CAPABILITIES) and runs a checked plan
 (`start(plan, until)` -> a run with `stop()`); the core refuses what it cannot do, it never degrades silently. A run
-that steps components in this process also has `subscribe(leaf, port, sink)`: the one seam attach, `lk top` and the
-dora Python host read a leaf's outputs through (CONTRACT §15 A11; `inproc.Run.subscribe`).
+that steps components in this process also has `subscribe(leaf, port, sink)`: the one seam attach, `lk top` and a
+transport backend's Python host read a leaf's outputs through (CONTRACT §15 A11; `inproc.Run.subscribe`).
 
 WHY backends load on first use: a deployment file names its backend at the top (`from like_keras.backends import
 <name>`), and the all-Python fallback one line away in the same file must run where that backend's transport is

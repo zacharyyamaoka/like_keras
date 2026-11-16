@@ -395,7 +395,7 @@ def _at_tick(record, tick: float):
     """A native box's health or metrics record stamped at its facility tick, uptime_s shifted with it.
     WHY (CONTRACT §15 A10): under lockstep the box stamps its last step's time (0.98 s at the tick 1.0, at 50 Hz)
     where a Python component is stamped at the tick, so a Python <-> C++ swap shifted every stamp by one period.
-    lk-dora-host does the same (cpp/hosts/dora_host.cpp, restamp)."""
+    The native process host does the same (cpp/hosts, restamp)."""
     shift = tick - record.header.stamp
     if getattr(record, "mode", None) == "operational":  # the box sends uptime 0 unless operational
         record = record.replace(uptime_s=record.uptime_s + shift)
@@ -671,8 +671,8 @@ class Run:
     def subscribe(self, leaf, port: str, sink) -> None:
         """`sink(value, sent)` gets every value `leaf` sends on `port`, a facility port (log, health, metrics) and a
         native box's included, on the thread that sends it; it must hand the value over and return, never block.
-        WHY one seam (CONTRACT §15 A11): attach, `lk top` and the dora Python host subscribe here, so a rework of
-        the boxes (M4) keeps them working."""
+        WHY one seam (CONTRACT §15 A11): attach, `lk top` and a transport backend's Python host subscribe here, so
+        a rework of the boxes (M4) keeps them working."""
         box = self._box(leaf)
         box.sinks[port].append(sink)
         if port == "log" and isinstance(box, Box):  # a Python logger reads its sinks from its state (component._Log)
