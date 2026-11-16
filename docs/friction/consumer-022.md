@@ -59,3 +59,7 @@ Nothing in the port: the daemon is the backend's. The attached guard of the alwa
 - **Library investigation, then a fix.** Find the daemon's 2 s work in dora 0.5.0's coordinator + `dora daemon` setup: its coordinator heartbeat, a periodic sweep, its log handling, or something the like_keras hosts send every 2 s. Do this with the daemon not raised (A35 off) as well, to separate "the daemon is busy" from "the busy daemon starves the subscriber at RR 5". If it cannot move off the data path, run a one-machine `target` under `dora run`.
 - **Library fix.** Every like_keras reader host counts the worst gap between arrivals per input (`arrival_gap_max_s.<port>` in its box record). Then a deployer sees a stall after the send without an A/B.
 - **New ruler test.** In kpi's A35 A/B, the Python subscriber's worst arrival gap per run must be within noise of raw dora's, by the same paired rule as states lost and hand-off p99.
+
+## Resolution (2026-11-16, dispatcher)
+
+CONTRACT.md §15 A46: carried into the next track (with M4 and the timing tier); not a v0 exit.
