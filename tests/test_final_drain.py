@@ -21,7 +21,6 @@ import pytest
 
 import like_keras as lk
 from kpi.support import procs
-from kpi.support.dora_private import private_dora  # noqa: F401  (the lk-dora-host cases' fixture)
 from kpi.support.lk import feature_library, recorded
 
 

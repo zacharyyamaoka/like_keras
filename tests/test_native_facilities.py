@@ -27,7 +27,6 @@ import pytest
 from robot_msgs.std import DiagnosticRecord, Metrics
 
 import like_keras as lk
-from kpi.support.dora_private import private_dora  # noqa: F401  (the dora half's session fixture)
 
 LIBRARY = pathlib.Path(__file__).resolve().parents[1] / "build" / "kpi" / "libempty.so"
 UNTIL_S = 3.5  # logical seconds: the facilities publish at 0, 1, 2 and 3
