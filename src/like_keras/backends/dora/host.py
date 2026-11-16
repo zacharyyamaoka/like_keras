@@ -168,18 +168,19 @@ class Link:
         self.ready, self.stopping = threading.Event(), threading.Event()
         self.handler, self.buffered = None, []  # frames before the process is built wait here, in order
         self.lock = threading.RLock()
-        watchdog = threading.Timer(
-            HELLO_TIMEOUT_S,
-            lambda: fail(document, name, f"init_dora_node did not return within {HELLO_TIMEOUT_S} s: is the "
-                         f"dora daemon {document['versions']['dora']} running?", 4, final=False),
-        )
-        watchdog.start()
+        import faulthandler
+
         from dora import Node
 
         import dora
 
+        # WHY faulthandler, not a timer thread: Node() holds the GIL while it waits for the daemon, so no Python
+        # thread could fire; faulthandler's watchdog is a C thread (it dumps the stack, then exits 1)
+        print(f"init_dora_node: a dora {document['versions']['dora']} daemon must answer within "
+              f"{HELLO_TIMEOUT_S} s", file=sys.stderr)
+        faulthandler.dump_traceback_later(HELLO_TIMEOUT_S, exit=True, file=sys.stderr)
         self.node = Node()
-        watchdog.cancel()
+        faulthandler.cancel_dump_traceback_later()
         self.versions = {"like_keras": document["versions"]["like_keras"], "abi": document["versions"]["abi"],
                          "backend": "dora", "dora": getattr(dora, "__version__", "unknown")}
         self.ports = {}  # output id -> its schema hash, as robot_msgs computes it here
@@ -199,6 +200,7 @@ class Link:
             self.ready.set()
 
     def say_hello(self) -> None:
+        print(f"lk_hello sent ({self.nonce[:8]}; seen {sorted(self.seen)})", file=sys.stderr)
         hello = {**self.versions, "node": self.name, "nonce": self.nonce, "ports": self.ports, "seen": self.seen}
         self.node.send_output(HELLO, json.dumps(hello).encode())
 
@@ -220,6 +222,8 @@ class Link:
             if source == peer and theirs["ports"].get(output) != ours:
                 fail(self.document, self.name, f"{output}: node {peer} sends schema hash {theirs['ports'].get(output)}"
                      f", node {self.name} reads it as {ours}: rebuild against the same robot_msgs", 3)
+        print(f"lk_hello from {peer} ({theirs['nonce'][:8]}; names this node: "
+              f"{theirs.get('seen', {}).get(self.name) == self.nonce})", file=sys.stderr)
         changed = self.seen.get(peer) != theirs["nonce"]
         self.seen[peer] = theirs["nonce"]
         if theirs.get("seen", {}).get(self.name) == self.nonce:
@@ -241,6 +245,7 @@ class Link:
                 if ident.startswith(HELLO + "."):
                     self._hello(ident[len(HELLO) + 1 :], event["value"])
                 else:
+                    event["metadata"]["lk_arrived"] = time.monotonic()  # a value's age counts from here (stale=)
                     with self.lock:
                         if self.handler is None:
                             self.buffered.append((ident, event["value"], event["metadata"]))
@@ -393,15 +398,16 @@ class Host:
             return
         with self.link.lock:
             if not self.link.ready.is_set() or not self.started:
-                self.backlog.append((entry, value))
+                self.backlog.append((entry, value, metadata.get("lk_arrived")))
                 return
             self._deliver_now(entry, value)
 
     started = False
 
-    def _deliver_now(self, entry: _Input, value) -> None:
+    def _deliver_now(self, entry: _Input, value, arrived: float | None = None) -> None:
         run = self.run
-        now = run.epoch0 + time.monotonic() - run.mono0  # on the receiver's clock (CONTRACT §4.1 stale=)
+        # on the receiver's clock (CONTRACT §4.1 stale=), from when the frame arrived
+        now = run.epoch0 + (time.monotonic() if arrived is None else arrived) - run.mono0
         for slot, how, _ in entry.slots:
             if value is None:  # retracted (CONTRACT §5.4): a latest reads None, a queue is emptied
                 if how == "latest":
@@ -427,18 +433,28 @@ class Host:
             if self.link.stopping.is_set() and not any(self.outbox.values()):
                 return
 
+    def _drain_backlog(self) -> None:
+        with self.link.lock:
+            for entry, value, arrived in self.backlog:
+                self._deliver_now(entry, value, arrived)
+            self.backlog.clear()
+
     def run_realtime(self) -> int:
+        # WHY before start: what arrived while this process was built (an arm's state) must be in the slots when
+        # the first steps run, or a restarted planner skips its first target (T5: command again within 1 s).
+        # start() samples the clock again; both samples map monotonic to epoch time alike.
+        self.run.epoch0, self.run.mono0 = time.time(), time.monotonic()
+        self._drain_backlog()
         try:
             self.run.start(None)
         except Exception as error:  # §5.7: activate raising: exit non-zero having sent no data frame
             mark(self.document, "refused", self.process, f"{type(error).__name__}: {error}")
             raise
         mark(self.document, "started", self.process)
+        self._drain_backlog()
         with self.link.lock:
+            self._drain_backlog()
             self.started = True
-            for entry, value in self.backlog:
-                self._deliver_now(entry, value)
-            self.backlog.clear()
         sender = threading.Thread(target=self._transmit, name=f"lk-tx-{self.process}", daemon=True)
         sender.start()
         self.link.stopping.wait()

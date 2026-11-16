@@ -324,6 +324,7 @@ void hello_from(::DoraNode& node, const std::string& peer, const ArrowArray& arr
       refuse(3, input.id + ": node " + peer + " sends schema hash " + json_string(hello, input.id) + ", node " +
                     g_node + " reads it as " + input.hash + ": rebuild against the same robot_msgs", true);
   std::string nonce = json_string(hello, "nonce");
+  std::fprintf(stderr, "lk_hello from %s (%.8s)\n", peer.c_str(), nonce.c_str());
   bool changed = host.seen[peer] != nonce;
   host.seen[peer] = nonce;
   size_t seen_at = hello.find("\"seen\": {");

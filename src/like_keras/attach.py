@@ -23,6 +23,7 @@ import os
 import selectors
 import socket
 import struct
+import sys
 import threading
 import time
 from typing import Any
@@ -100,7 +101,7 @@ class Server:
         self.sheet, self.inputs, self.clock, self.writable = sheet, inputs, clock, writable
         self.names = list(sheet["exposed"])
         self.ports = exposed_ports(sheet)
-        self.cached: dict[int, bytes] = {}  # port index -> its latest DATA frame
+        self.cached: dict[int, Any] = {}  # port index -> its latest value
         self.news: collections.deque = collections.deque()
         self.holder, self.expires, self.refused = None, 0.0, collections.Counter()
         self.heard = {name: time.monotonic() for name, port in self.ports.items() if port["dir"] == "out"}
@@ -201,16 +202,30 @@ class Server:
                 pass
         except BlockingIOError:
             pass
+        # WHY the newest only, encoded only for a subscriber: an exposed Out is latest (a reader wants the newest),
+        # and encoding is the costly part on a busy host; it shares the GIL with the deployment's own threads
+        newest, records = {}, []
         while self.news:
             name, value = self.news.popleft()
-            index = FACILITY_PORT if name is None else self.names.index(name)
-            data = frame(DATA, struct.pack("<H", index) + codec.lkf(value))
-            if name is not None:
-                self.cached[index] = data
+            if name is None:
+                records.append(value)
+            else:
+                newest[name] = value
                 self.heard[name] = time.monotonic()
-            for client in self._clients():
-                if (name or FACILITIES) in client.subscribed:
+        clients = self._clients()
+        for name, value in newest.items():
+            index = self.names.index(name)
+            self.cached[index] = value
+            readers = [client for client in clients if name in client.subscribed]
+            if readers:
+                data = frame(DATA, struct.pack("<H", index) + codec.lkf(value))
+                for client in readers:
                     self._send(client, data)
+        readers = [client for client in clients if FACILITIES in client.subscribed]
+        for value in records if readers else ():
+            data = frame(DATA, struct.pack("<H", FACILITY_PORT) + codec.lkf(value))
+            for client in readers:
+                self._send(client, data)
 
     def _clients(self) -> list[_Client]:
         return [key.data for key in self.selector.get_map().values() if isinstance(key.data, _Client)]
@@ -242,10 +257,13 @@ class Server:
         elif kind == DESCRIBE:
             self._send(client, frame(DESCRIBE, json.dumps(self.sheet, default=str).encode()))
         elif kind == SUB:
+            from like_keras import codec
+
             for name in json.loads(payload):
                 client.subscribed.add(name)
-                if name in self.names and self.names.index(name) in self.cached:
-                    self._send(client, self.cached[self.names.index(name)])  # the cached latest value, at once
+                index = self.names.index(name) if name in self.names else None
+                if index in self.cached:  # the cached latest value, at once
+                    self._send(client, frame(DATA, struct.pack("<H", index) + codec.lkf(self.cached[index])))
         elif kind in (WRITE, LEASE):
             self._write(client, payload if kind == WRITE else None)
         elif kind == CONTROL:
@@ -295,6 +313,8 @@ class Server:
 
     def _send(self, client: _Client, data: bytes) -> None:
         if len(client.outbox) >= QUEUE_FRAMES:
+            print(f"like_keras attach {self.sheet['system']}: dropped {client.name}: {QUEUE_FRAMES} frames unread",
+                  file=sys.stderr, flush=True)
             self._drop(client)  # a slow client is dropped; the deployment never waits on one
             return
         client.outbox.append(data)
@@ -397,10 +417,13 @@ class _Attached(Component):
 
     def activate(self) -> None:
         self._link = _Link(self.params.address, self.params.lease_s, path(self), type(self)._lk_outs)
-        self._refused_at = -1.0
+        self._refused_at, self._drops = -1.0, 0
 
     def forward(self, **inputs: Any):
         link = self._link
+        if link.drops > self._drops:
+            self._drops = link.drops
+            self.log.warning("reconnected to %s (the deployment dropped this slow reader)", self.params.address)
         for name, value in inputs.items():
             if value is not None and value is not link.sent.get(name):
                 link.write(name, value)
@@ -423,23 +446,33 @@ class _Attached(Component):
 
 
 class _Link:
-    """The proxy's connection: one I/O thread reading DATA and REFUSED, sending WRITEs and the lease heartbeat."""
+    """The proxy's connection: one I/O thread reading DATA and REFUSED, sending WRITEs and the lease heartbeat.
+    WHY it reconnects: the deployment drops a client that reads too slowly (and may restart); the proxy comes back
+    and subscribes again instead of going silent (the IP-camera idea)."""
 
     def __init__(self, address: str, lease_s: float, name: str, outs: tuple[str, ...]) -> None:
-        _, self.sheet, self.connection = request(address)
-        self.names, self.lease_s = list(self.sheet["exposed"]), lease_s
-        self.ports = exposed_ports(self.sheet)
+        self.address, self.name, self.outs, self.lease_s = address, name, outs, lease_s
+        self.connection = self._connect()
+        self.names, self.ports = list(self.sheet["exposed"]), exposed_ports(self.sheet)
         self.latest: dict[str, Any] = {}
         self.sent: dict[str, Any] = {}
         self.pending: collections.deque = collections.deque()
         self.refusals: collections.deque = collections.deque(maxlen=16)
-        self.writing, self.closed, self.last_sent = False, False, 0.0
-        self.connection.sendall(frame(HELLO, json.dumps({"client": name, "lease_s": lease_s}).encode())
-                                + frame(SUB, json.dumps(list(outs)).encode()))
-        self.connection.settimeout(None)
+        self.writing, self.closed, self.last_sent, self.drops = False, False, 0.0, 0
         self.wake_read, self.wake_write = socket.socketpair()
+        self.first = threading.Event()  # every subscribed Out has its cached latest value
         self.thread = threading.Thread(target=self._loop, name=f"lk-attach-{name}", daemon=True)
         self.thread.start()
+        # WHY wait (activate may block): the first steps then see the deployment's state, so an attached planner
+        # does not skip its first target (T5: a restarted planner commands again within 1 s)
+        self.first.wait(0.5 if outs else 0.0)
+
+    def _connect(self) -> socket.socket:
+        _, self.sheet, connection = request(self.address)
+        connection.sendall(frame(HELLO, json.dumps({"client": self.name, "lease_s": self.lease_s}).encode())
+                           + frame(SUB, json.dumps(list(self.outs)).encode()))
+        connection.settimeout(None)
+        return connection
 
     def write(self, name: str, value) -> None:
         self.sent[name] = value
@@ -458,6 +491,21 @@ class _Link:
         self.wake_write.close()
 
     def _loop(self) -> None:
+        while not self.closed:
+            try:
+                self._serve()
+            except OSError:
+                pass
+            self.connection.close()
+            while not self.closed:  # dropped or restarted: subscribe again
+                try:
+                    self.connection = self._connect()
+                    self.drops += 1
+                    break
+                except OSError:
+                    time.sleep(0.2)
+
+    def _serve(self) -> None:
         from like_keras import codec
         from like_keras.component import message_type
 
@@ -466,30 +514,34 @@ class _Link:
         selector.register(self.connection, selectors.EVENT_READ, "socket")
         selector.register(self.wake_read, selectors.EVENT_READ, "wake")
         heartbeat = self.lease_s / 3
-        while not self.closed:
-            for key, _ in selector.select(heartbeat):
-                if key.data == "wake":
-                    self.wake_read.recv(4096)
-                    continue
-                chunk = self.connection.recv(1 << 20)
-                if not chunk:
-                    self.closed = True
-                    break
-                buffer += chunk
-                for kind, payload in frames(buffer):
-                    if kind == DATA:
-                        (index,) = struct.unpack_from("<H", payload)
-                        name = self.names[index]
-                        self.latest[name] = codec.decode(payload[2:], message_type(self.ports[name]["type"]))
-                    elif kind == REFUSED:
-                        self.refusals.append(json.loads(payload))
-            out = b""
-            while self.pending:
-                name, value = self.pending.popleft()
-                out += frame(WRITE, struct.pack("<H", self.names.index(name)) + codec.lkf(value))
-                self.writing = True
-            if not out and self.writing and time.monotonic() - self.last_sent >= heartbeat:
-                out = frame(LEASE)
-            if out and not self.closed:
-                self.connection.sendall(out)
-                self.last_sent = time.monotonic()
+        try:
+            while not self.closed:
+                for key, _ in selector.select(heartbeat):
+                    if key.data == "wake":
+                        self.wake_read.recv(4096)
+                        continue
+                    chunk = self.connection.recv(1 << 20)
+                    if not chunk:
+                        return
+                    buffer += chunk
+                    for kind, payload in frames(buffer):
+                        if kind == DATA:
+                            (index,) = struct.unpack_from("<H", payload)
+                            name = self.names[index]
+                            self.latest[name] = codec.decode(payload[2:], message_type(self.ports[name]["type"]))
+                            if not self.first.is_set() and all(out in self.latest for out in self.outs):
+                                self.first.set()
+                        elif kind == REFUSED:
+                            self.refusals.append(json.loads(payload))
+                out = b""
+                while self.pending:
+                    name, value = self.pending.popleft()
+                    out += frame(WRITE, struct.pack("<H", self.names.index(name)) + codec.lkf(value))
+                    self.writing = True
+                if not out and self.writing and time.monotonic() - self.last_sent >= heartbeat:
+                    out = frame(LEASE)
+                if out:
+                    self.connection.sendall(out)
+                    self.last_sent = time.monotonic()
+        finally:
+            selector.close()

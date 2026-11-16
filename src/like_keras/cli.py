@@ -25,7 +25,9 @@ attach = importlib.import_module("like_keras.attach")  # the module: the package
 
 def ls(address: str | None) -> int:
     if address is None:
-        directory = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "like_keras")
+        from like_keras.backends import address as socket_of
+
+        directory = os.path.dirname(attach.socket_path(socket_of("any")))  # where every deployment's socket lives
         found = sorted(name for name in os.listdir(directory) if name.endswith(".sock")) if os.path.isdir(directory) else []
         for name in found:
             print(f"unix:{os.path.join(directory, name)}")
@@ -35,12 +37,28 @@ def ls(address: str | None) -> int:
     backend = sheet["backend"]
     print(f"{sheet['system']}  {address}  like_keras {sheet['like_keras']}  abi {sheet['abi']}  "
           f"backend {backend['name']} {backend['version']}  describe {sheet['hash'][:16]}")
+    print(f"  transports here: {', '.join(f'{name} {version}' for name, version in _backends().items())}")
     for name, port in attach.exposed_ports(sheet).items():
         policy = f"queue({port['queue']})" if port["queue"] else "latest"
         stale = f" stale={port['stale']}" if port["stale"] else ""
         print(f"  {name:<20} {port['dir']:<4} {port['type']:<28} {port['hash']}  {policy}{stale}  "
               f"<- {sheet['exposed'][name]}")
     return 0
+
+
+def _backends() -> dict[str, str]:
+    """Every backend this like_keras has, with the version it pins (each backend module writes its own)."""
+    import pkgutil
+
+    from like_keras import backends
+
+    versions = {}
+    for module in pkgutil.iter_modules(backends.__path__):
+        try:
+            versions[module.name] = getattr(backends, module.name).VERSION
+        except Exception:  # a backend that cannot load here is not listed
+            continue
+    return versions
 
 
 def _overdue(health, now: float) -> bool:
