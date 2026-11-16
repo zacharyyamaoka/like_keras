@@ -6,7 +6,10 @@
  * (std/LogRecord), health (std/DiagnosticRecord), metrics (std/Metrics), one record per component per take round
  * (lk_take returns them one by one, then 0, then starts the next round); `path` is the component's name in the box,
  * which the host prefixes with the box's own path. A metrics round starts with the box's own record, path "": its
- * whole step, drops.log (log lines lost) and unreleased (retired messages never released).
+ * whole step, drops.log (log lines lost), unreleased (retired messages never released) and, while its RT thread runs,
+ * sched_policy and sched_priority (CONTRACT §15 A19). After lk_stop the facility ports still hold the box's last
+ * records until lk_destroy (what it logged in its last partial second and in deactivate(), a last health round, mode
+ * offline, and the last metrics): a host takes them once more in between (§15 A28).
  * lk_push(box, port, NULL) retracts that input (CONTRACT §5.4): a latest input reads as none until its next value, a
  * queue is emptied.
  */
@@ -44,7 +47,7 @@ typedef struct {
   double hz;       /* 0: rate-less, a step per queued message */
   const int* cpus; /* the RT thread's affinity; NULL or ncpus 0: the process's */
   int ncpus;
-  int fifo;        /* SCHED_FIFO priority 1-99, 0: none; refused by the kernel -> SCHED_OTHER, logged at warning */
+  int fifo;        /* SCHED_FIFO priority 1-99, 0: none; refused -> rtkit's SCHED_RR, else SCHED_OTHER (§15 A19) */
   int lock_memory; /* mlockall: only a dedicated controller process (a native host in cpp/hosts) sets it */
   int stepped;     /* lockstep: no RT thread; the host calls lk_step */
 } lk_place;

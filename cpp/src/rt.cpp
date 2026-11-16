@@ -442,7 +442,7 @@ double Box::clock() const {
 // ---------------------------------------------------------------- the RT thread's scheduling ladder (CONTRACT §15 A19)
 //
 // SCHED_FIFO at place.fifo, else rtkit's SCHED_RR, else SCHED_OTHER, reported in the box's metrics (sched_policy as
-// Linux numbers it, sched_priority). Lifted, with credit, from the controller lane's raw-dora node
+// Linux numbers it, sched_priority). Lifted, with credit, from the controller lane's first node
 // (moteus_controller_node cpp/src/rt.cpp and rt_sentinel.cpp, fix rounds 3-6), where it took six verify-and-fix
 // rounds to make safe; what carried over, and why:
 // - rtkit is asked from a host thread, with the RT thread's id, before the RT thread's first step: a busctl call
