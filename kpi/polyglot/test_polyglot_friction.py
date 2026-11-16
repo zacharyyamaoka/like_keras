@@ -7,8 +7,9 @@ every one of its tests passes):
   A17 test_converted_input_keeps_a_plan_off_the_rt_thread  part 1, the mixed chain: In<T, Converted>
   A23 test_optional_verdict_input                       part 1, the mixed chain: an optional C++ In, a guard's verdict
   A23 test_optional_queue_input (M0.4)                  part 1, the mixed chain: an optional C++ queue In (A30)
-Their C++ boxes (joint_names.cpp, kept_plan.cpp, verdict.cpp, optional_queue.cpp) are built on demand
-(kpi/support/lk.feature_library): until a decision lands, its box does not compile and its test FAILS, never skips.
+  A31 test_conversion_sees_its_owner (M0.5)             part 1, the mixed chain: from(const T&, const Owner&)
+Their C++ boxes (joint_names.cpp, kept_plan.cpp, verdict.cpp, optional_queue.cpp, owner_conversion.cpp) are built on
+demand (kpi/support/lk.feature_library): until a decision lands, its box does not compile and its test FAILS, never skips.
 M0.4 (CONTRACT §15 A29) moves A16's source to module level (friction_parts.GoldenPlan), so its dora case can start.
 """
 
@@ -262,3 +263,49 @@ def test_optional_queue_input(backend_name, tmp_path, request):
     assert runs["wired"]["gated"] == expected, (
         f"gated, wired to a source that sent 1, 2 and 6: one step per message expected {expected}, "
         f"got {runs['wired']['gated']}")
+
+
+# ---------------------------------------------------------------- A31 (consumer-014; ruler M0.5)
+
+OWNER_GAINS = {"box_a": 2.0, "box_b": 3.0}
+
+
+def test_conversion_sees_its_owner(tmp_path):
+    """CONTRACT §15 A31: a conversion may see its owner, `static Converted from(const T&, const Owner&)`, called only
+    between activate() and deactivate(), reading what the owner set before activate() returned. Two boxes of one
+    .so (owner_conversion.cpp) in one process (same_box, real time, each its own RT thread at 100 Hz), with gains 2
+    and 3, both fed by one Python writer at 50 Hz for 3 s: each converts every value with its own config (its gain,
+    a param, and its offset 1000 x gain, built in activate after a 0.3 s pause), so every echo reads converted =
+    raw x gain + 1000 x gain, to 1e-9; no conversion ran outside activate()..deactivate() (counted by the box, after
+    deactivate as well). WHY (consumer-014): from(const T&) could not reach its component, so the chain's config
+    went into a process-wide global and a second chain in the process had to be refused."""
+    lk = like_keras()
+    library = feature_library("owner_conversion")
+    from kpi.polyglot.friction_parts import JointStateLog, StepCount
+
+    s = lk.System("owners")
+    source = s.add(StepCount(), "source")
+    for box, gain in OWNER_GAINS.items():
+        native = lk.native(library, config={"gain": gain, "counts_path": str(tmp_path / f"{box}.counts")})
+        echo = s.add(native, box, value=source.value)
+        s.add(JointStateLog(path=str(tmp_path / f"{box}.jsonl")), f"{box}_sink", value=echo.echo)
+    dep = lk.Deployment(s)
+    for box in OWNER_GAINS:
+        dep.place(getattr(s, box), hz=100, cpus=kpi_cpus())  # one process: inproc runs everything in this one
+    dep.place(s.source, hz=50)
+    dep.place(*(getattr(s, f"{box}_sink") for box in OWNER_GAINS))
+    dep.start()
+    try:
+        time.sleep(3.0)
+    finally:
+        dep.stop()
+    for box, gain in OWNER_GAINS.items():
+        echoed = rows(tmp_path / f"{box}.jsonl")
+        assert len(echoed) >= 50, f"{box}: {len(echoed)} values converted and taken in 3 s"
+        outside = [row["position"] for row in echoed if row["position"][2] != 0.0]
+        assert not outside, f"{box}: converted outside activate()..deactivate(): {outside[:3]}"
+        wrong = [(raw, converted) for raw, converted, _ in (row["position"] for row in echoed)
+                 if converted is None or abs(converted - (raw * gain + 1000.0 * gain)) > 1e-9]
+        assert not wrong, f"{box} (gain {gain}): (raw, converted) not converted with its own config: {wrong[:3]}"
+        converted, after = struct.unpack("<2q", (tmp_path / f"{box}.counts").read_bytes()[:16])
+        assert converted >= len(echoed) and after == 0, f"{box}: {converted} conversions, {after} outside the window"

@@ -21,6 +21,9 @@ companions pass as well. Weights, gates, formulas and denominators are unchanged
 M0.4 adds four companions the same way, one per defect of the library's fix round 1 (A22 with §4.5, A23, A28, A30),
 and T8 asserts that the LeaseHeld health names the holder (§4.5); weights, gates, formulas and denominators again
 stay as they are.
+M0.5 (CONTRACT §15 A38) adds one companion per decision on the second consumer round (A31-A36: consumer-014..019)
+and on the Python drain under dora (A37), the same way; A35's exit against raw dora is a timing-tier companion of
+T4 (the dora boundary). Weights, gates, formulas and denominators stay as they are.
 """
 
 from __future__ import annotations
@@ -68,9 +71,13 @@ TIMING_TWINS = {"test_T5_planner_crash": "test_T5_planner_crash_within_1s",
 # consumer suite pass too.
 FRICTION_CONSUMER = {
     "test_T1_swap": ["test_fresh_input_counts_arrivals",  # A25: Python and C++ count the same arrivals
-                     "test_log_reaches_readers_at_its_step"],  # M0.4, A30: a log tap reads the swap the same way
+                     "test_log_reaches_readers_at_its_step",  # M0.4, A30: a log tap reads the swap the same way
+                     "test_optional_input_in_python"],  # M0.5, A32: lk.In(T, optional=True), the C++ verdict's peer
     "test_T2_send_cost": ["test_T2_export_and_push_apart"],  # A26: the send split into export and lk_push (timing)
-    "test_T7_exclusivity": ["test_period_in_activate"],  # A20: refused in activate when a tick is too short
+    "test_T4_boundary_stall": ["test_A35_boundary_within_noise_of_raw_dora"],  # M0.5, A35's exit (timing)
+    "test_T7_exclusivity": ["test_period_in_activate",  # A20: refused in activate when a tick is too short
+                            "test_refused_activate_is_final_under_dora"],  # M0.5, A34: final, start() raises
+    "test_T8_claim": ["test_attach_lease_per_input"],  # M0.5, A36: a lease per exposed input
 }
 # Criterion 3: a C++ row is clean only when these pass too (blackbox suite): the component never names its thread.
 FRICTION_BLACK_BOX = ["test_rt_ladder_is_the_librarys"]  # A19: the RT ladder is the library's
@@ -78,17 +85,21 @@ FRICTION_BLACK_BOX = ["test_rt_ladder_is_the_librarys"]  # A19: the RT ladder is
 FRICTION_REACH = {
     "mixed_chain": ["test_converted_input_keeps_a_plan_off_the_rt_thread",  # A17: In<T, Converted>
                     "test_optional_verdict_input",  # A23: an optional C++ In; a verdict as a DiagnosticRecord
-                    "test_optional_queue_input"],  # M0.4, A23/A30: an optional C++ queue In gates only when wired
+                    "test_optional_queue_input",  # M0.4, A23/A30: an optional C++ queue In gates only when wired
+                    "test_conversion_sees_its_owner"],  # M0.5, A31: from(const T&, const Owner&), two in a process
     "codec_bit_exact": ["test_T10_trajectory_joint_names"],  # A16: a JointTrajectory view's joint names
 }
 # Criterion 9: a facility counts only when its companions (facilities suite) pass too.
 FRICTION_FACILITIES = {
     "lifecycle": ["test_sigterm_runs_deactivate",  # A18: SIGTERM and SIGHUP end a deployment as SIGINT does
-                  "test_dora_stop_drains_to_live_readers"],  # M0.4, A28/A30: a dora stop's final drain reaches readers
-    "metrics": ["test_system_facility_ports"],  # A21: a Python System's log/health/metrics, as a native box's
+                  "test_dora_stop_drains_to_live_readers",  # M0.4, A28/A30: a dora stop's final drain reaches readers
+                  "test_dora_stop_drains_python_to_live_readers"],  # M0.5, A37: the same for a Python node
+    "metrics": ["test_system_facility_ports",  # A21: a Python System's log/health/metrics, as a native box's
+                "test_dora_boundary_accounting"],  # M0.5, A35: io_sched_policy, drops and send gaps per exposed Out
     "health": ["test_health_set_by_the_component",  # A22: health(level, code); log.error -> ErrorLogged
                "test_health_tie_keeps_the_facility_message"],  # M0.4, A22 with §4.5: a tie keeps the message
-    "params": ["test_vector_params"],  # A24: LK_PARAMS reflects vectors and vectors of rows
+    "params": ["test_vector_params",  # A24: LK_PARAMS reflects vectors and vectors of rows
+               "test_non_finite_params_defaults"],  # M0.5, A33: NaN and +-inf defaults round-trip
 }
 VALID_GRAPHS = [("test_valid_graph_accepted", name) for name in (
     "cross_group_cycle", "exposed_input_unwired", "fan_out", "fifo_on_python_ignored", "gather", "lagged_cycle", "linear",

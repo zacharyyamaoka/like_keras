@@ -122,3 +122,13 @@ class VerdictGuard(lk.Component):
         if now < self.params.confirm_until_s - 1e-9:
             return DiagnosticRecord(header=Header(stamp=now), path="guard", level="ok")
         return None
+
+
+class StepCount(lk.Component):
+    """A JointState every step, position [step] (1, 2, 3, ...): a steady writer (ruler M0.5, A31's two boxes)."""
+
+    value = lk.Out(JointState)
+
+    def forward(self):
+        self._step = getattr(self, "_step", 0) + 1
+        return JointState(header=Header(stamp=self.now()), name=("step",), position=np.array([float(self._step)]))

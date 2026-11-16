@@ -9,7 +9,11 @@ when every one of its tests passes):
 Ruler M0.4 adds two, from the library verifier's round 1:
   A28 test_dora_stop_drains_to_live_readers      lifecycle: a plain real-time dora stop() delivers the final drain
   A22 test_health_tie_keeps_the_facility_message health: on a tie the component's code, the facility's message
-The C++ boxes (hand_back.cpp, self_health.cpp, table_params.cpp, tie_health.cpp) are built on demand
+Ruler M0.5 (CONTRACT §15 A38) adds three:
+  A33 test_non_finite_params_defaults              params: NaN and +-inf defaults round-trip
+  A35 test_dora_boundary_accounting                metrics: io_sched_policy, drops and send gaps per exposed Out
+  A37 test_dora_stop_drains_python_to_live_readers lifecycle: A28's drain for a Python node under dora
+The C++ boxes (hand_back.cpp, self_health.cpp, table_params.cpp, tie_health.cpp, non_finite.cpp) are built on demand
 (kpi/support/lk.feature_library): until a decision lands, its box does not compile, or the library does not do it,
 and its test FAILS, never skips.
 """
@@ -18,6 +22,7 @@ from __future__ import annotations
 
 import ctypes
 import json
+import math
 import os
 import signal
 import subprocess
@@ -344,3 +349,248 @@ def test_health_tie_keeps_the_facility_message(combination, tmp_path):
              for row in rows(tmp_path / "health.jsonl") if row["path"].endswith("subject") and row["mode"] == "operational"}
     wrong = {stamp: (found.get(stamp), want) for stamp, want in TIE_ROUNDS.items() if found.get(stamp) != want}
     assert not wrong, f"health round: (sent, expected): {wrong}"
+
+
+# ================================================================ ruler M0.5 (CONTRACT §15 A38)
+
+# ---------------------------------------------------------------- A33 (consumer-016): params
+
+NON_FINITE = {"off": math.nan, "upper": math.inf, "lower": -math.inf}
+
+
+def _same_number(found, expected) -> bool:
+    if expected is None or (isinstance(expected, float) and math.isnan(expected)):
+        return found is None or (isinstance(found, float) and math.isnan(found))
+    return found == expected
+
+
+@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+def test_non_finite_params_defaults(backend_name, tmp_path, request):
+    """CONTRACT §15 A33: lk_describe() prints a non-finite params default as NaN, Infinity or -Infinity (what Python's
+    json and strtod read), and lk.native() reads them back. non_finite.cpp's defaults are off = NaN, upper = inf,
+    lower = -inf, gain = 0.5: its lk_describe() is JSON Python reads, with those values; lk.native() accepts the
+    .so; and the values round-trip into the running box, in one process and across processes (lockstep): with no
+    config the box runs its defaults, and with a config that carries non-finite values (Python's json writes them
+    the same way) describe() shows them and the box runs them. WHY (consumer-016): `nan` and `inf` (std::to_chars)
+    made lk.native() fail with a JSONDecodeError, so a component's natural "NaN = off" default broke it."""
+    lk = like_keras()
+    if backend_name == "dora":
+        request.getfixturevalue("private_dora")
+    chosen = backend(backend_name)
+    library = feature_library("non_finite")
+    from kpi.polyglot.friction_parts import JointStateLog
+
+    so = ctypes.CDLL(str(library))
+    so.lk_describe.restype = ctypes.c_char_p
+    text = so.lk_describe().decode()
+    try:
+        defaults = json.loads(text)["params"]
+    except ValueError as error:
+        pytest.fail(f"lk_describe() is not JSON Python reads ({error}): {text[:400]}")
+    assert set(defaults) == {"off", "upper", "lower", "gain"} and defaults["gain"] == 0.5, defaults
+    assert all(_same_number(defaults[key], value) for key, value in NON_FINITE.items()), defaults
+    for case, config in (("defaults", None), ("config", {**NON_FINITE, "gain": 2.0})):
+        s = lk.System(f"non_finite_{backend_name}_{case}")
+        box = s.add(lk.native(library, config=config), "box")
+        s.add(JointStateLog(path=str(tmp_path / f"{case}.jsonl")), "sink", value=box.echo)
+        dep = lk.Deployment(s, backend=chosen, realtime=False)
+        dep.place(s.box, process="box", hz=10)
+        dep.place(s.sink, process="sink")
+        plan = dep.describe()
+        json.dumps(plan)  # the datasheet stays JSON-serialisable data (§4.4)
+        if config is not None:
+            shown = next(component["params"] for path, component in plan["components"].items() if path.endswith(".box"))
+            assert set(shown) == set(config) and all(_same_number(shown[key], config[key]) for key in config), shown
+        try:
+            dep.start(until=0.25)
+        finally:
+            dep.stop()
+        echoed = rows(tmp_path / f"{case}.jsonl")
+        assert len(echoed) == 1, f"{case}: {echoed}"
+        expected = [math.nan, math.inf, -math.inf, 0.5 if config is None else 2.0]
+        assert all(_same_number(found, want) for found, want in zip(echoed[0]["position"], expected)), \
+            f"{case}: the box ran (off, upper, lower, gain) = {echoed[0]['position']}, expected {expected}"
+
+
+# ---------------------------------------------------------------- A35 (consumer-018): metrics at the dora boundary
+
+SLOW_SUBSCRIBER_S = 1.5
+DAEMON_STALL_S = 4.0  # T4's stall
+BOX_TICK_S = 0.01  # the reference arm at 100 Hz
+IN_FLIGHT_S = 0.1  # a step older than this at a metrics record has been taken by TX (sent or superseded) by then
+
+
+def _missing_runs(states: list[dict], before: float) -> tuple[int, int]:
+    """(how many seqs are missing between the subscriber's states stamped before `before`, the longest run of them)."""
+    stamped = sorted((row["seq"], row["stamp"]) for row in states if row["stamp"] < before)
+    runs = [later - earlier - 1 for (earlier, _), (later, _) in zip(stamped, stamped[1:]) if later - earlier > 1]
+    return sum(runs), max(runs, default=0)
+
+
+def test_dora_boundary_accounting(tmp_path, request):
+    """CONTRACT §15 A35, default tier: lk-dora-host reports io_sched_policy in the box record (Linux's numbers, as
+    A19's sched_policy) and counts per exposed Out the steps that never went out and the worst gap between sends.
+    The ruler reads them where consumer-018 proposed and A9 put the box's own counters: the box record (path = the
+    box's own path), as drops.<exposed name> and send_gap_max_s.<exposed name> (seconds).
+    The reference arm (target, real time, 100 Hz, its planner on the fake bus; exposed outputs state and command)
+    with two subscribers of `state` in processes of their own and a reader of its metrics. One subscriber is made
+    deliberately slow (SIGSTOP for SLOW_SUBSCRIBER_S), then the boundary's own consumer, the private dora daemon,
+    is stopped for DAEMON_STALL_S (T4's lever). Then: io_sched_policy is reported, realtime whenever the RT thread's
+    sched_policy is (A19's ladder), and a realtime report is true of lk-dora-host's threads; drops.state,
+    drops.command and both send gaps are reported; and the count is exact against the fast subscriber (queue 1000:
+    dora drops nothing for it, so a seq it misses never left the box): at every box record, the states it missed
+    before the record <= drops.state <= the box's steps - the states it received stamped up to the record; and the
+    worst send gap spans the longest run of states it missed.
+    WHY exactness rather than "non-zero": dora 0.5 never makes a sender wait on a subscriber, and buffers a stopped
+    daemon's sends (ruler lane, measured on today's library: a subscriber stopped 1.5 s cost the fast one 0-3
+    states, as quiet windows do; a daemon stopped 3 s, 0; stopped 12 s, one run of 26 states at 0.77 s); what loses
+    states is a starved TX thread, which no test can starve on demand. On this host some are lost in every run.
+    WHY (consumer-018): over dora the controller's boundary ran SCHED_OTHER while only the RT thread was raised,
+    and the box record carried drops.log only, so 2-3 % of states lost at a subscriber showed up nowhere."""
+    lk = like_keras()
+    dora = dora_backend()
+    private = request.getfixturevalue("private_dora")
+    from kpi.consumer.boundary_ab import thread_policies
+    from kpi.consumer.boundary_parts import SeqLog
+    from kpi.facilities.parts import MetricsLog
+    from kpi.tasks.arm_cell.planner import PickPlanner
+    from kpi.tasks.arm_cell.targets import TargetFile
+
+    native_library("arm_controller")
+    name = f"boundary_{os.getpid()}"
+    s = lk.System(name)
+    targets = s.add(TargetFile(repeat=True), "targets")
+    arm = s.add(lk.native(cells.cell_module().LIBRARY, config=cells.config(tmp_path, lockstep=False)), "arm")
+    planner = s.add(PickPlanner(), "planner", target=targets.target, state=arm.state)
+    s.wire(arm, trajectory=planner.trajectory)
+    s.add(SeqLog(path=str(tmp_path / "fast.jsonl")), "fast", value=arm.state)
+    s.add(SeqLog(path=str(tmp_path / "slow.jsonl")), "slow", value=arm.state)
+    s.add(MetricsLog(path=str(tmp_path / "metrics.jsonl")), "metrics_reader", value=arm.metrics)
+    dep = lk.Deployment(s, backend=dora)
+    dep.place(s.arm, process="arm-controller", hz=1 / BOX_TICK_S, cpus=kpi_cpus(), fifo=80)
+    dep.place(s.targets, hz=2)
+    dep.place(s.planner)
+    dep.place(s.fast, process="fast")
+    dep.place(s.slow, process="slow")
+    dep.place(s.metrics_reader, process="metrics_reader")
+    stopped: list[int] = []
+    dep.start()
+    try:
+        procs.wait_for(lambda: len(rows(tmp_path / "fast.jsonl")) >= 100, 60.0, "the fast subscriber's first states")
+        host = procs.wait_for(lambda: next(iter(procs.pids_with("lk-dora-host", name)), None), 10.0, "lk-dora-host")
+        threads = thread_policies(host)
+        slow = procs.wait_for(lambda: next((pid for pid in procs.pids_with("like_keras.backends.dora.host", name)
+                                            if open(f"/proc/{pid}/cmdline", "rb").read().rstrip(b"\0")
+                                            .endswith(b"slow")), None), 10.0, "the slow subscriber's node")
+        for victim, seconds in ((slow, SLOW_SUBSCRIBER_S), (private.daemon_pid, DAEMON_STALL_S)):
+            os.kill(victim, signal.SIGSTOP)
+            stopped.append(victim)
+            time.sleep(seconds)
+            os.kill(victim, signal.SIGCONT)
+            stopped.remove(victim)
+            time.sleep(1.0)
+        time.sleep(2.0)  # two more metrics rounds after the stall
+    finally:
+        for victim in stopped:
+            os.kill(victim, signal.SIGCONT)
+        dep.stop()
+    box = [row for row in rows(tmp_path / "metrics.jsonl") if row["path"] == f"{name}.arm"]
+    assert box, f"no box record (path {name}.arm) reached the metrics reader"
+    reported = [row["values"] for row in box if "io_sched_policy" in row["values"]]
+    assert reported, f"the box record does not report io_sched_policy; it has {sorted(box[-1]['values'])}"
+    realtime = {os.SCHED_FIFO, os.SCHED_RR}
+    for values in reported:
+        policy = int(values["io_sched_policy"])
+        assert policy in {os.SCHED_OTHER, *realtime}, values
+        if int(values.get("sched_policy", os.SCHED_OTHER)) in realtime:
+            assert policy in realtime, f"the RT thread runs realtime, the I/O threads {policy} (A19's ladder): {values}"
+    if int(reported[0]["io_sched_policy"]) in realtime:
+        raised = sum(count for key, count in threads.items() if key.split()[0] in ("RR", "FIFO"))
+        assert raised >= 3, f"io_sched_policy says realtime; lk-dora-host's threads are {threads}"
+    for port in ("state", "command"):
+        for metric in (f"drops.{port}", f"send_gap_max_s.{port}"):
+            assert any(metric in row["values"] for row in box), \
+                f"the box record has no {metric}: {sorted(box[-1]['values'])}"
+    states = rows(tmp_path / "fast.jsonl")
+    checked, longest_run = 0, 0
+    for row in box:
+        values, at = row["values"], row["stamp"]
+        if "drops.state" not in values or "steps" not in values:
+            continue
+        missed, run = _missing_runs(states, at - IN_FLIGHT_S)
+        received = sum(1 for state in states if state["stamp"] <= at)
+        assert missed <= values["drops.state"] <= values["steps"] - received + 2, (
+            f"the box record at {at:.2f} counts drops.state {values['drops.state']}: the fast subscriber missed "
+            f"{missed} states before it, and the box sent at least {received} of its {values['steps']} steps")
+        checked += 1
+        longest_run = max(longest_run, run)
+    assert checked >= 5, f"{checked} box records with drops.state and steps"
+    gap = max(row["values"].get("send_gap_max_s.state", 0.0) for row in box)
+    assert gap >= max(0.5 * BOX_TICK_S, longest_run * BOX_TICK_S - 2e-3), (
+        f"send_gap_max_s.state {gap} s; the fast subscriber missed a run of {longest_run} consecutive states")
+
+
+# ---------------------------------------------------------------- A37 (ruler lane, M0.4): the Python drain
+
+
+def test_dora_stop_drains_python_to_live_readers(tmp_path, request):
+    """CONTRACT §15 A37, the Python twin of test_dora_stop_drains_to_live_readers: under a plain real-time dora
+    stop(), a Python node's deactivate log line and offline health reach live readers and the recording as a native
+    node's do (A30's stop order includes the Python hosts). HandBackPy (its deactivate writes a file and logs
+    "handed back") in its own process at 20 Hz, real time, its log and health wired to readers in another process
+    and recorded; once the readers hold a health record of the running box, a plain dep.stop(). Then deactivate
+    ran once; the reader and the recording each hold "handed back" once; the box's last health record says offline,
+    with nothing operational after it; and the box's node kept one pid (dora never restarted it).
+    WHY (ruler lane, M0.4's probe): a Python box's line reached neither the reader nor the recording (3 of 3 runs),
+    while a C++ box's reached both."""
+    lk = like_keras()
+    dora = dora_backend()
+    request.getfixturevalue("private_dora")
+    from kpi.facilities.friction_parts import HandBackPy
+    from kpi.facilities.parts import HealthLog, LogLog
+
+    name = f"drain_py_{os.getpid()}"
+    handed_back = tmp_path / "handed_back"
+    s = lk.System(name)
+    box = s.add(HandBackPy(path=str(handed_back)), "box")
+    s.add(LogLog(path=str(tmp_path / "log.jsonl")), "log_reader", value=box.log)
+    s.add(HealthLog(path=str(tmp_path / "health.jsonl")), "health_reader", value=box.health)
+    dep = lk.Deployment(s, backend=dora)
+    dep.record(tmp_path / "run.mcap", box.log, box.health)
+    dep.place(s.box, process="box", hz=20)
+    dep.place(s.log_reader, s.health_reader, process="readers")
+    node_pids: set[int] = set()
+    watching = threading.Event()
+
+    def box_node() -> list[int]:
+        return [pid for pid in procs.pids_with("like_keras.backends.dora.host", name)
+                if open(f"/proc/{pid}/cmdline", "rb").read().rstrip(b"\0").endswith(b"box")]
+
+    def watch() -> None:  # every pid the box's node had, from start() until stop() returned
+        while not watching.is_set():
+            try:
+                node_pids.update(box_node())
+            except OSError:  # a node that ended while it was being read
+                pass
+            time.sleep(0.02)
+
+    watcher = threading.Thread(target=watch, daemon=True)
+    dep.start()
+    watcher.start()
+    try:
+        procs.wait_for(lambda: any(row["path"] == f"{name}.box" for row in rows(tmp_path / "health.jsonl")),
+                       30.0, "a health record of the running box at the reader")
+    finally:
+        dep.stop()
+        watching.set()
+        watcher.join(timeout=5)
+    assert handed_back.read_text() == "handed back\n"
+    read_lines = [row["message"] for row in rows(tmp_path / "log.jsonl")]
+    assert read_lines.count("handed back") == 1, f"the live reader got {read_lines}"
+    read_health = [row for row in rows(tmp_path / "health.jsonl") if row["path"] == f"{name}.box"]
+    _assert_ends_offline([row["mode"] for row in read_health], "the live reader")
+    recorded_lines = [row["message"] for row in recorded(tmp_path / "run.mcap", "log")]
+    assert recorded_lines.count("handed back") == 1, f"the recording holds {recorded_lines}"
+    recorded_health = [row for row in recorded(tmp_path / "run.mcap", "health") if row["path"] == f"{name}.box"]
+    _assert_ends_offline([row["mode"] for row in recorded_health], "the recording")
+    assert len(node_pids) == 1, f"the box's node had pids {sorted(node_pids)}: dora restarted it during the stop"
