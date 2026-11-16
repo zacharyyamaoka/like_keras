@@ -1,8 +1,9 @@
-// Lane cpp's tests of the first consumer's decisions on the C++ side (CONTRACT §15 A17, A19, A20, A22, A23, A24,
-// A28), where the frozen M0.3 ruler test does not reach the failure mode: a queue of converted inputs and a refused
-// conversion (A17), the scheduling policy only while an RT thread runs (A19), the period of a rate-less box (A20),
-// held health against the facility's own and a %s argument (A22), an optional input that is neither wired nor
-// exposed (A23), the JSON paths of a table's errors (A24), and deactivate's last words on the C ABI (A28).
+// Lane cpp's tests of the consumers' decisions on the C++ side (CONTRACT §15 A17, A19, A20, A22, A23, A24, A28, A31),
+// where the frozen ruler test does not reach the failure mode: a queue of converted inputs and a refused conversion
+// (A17), a conversion still running when its owner deactivates (A31), the scheduling policy only while an RT thread
+// runs (A19), the period of a rate-less box (A20), held health against the facility's own and a %s argument (A22),
+// an optional input that is neither wired nor exposed (A23), the JSON paths of a table's errors (A24), and
+// deactivate's last words on the C ABI (A28).
 #include <gtest/gtest.h>
 #include <like_keras/abi.h>
 #include <sched.h>
@@ -173,6 +174,63 @@ TEST(ConvertedInput, AConversionThatThrowsIsARefusedPushAndTheLastValueStays) {
   }
   EXPECT_EQ(made.load(), 1);
   EXPECT_EQ(freed.load(), 1);
+}
+
+// ---------------------------------------------------------------- A31: a conversion sees its owner
+
+struct Owned;
+struct Scaled {  // converted with its owner's scale, set in activate(); slowly, so one is still running at deactivate
+  double value = 0.0;
+  static Scaled from(const rm::JointState& state, const Owned& owner);
+};
+
+struct Owned : lk::Component {
+  lk::In<rm::JointState, Scaled> scaled{this, "scaled"};
+  double scale = 0.0;  // what from() reads: set before activate() returns
+  double seen = -1.0;
+  mutable std::atomic<bool> converting{false};
+  mutable std::atomic<int> conversions{0}, overlapped{0};
+  void activate() override { scale = 2.0; }
+  void forward() override {
+    if (const Scaled* fresh = scaled.take()) seen = fresh->value;
+  }
+  void deactivate() override {
+    if (converting.load()) overlapped.fetch_add(1);  // deactivate ran while a conversion still read this component
+  }
+};
+
+Scaled Scaled::from(const rm::JointState& state, const Owned& owner) {
+  owner.converting = true, owner.conversions.fetch_add(1);
+  std::this_thread::sleep_for(std::chrono::milliseconds(state.position[0] > 3.5 ? 200 : 0));
+  Scaled scaled{state.position[0] * owner.scale};
+  owner.converting = false;
+  return scaled;
+}
+
+TEST(OwnerConversion, RunsOnlyWhileTheOwnerIsOperationalAndDeactivateWaitsForOneInFlight) {
+  lk::System s{"owned"};
+  Owned& owned = s.add<Owned>("owned");
+  s.expose(owned.scaled);
+  Box box{std::move(s)};
+  ArrowArray early = encoded(1.0);
+  EXPECT_EQ(box.push(0, &early), -1) << "pushed before activate(): refused, never converted";
+  std::string error;
+  ASSERT_TRUE(box.start(kStepped, error)) << error;
+  ArrowArray first = encoded(3.0);
+  ASSERT_EQ(box.push(0, &first), 0);
+  box.step(0.0);
+  EXPECT_EQ(owned.seen, 6.0) << "converted with the scale its owner set in activate()";
+  std::thread pusher([&box] {
+    ArrowArray slow = encoded(4.0);  // a 200 ms conversion
+    box.push(0, &slow);
+  });
+  while (!owned.converting.load()) std::this_thread::yield();
+  box.stop();  // deactivate() must wait for the conversion in flight (it reads the owner)
+  pusher.join();
+  EXPECT_EQ(owned.overlapped.load(), 0) << "deactivate() ran while a conversion still read its owner";
+  ArrowArray late = encoded(5.0);
+  EXPECT_EQ(box.push(0, &late), -1) << "pushed after deactivate(): refused, never converted";
+  EXPECT_EQ(owned.conversions.load(), 2);
 }
 
 // ---------------------------------------------------------------- A19: sched_policy while an RT thread runs

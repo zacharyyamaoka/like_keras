@@ -238,6 +238,7 @@ struct Box {
   double epoch0 = 0.0;
   std::int64_t mono0 = 0;
   std::atomic<bool> failed{false};
+  std::atomic<int> converting{0};  // In<T, Converted> conversions running on pushing threads (§15 A31)
   bool started = false;
   std::array<std::deque<ArrowArray>, 3> pending;  // facility records not taken yet, per facility
   std::array<bool, 3> round_open{};

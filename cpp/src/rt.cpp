@@ -419,6 +419,7 @@ void Box::deactivate_all() {
   for (auto child = children.rbegin(); child != children.rend(); ++child) {
     int operational = kOperational;
     if (!child->mode.compare_exchange_strong(operational, kOffline)) continue;
+    while (converting.load() != 0) std::this_thread::yield();  // a conversion that saw it operational ends first (A31)
     try {
       child->component->deactivate();
     } catch (...) {  // deactivate must not throw; if it does, keep shutting down the rest
@@ -724,11 +725,17 @@ bool Box::admit(Inlet& inlet, Slot& slot, ArrowArray& msg) {
     slot.owner = msg, msg.release = nullptr;
     return true;
   }
+  // WHY a window (CONTRACT §15 A31, consumer-014): a conversion may read its owner's params and what activate()
+  // built, so it runs only while the owner is operational. The count and the mode are seq_cst on both sides (here
+  // and deactivate_all), so either this push sees the owner offline or deactivate() waits for this conversion.
   Held* held = nullptr;
+  converting.fetch_add(1);
   try {
-    held = inlet.port->convert(slot.value.data());
+    if (children[inlet.port->owner->index_].mode.load() == kOperational)
+      held = inlet.port->convert(slot.value.data(), inlet.port->owner);
   } catch (...) {  // Converted::from refused it (validation): counted as a refused push, never thrown into C
   }
+  converting.fetch_sub(1);
   release(msg);
   if (held == nullptr) return false;
   slot.owner = ArrowArray{0, 0, 0, 0, 0, nullptr, nullptr, nullptr, drop_held, held};
