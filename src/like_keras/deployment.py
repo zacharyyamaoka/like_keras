@@ -319,7 +319,10 @@ def _check_processes(groups: list[Group], backend: ModuleType, realtime: bool, a
     if "processes" in capabilities:  # each process rebuilds its components as module:qualname(**params)
         for leaf in (leaf for group in groups if group.language == "python" for leaf in group.leaves):
             params = leaf._lk_params()
-            if "<locals>" in type(leaf).__qualname__ or json.loads(json.dumps(params, default=str)) != params:
+            # WHY repr (CONTRACT §15 A33's Python side): NaN != NaN, so a natural "NaN = off" default never compared
+            # equal after its JSON round trip; json writes and reads NaN and +-Infinity as Python's json does
+            again = json.loads(json.dumps(params, default=str))
+            if "<locals>" in type(leaf).__qualname__ or repr(again) != repr(params):
                 failures.append(problem("rebuild", child=path(leaf), at=leaf._lk.site))
     return failures
 

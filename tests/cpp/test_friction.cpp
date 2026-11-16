@@ -1,9 +1,10 @@
-// Lane cpp's tests of the consumers' decisions on the C++ side (CONTRACT §15 A17, A19, A20, A22, A23, A24, A28, A31),
-// where the frozen ruler test does not reach the failure mode: a queue of converted inputs and a refused conversion
-// (A17), a conversion still running when its owner deactivates (A31), the scheduling policy only while an RT thread
-// runs (A19), the period of a rate-less box (A20), held health against the facility's own and a %s argument (A22),
-// an optional input that is neither wired nor exposed (A23), the JSON paths of a table's errors (A24), and
-// deactivate's last words on the C ABI (A28).
+// Lane cpp's tests of the consumers' decisions on the C++ side (CONTRACT §15 A17, A19, A20, A22, A23, A24, A28, A31,
+// A33), where the frozen ruler test does not reach the failure mode: a queue of converted inputs and a refused
+// conversion (A17), a conversion still running when its owner deactivates (A31), the scheduling policy only while an
+// RT thread runs (A19), the period of a rate-less box (A20), held health against the facility's own and a %s argument
+// (A22), an optional input that is neither wired nor exposed (A23), the JSON paths of a table's errors (A24),
+// deactivate's last words on the C ABI (A28), and non-finite numbers in a vector default and where an int is read
+// (A33).
 #include <gtest/gtest.h>
 #include <like_keras/abi.h>
 #include <sched.h>
@@ -16,6 +17,7 @@
 #include <like_keras/lk.hpp>
 #include <like_keras/msgs/sensor.hpp>
 #include <like_keras/msgs/std.hpp>
+#include <limits>
 #include <string>
 #include <thread>
 #include <vector>
@@ -509,8 +511,12 @@ LK_PARAMS(Joint, name, limits)
 struct TableConfig {
   std::vector<Joint> joints;
   std::vector<double> gains{1.5, -2.0};
+  // CONTRACT §15 A33: non-finite defaults (an unbounded limit, NaN = off), and an int beside them
+  std::vector<double> bounds{-std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(),
+                             std::numeric_limits<double>::quiet_NaN()};
+  int window = 4;
 };
-LK_PARAMS(TableConfig, joints, gains)
+LK_PARAMS(TableConfig, joints, gains, bounds, window)
 
 struct TableBox : lk::Component {
   explicit TableBox(const TableConfig& config) : config(config) {}
@@ -536,7 +542,10 @@ std::string created_error(const char* params) {
 
 TEST(TableParams, DefaultsAreShownAndEveryErrorNamesItsRow) {
   const std::string sheet = lk_describe();
-  EXPECT_NE(sheet.find("\"params\": {\"joints\": [], \"gains\": [1.5, -2]}"), std::string::npos) << sheet;
+  EXPECT_NE(sheet.find("\"params\": {\"joints\": [], \"gains\": [1.5, -2], \"bounds\": [-Infinity, Infinity, NaN], "
+                       "\"window\": 4}"),
+            std::string::npos)
+      << sheet;
   EXPECT_EQ(created_error(R"({"joints": [{"name": "a"}, {"name": "b"}], "gains": [1, 2, 3]})"), "");
   EXPECT_EQ(created_error(R"({"joints": [{"name": "a"}, {"name": "b"}, {"nam": "c"}]})"),
             "params.joints[2].nam: unknown key (known: name, limits)");
@@ -545,6 +554,12 @@ TEST(TableParams, DefaultsAreShownAndEveryErrorNamesItsRow) {
             "params.joints[0].limits[1].hgh: unknown key (known: low, high)");
   EXPECT_EQ(created_error(R"({"gains": [1, "two"]})"), "params.gains[1]: expected a number, got a string");
   EXPECT_EQ(created_error(R"({"joints": {"name": "a"}})"), "params.joints: expected an array, got an object");
+}
+
+TEST(NonFiniteParams, ReadBackAsDefaultsPrintThemAndAnIntRefusesThem) {  // CONTRACT §15 A33
+  EXPECT_EQ(created_error(R"({"gains": [NaN, -Infinity], "bounds": [Infinity], "window": 2})"), "");
+  EXPECT_EQ(created_error(R"({"window": NaN})"), "params.window: expected an int, got NaN");
+  EXPECT_EQ(created_error(R"({"window": -Infinity})"), "params.window: expected an int, got -Infinity");
 }
 
 }  // namespace

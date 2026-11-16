@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -409,7 +410,8 @@ struct Parser {
       char* end = nullptr;
       out.kind = Json::kNumber, out.number = std::strtod(at, &end);
       if (end == at) fail("unexpected character");
-      out.integral = std::string_view(at, end - at).find_first_of(".eE") == std::string_view::npos;
+      out.integral =
+          std::isfinite(out.number) && std::string_view(at, end - at).find_first_of(".eE") == std::string_view::npos;
       at = end;
     }
     return out;
@@ -432,6 +434,10 @@ std::string quoted(std::string_view text) {
 }
 
 std::string number(double value) {
+  // WHY these spellings (CONTRACT §15 A33, consumer-016): JSON has none for NaN and infinity, and std::to_chars writes
+  // nan and inf, which no JSON reader takes; Python's json and strtod (lk_create) both read NaN, Infinity, -Infinity
+  if (std::isnan(value)) return "NaN";
+  if (std::isinf(value)) return value > 0 ? "Infinity" : "-Infinity";
   char text[32];
   return std::string(text, std::to_chars(text, text + sizeof text, value).ptr);  // the shortest exact form
 }
