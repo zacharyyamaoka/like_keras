@@ -10,14 +10,35 @@
 [project]
 name = "like_keras"
 version = "0.1.0"
-description = "The communication API for BAM robots: black-box components, wired from outside, placed by a deployment."
+description = "A communication API for robots: black-box components with ports, wired from outside, placed by a deployment."
+readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Zach Yamaoka"}]
+keywords = ["robotics", "dataflow", "dora-rs", "components", "middleware"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
 # WHY one dependency: the lean-core gate (CONTRACT §2.1, kpi/deps.py) allows robot_msgs and nothing else.
-dependencies = ["robot-msgs"]
+# numpy (like_keras.codec, imported lazily) arrives through robot-msgs, which requires numpy>=1.26.
+dependencies = ["robot-msgs>=0.3.0"]
+
+[project.urls]
+Homepage = "https://github.com/zacharyyamaoka/like_keras"
+Repository = "https://github.com/zacharyyamaoka/like_keras"
 
 [project.optional-dependencies]
-# CONTRACT §2.2: backends/dora only.
-dora = ["dora-rs==0.5.0", "pyarrow"]
+# CONTRACT §2.2: backends/dora only. dora-rs-cli is the `dora` CLI the backend drives (backends/dora check_version
+# refuses any other version), so the extra installs it too.
+dora = ["dora-rs==0.5.0", "dora-rs-cli==0.5.0", "pyarrow"]
 # RULER: kpi/ only. pyarrow is the independent Arrow oracle in kpi/golden; dora-rs and dora-rs-cli 0.5.0 are the
 # raw-dora baselines of criterion 2 and the private coordinator/daemon the dora suites start; import-linter and ruff
 # are criterion 3's and criteria 5 and 7's tools, locked here so the scoreboard never fetches them at run time.

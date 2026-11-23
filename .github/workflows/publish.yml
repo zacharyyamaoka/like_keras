@@ -1,0 +1,31 @@
+# Publishes to PyPI when a version tag (v*) is pushed, through PyPI trusted publishing:
+# no API token is stored anywhere. One-time setup on pypi.org: a "pending publisher" for
+# project like_keras, owner zacharyyamaoka, repository like_keras, workflow publish.yml,
+# environment pypi.
+name: publish
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --no-sources --extra test
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE=$PWD/.venv/bin/python && cmake --build build -j2
+      - run: PATH=$PWD/.venv/bin:$PATH uv run --no-sync python -m pytest -q tests
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build --no-sources
+      - run: uv publish --trusted-publishing always

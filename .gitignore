@@ -7,3 +7,6 @@ target/
 kpi/scoreboard.json
 out/
 reports/media/
+.ruff_cache/
+.import_linter_cache/
+dist/
