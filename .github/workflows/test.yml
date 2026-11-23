@@ -13,5 +13,6 @@ jobs:
       # WHY --no-sources: the robot-msgs path source (../robot_msgs) exists only on the dev box; CI uses PyPI.
       - run: uv sync --no-sources --python ${{ matrix.python }} --extra test
       # The native suites load C++ boxes built by cmake under build/ (kpi/support/lk.py).
+      - run: sudo apt-get update && sudo apt-get install -y libgtest-dev
       - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE=$PWD/.venv/bin/python && cmake --build build -j2
       - run: PATH=$PWD/.venv/bin:$PATH uv run --no-sync python -m pytest -q tests
