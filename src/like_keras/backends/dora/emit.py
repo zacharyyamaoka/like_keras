@@ -60,7 +60,10 @@ def write(plan, until: float | None) -> tuple[pathlib.Path, dict]:
     for name, node in document["nodes"].items():
         entry = {"id": name, "restart_policy": "always", "outputs": [HELLO, *node["outputs"]]}
         if node["role"] == "native":
-            entry["path"], entry["args"] = native_host(), f"{plan_path} {name}"
+            host = native_host()
+            if not os.access(host, os.X_OK):  # WHY here: dora only says "failed to prepare node <id>" (CI, 2026-11-23)
+                raise FileNotFoundError(f"lk-dora-host is not built ({host}): run cpp/hosts/build_dora_cxx.sh")
+            entry["path"], entry["args"] = host, f"{plan_path} {name}"
             (directory / f"{name}.host").write_text(host_lines(document, name))
         else:  # WHY /usr/bin/env: dora resolves `path` through symlinks, and the venv's python is one (no venv then)
             module = "gateway" if node["role"] == "gateway" else "host"
