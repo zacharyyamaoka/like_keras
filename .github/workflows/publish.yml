@@ -8,16 +8,9 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 jobs:
+  # WHY: reuse test.yml so the release gate is the exact CI that went green (a copy drifted, 2026-11-23)
   test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - run: uv sync --no-sources --extra test --extra dora
-      - run: sudo apt-get update && sudo apt-get install -y libgtest-dev libbenchmark-dev
-      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE=$PWD/.venv/bin/python && cmake --build build -j2
-      - run: ls -la .venv/bin/dora && .venv/bin/dora --version && PATH=$PWD/.venv/bin:$PATH .venv/bin/python -m pytest -q tests
+    uses: ./.github/workflows/test.yml
   publish:
     needs: test
     runs-on: ubuntu-latest
