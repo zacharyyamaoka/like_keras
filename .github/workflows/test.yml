@@ -26,4 +26,6 @@ jobs:
       - run: JOBS=4 CARGO_TARGET_DIR=$RUNNER_TEMP/dora-cxx-target cpp/hosts/build_dora_cxx.sh
       # WHY .venv/bin/python, not `uv run`: uv run re-syncs without --extra dora (and to .python-version's 3.12),
       # which removed the dora CLI mid-job: "dora --version did not answer (FileNotFoundError)".
-      - run: PATH=$PWD/.venv/bin:$PATH .venv/bin/python -m pytest -q -rs tests
+      # WHY the memlock limit: lk-dora-host mlockall()s (CONTRACT §6.3) as on the rig; the runner's 8 MB default refuses
+      # it (errno 12), and the host's warning line then lands in the logs tests compare exactly (test_final_drain).
+      - run: sudo prlimit --pid $$ --memlock=unlimited:unlimited && PATH=$PWD/.venv/bin:$PATH .venv/bin/python -m pytest -q -rs tests
