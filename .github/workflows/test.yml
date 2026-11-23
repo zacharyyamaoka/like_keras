@@ -15,4 +15,4 @@ jobs:
       # The native suites load C++ boxes built by cmake under build/ (kpi/support/lk.py).
       - run: sudo apt-get update && sudo apt-get install -y libgtest-dev libbenchmark-dev
       - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE=$PWD/.venv/bin/python && cmake --build build -j2
-      - run: PATH=$PWD/.venv/bin:$PATH uv run --no-sync python -m pytest -q tests
+      - run: ls -la .venv/bin/dora && .venv/bin/dora --version && PATH=$PWD/.venv/bin:$PATH .venv/bin/python -m pytest -q tests
