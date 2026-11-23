@@ -210,6 +210,7 @@ dependencies = [
 [package.optional-dependencies]
 dora = [
     { name = "dora-rs" },
+    { name = "dora-rs-cli" },
     { name = "pyarrow" },
 ]
 test = [
@@ -226,6 +227,7 @@ test = [
 requires-dist = [
     { name = "dora-rs", marker = "extra == 'dora'", specifier = "==0.5.0" },
     { name = "dora-rs", marker = "extra == 'test'", specifier = "==0.5.0" },
+    { name = "dora-rs-cli", marker = "extra == 'dora'", specifier = "==0.5.0" },
     { name = "dora-rs-cli", marker = "extra == 'test'", specifier = "==0.5.0" },
     { name = "import-linter", marker = "extra == 'test'", specifier = ">=2.1" },
     { name = "pyarrow", marker = "extra == 'dora'" },
@@ -626,7 +628,7 @@ wheels = [
 
 [[package]]
 name = "robot-msgs"
-version = "0.3.0"
+version = "0.3.1"
 source = { editable = "../robot_msgs" }
 dependencies = [
     { name = "dataclass-values" },
