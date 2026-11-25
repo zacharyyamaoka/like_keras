@@ -201,7 +201,7 @@ def gates(junit: dict, arguments) -> dict:
     equivalence = {test: passed(contract, test) for test in EQUIVALENCE}
     python_inproc = (passed(contract, "test_one_process_matches_schedule") and passed(contract, "test_sent_equals_received", "inproc")
                      and passed(contract, "test_reference_solutions", "pipeline"))
-    # WHY --runs (ruler v3, CONTRACT §15 A49): the differential suite runs as sharded cloud dispatches; the gate reads them
+    # WHY --runs (ruler v2.2, CONTRACT §15 A49): the differential suite runs as sharded cloud dispatches; the gate reads them
     runs = [str(pathlib.Path(path).resolve()) for path in arguments.fallback_runs]
     runs = [] if arguments.skip_fallback_suite or not runs else ["--runs", *runs]
     fallback = run_json([sys.executable, str(KPI / "fallback.py"), *runs], timeout=600)
