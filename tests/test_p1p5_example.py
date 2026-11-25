@@ -2,7 +2,7 @@
 bind=SIM, on inproc and on dora with only `backend=` changed, and sends the same commands; the test double and the
 C++ arm box are each one binding line.
 
-    env -u VIRTUAL_ENV uv run --frozen --directory /home/bam/like_keras --extra test pytest -q tests/test_p1p5_example.py
+    env -u VIRTUAL_ENV uv run --frozen --extra test pytest -q tests/test_p1p5_example.py
 """
 
 from __future__ import annotations

@@ -2,7 +2,7 @@
 the wiring; outside a block the same call runs it. Additive: `add`/`wire`/`expose` and every check stay as they are,
 and a block builds exactly the graph the same `add`/`wire` lines build.
 
-    env -u VIRTUAL_ENV uv run --frozen --directory /home/bam/like_keras --extra test pytest -q tests/test_p1_call.py
+    env -u VIRTUAL_ENV uv run --frozen --extra test pytest -q tests/test_p1_call.py
 """
 
 from __future__ import annotations

@@ -2,7 +2,7 @@
 no forward); `lk.Deployment(system, bind={...})` chooses what runs in their place. Additive: without `bind=` a
 deployment, its checks and its datasheet are v0's byte for byte, and every v0 component binds to itself.
 
-    env -u VIRTUAL_ENV uv run --frozen --directory /home/bam/like_keras --extra test pytest -q tests/test_p5_bind.py
+    env -u VIRTUAL_ENV uv run --frozen --extra test pytest -q tests/test_p5_bind.py
 """
 
 from __future__ import annotations
