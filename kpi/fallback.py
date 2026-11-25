@@ -11,7 +11,9 @@ test health are not like_keras's score:
 2. dependency: bam_rack_twin's pyproject requires no like_keras;
 3. differential suite: bam_rack_twin's whole test suite at the pinned commit gives the same outcome for every test
    (junit testcase: passed / failure / error / skipped) without like_keras importable and with this checkout's like_keras
-   installed into the same venv. A test red in both runs is bam_ws's own, not like_keras's.
+   installed into the same venv. A test red in both runs is bam_ws's own, not like_keras's. A test whose outcome differs
+   is rerun (kpi/fallback_confirm.py: 3 rounds each way, arms alternating in one venv) and counts as like_keras's unless
+   an arm then shows the other arm's outcome. WHY: two runs of the pin without like_keras differed on 2 of 7,795 tests.
 
 Without --runs the gate reports `suite: not run` (red). The suite runs out of memory on the workstation and takes over
 3 h on one VM, so it runs as two 8-shard cloud dispatches, one per arm (kpi/fallback_shard.py on each VM), and --runs
@@ -24,7 +26,9 @@ commit, with B = the payload branch `--payload` prints:
         P=$(mktemp -d); git -C {repo} fetch -q --depth 1 origin B && git -C {repo} archive FETCH_HEAD | tar -x -C $P \\
         && exec python $P/fallback_shard.py --arm <arm> --out {out} --payload $P'
 
-for <arm> = without and with. A shard that timed out, crashed, or ran on another commit, another split, other fallback bytes
+for <arm> = without and with. If the arms differ, `--payload <new dir> --runs ...` adds the differing tests to a new payload,
+and one more dispatch (no --fanout) runs `python $P/fallback_confirm.py --out {out} --payload $P` the same way; pass its
+folder in --runs too. A shard that timed out, crashed, or ran on another commit, another split, other fallback bytes
 or another like_keras (the scored checkout's `src` tree and `pyproject.toml`) turns the gate red, as does any package other
 than like_keras that differs between the arms' venvs. Only the ruler lane re-records the manifest (`--record ROOT`, from a
 clean checkout), when the pin moves; a builder never does.
@@ -63,7 +67,37 @@ def sha256(path: pathlib.Path) -> str | None:
 def identity() -> dict:
     """What the with-arm installs from this checkout: its committed `src` tree and `pyproject.toml`."""
     return {"src_tree": git("rev-parse", "HEAD:src"), "pyproject_blob": git("rev-parse", "HEAD:pyproject.toml"),
-            "runner": sha256(KPI / "fallback_shard.py")}  # WHY: a run made by another ruler's runner is not this gate's
+            "runner": sha256(KPI / "fallback_shard.py"),  # WHY: a run made by another ruler's runner is not this gate's
+            "confirm_runner": sha256(KPI / "fallback_confirm.py")}
+
+
+def confirmations(runs: list[pathlib.Path], manifest: dict, expected: dict, venv: frozenset | None,
+                  problems: list[str]) -> dict[str, dict[str, list[str]]]:
+    """test -> {arm: outcomes} over every valid kpi/fallback_confirm.py record under RUNS (one venv, arms alternating)."""
+    seen: dict[str, dict[str, list[str]]] = {}
+    for folder in runs:
+        for path in sorted(folder.rglob("fallback_confirm.json")):
+            record, where = json.loads(path.read_text()), f"confirmation ({path.parent})"
+            payload = {key: record["payload"].get(key) for key in ("src_tree", "pyproject_blob", "confirm_runner")}
+            wrong = [f"bam_ws {record['bam_ws_commit'][:12]}"] * (record["bam_ws_commit"] != manifest["commit"])
+            wrong += [f"like_keras or runner {payload}"] * (payload != {key: expected[key] for key in payload})
+            wrong += ["a venv other than the arms'"] * (venv is None or frozenset(record["freeze_before"]) != venv)
+            for phase in record["phases"]:
+                probe, freeze = phase["like_keras"], set(phase["freeze"])
+                installed = probe["importable"] and "site-packages" in (probe["origin"] or "")
+                if phase["arm"] == "without" and (probe["importable"] or freeze != venv):
+                    wrong.append(f"round {phase['round']} without: like_keras importable or the venv not restored")
+                if phase["arm"] == "with" and not (installed and len(freeze ^ (venv or set())) == 1):
+                    wrong.append(f"round {phase['round']} with: like_keras not installed alone")
+                if phase["pytest_exit"] not in (0, 1):
+                    wrong.append(f"round {phase['round']} {phase['arm']}: pytest exit {phase['pytest_exit']}")
+            if wrong:
+                problems.append(f"{where}: {'; '.join(wrong)}")
+                continue
+            for phase in record["phases"]:
+                for test, outcome in outcomes(path.parent / phase["junit"]).items():
+                    seen.setdefault(test, {arm: [] for arm in ARMS})[phase["arm"]].extend(outcome)
+    return seen
 
 
 def outcomes(junit: pathlib.Path) -> dict[str, list[str]]:
@@ -142,6 +176,19 @@ def differential(runs: list[pathlib.Path], manifest: dict) -> dict:
     differ = [{"test": name, "without": sorted(tests["without"].get(name, ["absent"])),
                "with": sorted(tests["with"].get(name, ["absent"]))} for name in names
               if sorted(tests["without"].get(name, [])) != sorted(tests["with"].get(name, []))]
+    # WHY a rerun before a difference counts (A49): two runs of the pin without like_keras differed on 2 of 7,795 tests.
+    # A difference is like_keras's unless, rerun >= 3 times each way in one venv, an arm shows the other arm's outcome.
+    rerun = confirmations(runs, manifest, expected, next(iter(venvs["without"]), None), problems) if differ else {}
+    for difference in differ:
+        again = rerun.get(difference["test"], {arm: [] for arm in ARMS})
+        difference["rerun"] = again
+        if min(len(again["without"]), len(again["with"])) < 3:
+            difference["verdict"] = "not confirmed (rerun it: kpi/fallback_confirm.py)"
+        elif set(difference["without"]) & set(again["with"]) or set(difference["with"]) & set(again["without"]):
+            difference["verdict"] = "noise: an arm reproduced the other's outcome"
+        else:
+            difference["verdict"] = "like_keras: reproduced, never seen the other way"
+    counted = [difference for difference in differ if not difference["verdict"].startswith("noise")]
     tally = {arm: {} for arm in ARMS}
     for arm in ARMS:
         for seen in tests[arm].values():
@@ -149,9 +196,9 @@ def differential(runs: list[pathlib.Path], manifest: dict) -> dict:
                 tally[arm][outcome] = tally[arm].get(outcome, 0) + 1
     if not tests["without"]:
         problems.append("no test outcomes at all")
-    verdict = "invalid" if problems else "differs" if differ else "identical"
+    verdict = "invalid" if problems else "differs" if counted else "identical, after reruns" if differ else "identical"
     return {"suite": verdict, "suite_problems": problems, "tests": len(names), "identical": len(names) - len(differ),
-            "different": len(differ), "differences": differ[:50], "outcomes": tally,
+            "different": len(differ), "noise": len(differ) - len(counted), "differences": differ[:50], "outcomes": tally,
             "shards": {arm: len(shards) for arm, shards in arms.items()}}
 
 
@@ -167,14 +214,16 @@ def record(root: pathlib.Path, manifest: dict) -> dict:
             "files": {name: sha256(root / name) for name in manifest["files"]}}
 
 
-def payload(out: pathlib.Path, manifest: dict) -> dict:
-    """OUT: a fresh git repo the VMs fetch, holding this checkout's like_keras (HEAD) and the shard runner."""
+def payload(out: pathlib.Path, manifest: dict, confirm: list[str]) -> dict:
+    """OUT: a fresh git repo the VMs fetch: this checkout's like_keras (HEAD), the runners, and the tests to rerun."""
     out.mkdir(parents=True)
     (out / "like_keras").mkdir()
     archive = subprocess.run(["git", "-C", str(REPO), "archive", "HEAD", "pyproject.toml", "README.md", "LICENSE", "src"],
                              capture_output=True, check=True).stdout
     subprocess.run(["tar", "-x", "-C", str(out / "like_keras")], input=archive, check=True)
-    (out / "fallback_shard.py").write_bytes((KPI / "fallback_shard.py").read_bytes())
+    for runner in ("fallback_shard.py", "fallback_confirm.py"):
+        (out / runner).write_bytes((KPI / runner).read_bytes())
+    (out / "confirm.txt").write_text("".join(f"{test}\n" for test in confirm))
     (out / "fallback_manifest.json").write_text(json.dumps(manifest, indent=1) + "\n")
     commit = git("rev-parse", "HEAD")
     (out / "payload.json").write_text(json.dumps({"like_keras_commit": commit, **identity(),
@@ -184,7 +233,7 @@ def payload(out: pathlib.Path, manifest: dict) -> dict:
         subprocess.run(["git", "-C", str(out), *step], check=True)
     branch = f"claude/lk-payload/{commit[:9]}-{git('rev-parse', 'HEAD', cwd=out)[:7]}"
     return {"payload": str(out), "branch": branch, "push": f"git -C {out} push <bam_ws origin url> HEAD:refs/heads/{branch}",
-            "prepare": PREPARE}
+            "prepare": PREPARE, "confirm": confirm}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -193,12 +242,14 @@ def main(argv: list[str] | None = None) -> int:
                         help="folders holding both arms' collected shards (kpi/fallback_shard.py records)")
     parser.add_argument("--suite", action="store_true", help="(kept for older callers; the suite is read from --runs)")
     parser.add_argument("--manifest", type=pathlib.Path, default=MANIFEST, help="(the ruler's mutation checks)")
-    parser.add_argument("--payload", type=pathlib.Path, help="write the VMs' payload repo here and exit")
+    parser.add_argument("--payload", type=pathlib.Path,
+                        help="write the VMs' payload repo here and exit (with --runs: their differences to rerun)")
     parser.add_argument("--record", type=pathlib.Path, help="re-record the manifest from this clean checkout and exit")
     arguments = parser.parse_args(argv)
     manifest = json.loads(arguments.manifest.read_text())
     if arguments.record or arguments.payload:
-        result = record(arguments.record, manifest) if arguments.record else payload(arguments.payload, manifest)
+        confirm = [row["test"] for row in differential(arguments.runs, manifest)["differences"]] if arguments.runs else []
+        result = record(arguments.record, manifest) if arguments.record else payload(arguments.payload, manifest, confirm)
         if arguments.record:
             arguments.manifest.write_text(json.dumps(result, indent=1, ensure_ascii=False) + "\n")
         print(json.dumps(result, indent=1))
@@ -217,7 +268,7 @@ def main(argv: list[str] | None = None) -> int:
     report = {"files_changed": changed, "like_keras_required": hard, "pinned": manifest["commit"], "suite": "not run"}
     if arguments.runs:
         report |= differential(arguments.runs, manifest)
-    report["pass"] = not changed and not hard and report["suite"] == "identical"
+    report["pass"] = not changed and not hard and report["suite"] in ("identical", "identical, after reruns")
     print(json.dumps(report))
     return 0 if report["pass"] else 1
 
