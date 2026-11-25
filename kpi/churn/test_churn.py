@@ -70,6 +70,7 @@ def test_wire_is_owned_by_like_keras(tmp_path):
     assert result.returncode == 0 and result.stdout.strip().endswith("ok"), result.stderr[-3000:]
 
 
+@pytest.mark.backend("dora")
 def test_nodes_only(tmp_path, private_dora):
     """The dataflow start() writes: nodes only, no operators, no `custom:`, restart_policy always on every node,
     no `_unstable_deploy` without host=, ids from [a-zA-Z0-9_.-]."""
@@ -99,6 +100,7 @@ def test_nodes_only(tmp_path, private_dora):
         assert re.fullmatch(r"[a-zA-Z0-9_.-]+", node["id"]), node["id"]
 
 
+@pytest.mark.backend("dora")
 @pytest.mark.parametrize("fake", ["other_version", "hangs"])
 def test_T11_cli_skew_refused_within_2s(fake, tmp_path, monkeypatch):
     """A `dora` CLI of another version on PATH: start() refuses within 2 s naming both versions; one that hangs

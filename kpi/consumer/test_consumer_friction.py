@@ -31,11 +31,11 @@ import time
 import numpy as np
 import pytest
 
-from kpi.support import cells, procs
+from kpi.support import backends, cells, procs
 from kpi.support.lk import (BUILD, KPI, backend, dora_backend, feature_library, kpi_cpus, like_keras, native_library,
                             recorded, subprocess_env, timing_tier)
 
-COMBINATIONS = ["python-inproc", "python-dora", "cpp-inproc", "cpp-dora"]
+COMBINATIONS = backends.combinations("python", "cpp")  # ruler v2: python-<backend>, cpp-<backend>
 
 
 def rows(path) -> list[dict]:
@@ -188,7 +188,7 @@ def _timed_pydll(durations: list[float]):
 
 
 @pytest.mark.timing
-@pytest.mark.parametrize("placement", ["same_box"])
+@pytest.mark.parametrize("placement", backends.placements("same_box"))
 def test_T2_export_and_push_apart(placement, tmp_path, monkeypatch):
     """CONTRACT §15 A26, timing tier: T2's 1000 sends of a 7 x 1000 plan in one process, while the node ticks, with
     the send split in two: the time inside lk_push (the C ABI hand-off) and the rest of the send on the planner's
@@ -268,6 +268,7 @@ def _log_tap(placement: str, directory) -> list[tuple[float, int, str, int]]:
     return [(row["now"], row["level"], row["message"], row["tick"]) for row in rows(directory / "log.jsonl")]
 
 
+@pytest.mark.backend("dora")
 def test_log_reaches_readers_at_its_step(tmp_path, request):
     """CONTRACT §15 A30 (contract-007 item 3), T1's swap seen through a log tap: under lockstep a reader component
     gets a native box's log line at the step that logged it, the same as a Python twin's. log_steps.cpp and its
@@ -339,7 +340,7 @@ def _deadman_pair(backend_name: str, directory, guard: dict | None) -> dict[str,
                                for language in ("cpp", "python")}}
 
 
-@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+@pytest.mark.parametrize("backend_name", backends.names())
 def test_optional_input_in_python(backend_name, tmp_path, request):
     """CONTRACT §15 A32: lk.In(T, optional=True), A23's meaning in Python: unwired is legal, forward gets None for
     it (the argument is passed; DeadmanPy's forward has no default for it), describe() lists it. T1's shape: the
@@ -375,6 +376,7 @@ START_BOUND_S = 60.0  # WHY: a dora dataflow starts in seconds here, but tens of
 SETTLE_S = 3.0  # a node dora restarts refuses again within this (consumer-017: 30-100 restarts a second)
 
 
+@pytest.mark.backend("dora")
 @pytest.mark.parametrize("mode", ["realtime", "lockstep"])
 def test_refused_activate_is_final_under_dora(mode, tmp_path, request):
     """CONTRACT §15 A34: a refused activate() is final under dora too, in real time and in lockstep alike.
@@ -527,6 +529,7 @@ A35_SECONDS = 20.0
 
 
 @pytest.mark.timing
+@pytest.mark.backend("dora")
 def test_A35_boundary_within_noise_of_raw_dora(tmp_path, request):
     """CONTRACT §15 A35's exit, timing tier: on the same twin scenario (kpi/consumer/boundary_ab.py: the reference
     arm at 100 Hz on the fake bus, a 7 x 1000 plan every 0.5 s with lead 0, a subscriber in a process of its own),

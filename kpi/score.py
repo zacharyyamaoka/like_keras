@@ -468,6 +468,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="check the fallback files' bytes only; the gate then reports red (suite not run)")
     parser.add_argument("--out", type=pathlib.Path, default=KPI / "scoreboard.json")
     arguments = parser.parse_args(argv)
+    if os.environ.get("LK_BACKEND"):  # WHY (ruler v2): the frozen denominators name every backend; a subset scores red
+        parser.error("LK_BACKEND is set: the scoreboard runs every backend the ruler scores (kpi/support/backends.py)")
     timing = os.environ.get("KPI_TIER") == "timing"
     junit = run_suites(arguments.suites, arguments.suite_timeout)
     static = run_json([sys.executable, str(KPI / "blackbox.py")])

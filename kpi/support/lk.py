@@ -51,7 +51,16 @@ def inproc_backend():
 
 
 def backend(name: str):
-    return dora_backend() if name == "dora" else inproc_backend()
+    """The like_keras backend `name` (kpi/support/backends.py picks the names; ruler v2), or skip."""
+    if name == "dora":
+        return dora_backend()
+    if name == "inproc":
+        return inproc_backend()
+    like_keras()
+    try:  # WHY by name: a new backend runs the same tests with zero test edits (idea I-002)
+        return importlib.import_module(f"like_keras.backends.{name}")
+    except ImportError as error:
+        pytest.skip(f"like_keras.backends.{name} is not importable ({error})")
 
 
 def native_library(name: str) -> pathlib.Path:

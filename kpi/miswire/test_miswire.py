@@ -9,6 +9,7 @@ import threading
 import pytest
 
 from kpi.miswire import cases
+from kpi.support import backends
 from kpi.support.lk import like_keras
 
 
@@ -17,7 +18,8 @@ def marked_lines(case) -> set[int]:
     return {first + index for index, line in enumerate(lines) if "# <- caught here" in line}
 
 
-@pytest.mark.parametrize("name", sorted(cases.CASES))
+@pytest.mark.parametrize("name", backends.imported_by(sorted(cases.CASES),
+                                                    lambda name: inspect.getsource(cases.CASES[name])))
 def test_miswire_rejected(name, request):
     lk = like_keras()
     if name in cases.NEEDS_DORA:

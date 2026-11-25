@@ -17,10 +17,11 @@ import time
 
 import pytest
 
+from kpi.support import backends
 from kpi.support.lk import backend as load_backend
 from kpi.support.lk import like_keras
 
-BACKENDS = ["inproc", "dora"]
+BACKENDS = backends.names()  # ruler v2: --backend / LK_BACKEND (kpi/support/backends.py)
 EPOCH_SLACK_S = 0.05  # how far now() may sit from the wall clock it is mapped to (the offset sampled at start, §5.6)
 
 

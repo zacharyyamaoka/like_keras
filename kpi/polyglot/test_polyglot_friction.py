@@ -25,6 +25,7 @@ import numpy as np
 import pytest
 
 from kpi.golden import make_golden
+from kpi.support import backends
 from kpi.support.lk import backend, feature_library, kpi_cpus, like_keras, python, subprocess_env
 
 
@@ -38,7 +39,7 @@ def rows(path) -> list[dict]:
 # ---------------------------------------------------------------- A16 (consumer-001)
 
 
-@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+@pytest.mark.parametrize("backend_name", backends.names())
 def test_T10_trajectory_joint_names(backend_name, tmp_path, request):
     """CONTRACT §15 A16: the C++ JointTrajectory view carries the plan's joint names (a std::string_view per joint,
     into the received buffer, valid for the step). The golden plan (a 2-byte and a 3-byte UTF-8 name) goes Python ->
@@ -170,7 +171,7 @@ def _first_hold(commands: list[dict]) -> float | None:
     return commands[first + 1]["stamp"]
 
 
-@pytest.mark.parametrize("placement", ["same_box", "target"])
+@pytest.mark.parametrize("placement", backends.placements("same_box", "target"))
 def test_optional_verdict_input(placement, tmp_path, request):
     """CONTRACT §15 A23: a C++ input may be optional (InOpts{.optional = true}): unwired it is legal, reads nullptr,
     and describe() lists it; a guard's verdict is a robot_msgs DiagnosticRecord (header.stamp = the judged state's
@@ -235,7 +236,7 @@ def _stepped_every_tick_reading_nullptr(reports: list, what: str) -> None:
     assert all(report[1] == 1.0 for report in reports), f"{what}: an input nothing writes did not read nullptr: {reports}"
 
 
-@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+@pytest.mark.parametrize("backend_name", backends.names())
 def test_optional_queue_input(backend_name, tmp_path, request):
     """CONTRACT §15 A23 for a QUEUE input (InOpts{.queue = 4, .optional = true}), as A30 ratifies it: unwired is
     legal and reads nullptr, so an optional queue input nothing writes never holds the gather of §5.2. One box

@@ -37,7 +37,7 @@ import time
 
 import pytest
 
-from kpi.support import cells, procs
+from kpi.support import backends, cells, procs
 from kpi.support.lk import (backend, dora_backend, feature_library, kpi_cpus, like_keras, native_library, recorded,
                             subprocess_env)
 
@@ -51,8 +51,8 @@ def rows(path) -> list[dict]:
 
 # ---------------------------------------------------------------- A18 (consumer-003): lifecycle
 
-SIGNAL_CASES = ["py-inproc-SIGTERM", "py-inproc-SIGHUP", "cpp-inproc-SIGTERM", "cpp-inproc-SIGHUP",
-                "cpp-dora-SIGTERM", "cpp-dora-node-SIGTERM"]
+SIGNAL_CASES = backends.cases(["py-inproc-SIGTERM", "py-inproc-SIGHUP", "cpp-inproc-SIGTERM", "cpp-inproc-SIGHUP",
+                               "cpp-dora-SIGTERM", "cpp-dora-node-SIGTERM"])
 
 
 @pytest.mark.parametrize("case", SIGNAL_CASES)
@@ -166,7 +166,7 @@ HEALTH_ROUNDS = {1.0: ("error", "Refused"), 2.0: ("error", "Refused"), 3.0: ("wa
                  8.0: ("error", "ErrorLogged")}
 
 
-@pytest.mark.parametrize("combination", ["python-inproc", "cpp-inproc"])
+@pytest.mark.parametrize("combination", backends.cases(["python-inproc", "cpp-inproc"]))
 def test_health_set_by_the_component(combination, tmp_path):
     """CONTRACT §15 A22, in both languages, lockstep (health rounds at 1 s, 2 s, ...): a component's
     health(level, code) is held until it is called again (rounds 1-2 error / Refused, 3-5 warn / Degraded, 6-7 ok);
@@ -207,7 +207,7 @@ ROWS = [{"name": "shoulder", "value": 1.5}, {"name": "elbow", "value": -2.0}, {"
 GAINS = [10.0, 20.0, 30.0]
 
 
-@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+@pytest.mark.parametrize("backend_name", backends.names())
 def test_vector_params(backend_name, tmp_path, request):
     """CONTRACT §15 A24: LK_PARAMS reflects std::vector<double> and std::vector<Row> of an LK_PARAMS aggregate,
     filled at lk_create: lk_describe() shows their defaults as [], describe() shows every row, the box receives every
@@ -256,6 +256,7 @@ def test_vector_params(backend_name, tmp_path, request):
 # ---------------------------------------------------------------- A28 under dora (M0.4; library verifier, round 1)
 
 
+@pytest.mark.backend("dora")
 def test_dora_stop_drains_to_live_readers(tmp_path, request):
     """CONTRACT §15 A28 as A30 orders it: every stop of a native box drains its log, health and metrics once more
     after the last deactivate(), and a real-time dora stop() signals the native nodes first, so that drain reaches
@@ -324,7 +325,7 @@ TIE_ROUNDS = {1.0: ("error", "Braked", ""), 2.0: ("error", "Braked", "brake held
               3.0: ("warn", "Slipping", "slipping: J3"), 4.0: ("warn", "Slipping", "")}
 
 
-@pytest.mark.parametrize("combination", ["python-inproc", "cpp-inproc"])
+@pytest.mark.parametrize("combination", backends.cases(["python-inproc", "cpp-inproc"]))
 def test_health_tie_keeps_the_facility_message(combination, tmp_path):
     """CONTRACT §15 A22 with §4.5: health reports the worse of the component's own health(level, code) and the
     facility's; on a tie the component's code wins and the facility's message is kept. In both languages, lockstep
@@ -370,7 +371,7 @@ def _same_number(found, expected) -> bool:
     return found == expected
 
 
-@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+@pytest.mark.parametrize("backend_name", backends.names())
 def test_non_finite_params_defaults(backend_name, tmp_path, request):
     """CONTRACT §15 A33: lk_describe() prints a non-finite params default as NaN, Infinity or -Infinity (what Python's
     json and strtod read), and lk.native() reads them back. non_finite.cpp's defaults are off = NaN, upper = inf,
@@ -433,6 +434,7 @@ def _missing_runs(states: list[dict], before: float) -> tuple[int, int]:
     return sum(runs), max(runs, default=0)
 
 
+@pytest.mark.backend("dora")
 def test_dora_boundary_accounting(tmp_path, request):
     """CONTRACT §15 A35, default tier: lk-dora-host reports io_sched_policy in the box record (Linux's numbers, as
     A19's sched_policy) and counts per exposed Out the steps that never went out and the worst gap between sends.
@@ -539,6 +541,7 @@ def test_dora_boundary_accounting(tmp_path, request):
 # ---------------------------------------------------------------- A37 (ruler lane, M0.4): the Python drain
 
 
+@pytest.mark.backend("dora")
 def test_dora_stop_drains_python_to_live_readers(tmp_path, request):
     """CONTRACT §15 A37, the Python twin of test_dora_stop_drains_to_live_readers: under a plain real-time dora
     stop(), a Python node's deactivate log line and offline health reach live readers and the recording as a native
@@ -621,7 +624,7 @@ def _canonical(params) -> str:
     return json.dumps(params, sort_keys=True)
 
 
-@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+@pytest.mark.parametrize("backend_name", backends.names())
 def test_native_describe_lists_param_defaults(backend_name):
     """CONTRACT §15 A41: a native box's describe() lists every LK_PARAMS field with its default, overlaid by the config
     given, as a Python component's does. described_params.cpp (scalars of every reflected kind, NaN among them, a
@@ -802,7 +805,7 @@ def _refusals_through_the_c_abi(library) -> list[str]:
     return problems
 
 
-@pytest.mark.parametrize("case", ["inproc", "dora", "before_activate"])
+@pytest.mark.parametrize("case", [*backends.names(), "before_activate"])
 def test_refused_pushes_are_counted_and_logged(case, tmp_path, request):
     """CONTRACT §15 A42: a push the box refuses (a conversion that throws, a push outside the activate/deactivate
     window, more than kMaxJoints) is counted per input as refused.<port> in the component's metrics and logged on the
@@ -843,7 +846,7 @@ GIVEN_TABLE = [{"name": "wrist"}, {"name": "elbow", "offset": 0.75, "scale": 4.0
 FILLED_TABLE = [{**ROW_MEMBER_DEFAULTS, **row} for row in GIVEN_TABLE]
 
 
-@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+@pytest.mark.parametrize("backend_name", backends.names())
 def test_partly_given_rows_run_as_described(backend_name, tmp_path, request):
     """CONTRACT §15 A44: a given row of a params table is filled from the row type's member defaults (a
     value-initialized row), never from the default table's row at the same index, and describe() lists each given

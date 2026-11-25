@@ -13,12 +13,12 @@ import time
 
 import pytest
 
-from kpi.support import mcap
+from kpi.support import backends, mcap
 from kpi.support.lk import backend as load_backend
 from kpi.support.lk import decode, like_keras, lk_command, native_library
 
-COMBINATIONS = ["python-inproc", "python-dora", "cpp-inproc", "cpp-dora"]
-INPROC_COMBINATIONS = ["python-inproc", "cpp-inproc"]  # test_health_lockstep's (CONTRACT §15 A14)
+COMBINATIONS = backends.combinations("python", "cpp")  # ruler v2: python-<backend>, cpp-<backend>
+INPROC_COMBINATIONS = backends.cases(["python-inproc", "cpp-inproc"])  # test_health_lockstep's (CONTRACT §15 A14)
 STANDARD_METRICS = {"steps", "step_p50_s", "step_p99_s", "step_max_s", "period_error_p99_s", "overruns"}
 
 

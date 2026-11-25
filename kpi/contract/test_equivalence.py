@@ -18,7 +18,7 @@ import json
 import numpy as np
 import pytest
 
-from kpi.support import arm_cell_oracle, cells, mcap
+from kpi.support import arm_cell_oracle, backends, cells, mcap
 from kpi.support.lk import BUILD, KPI, backend, like_keras, recorded, kpi_cpus
 
 UNTIL_S = 4.0
@@ -50,6 +50,7 @@ def test_one_process_matches_schedule(tmp_path):
     assert len(streams["trajectory"]) == len(expected.plans), "sent != received: a plan was lost"
 
 
+@pytest.mark.backend("dora")
 def test_across_processes(tmp_path, private_dora):
     """The same Python cell, the arm in one process vs in its own process under dora: the same bytes."""
     one = run_variant("kpi.tasks.arm_cell.swaps.process.a.deploy", tmp_path / "one")
@@ -58,7 +59,7 @@ def test_across_processes(tmp_path, private_dora):
     assert frames(one, "trajectory") == frames(two, "trajectory")
 
 
-@pytest.mark.parametrize("placement", ["same_box", "target"])
+@pytest.mark.parametrize("placement", backends.placements("same_box", "target"))
 def test_cpp_replacement(placement, tmp_path, request):
     if placement == "target":
         request.getfixturevalue("private_dora")
@@ -74,7 +75,7 @@ def test_cpp_replacement(placement, tmp_path, request):
         assert frames(same_box["_path"], "command") == frames(cpp["_path"], "command"), "the same .so, two placements"
 
 
-@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+@pytest.mark.parametrize("backend_name", backends.names())
 def test_sent_equals_received(backend_name, tmp_path, request):
     lk = like_keras()
     if backend_name == "dora":
@@ -93,7 +94,8 @@ def test_sent_equals_received(backend_name, tmp_path, request):
     assert received == list(range(300))
 
 
-@pytest.mark.parametrize("task", ["pipeline", "relay"])
+@pytest.mark.parametrize("task", backends.imported_by(["pipeline", "relay"], lambda task: (
+    KPI / "tasks" / task / "solution" / f"{task}.py").read_text()))
 def test_reference_solutions(task, tmp_path, request):
     """The frozen criterion-4 solutions run and produce exactly their plain-Python outputs."""
     like_keras()
@@ -111,8 +113,9 @@ def test_reference_solutions(task, tmp_path, request):
     assert (tmp_path / "solution.txt").read_text() == (tmp_path / "plain.txt").read_text()
 
 
-@pytest.mark.parametrize("variant", ["process-a", "process-b", "language-a", "language-b", "backend-a", "backend-b",
-                                     "host-a", "host-b"])
+@pytest.mark.parametrize("variant", backends.imported_by(
+    ["process-a", "process-b", "language-a", "language-b", "backend-a", "backend-b", "host-a", "host-b"],
+    lambda variant: (KPI / "tasks" / "arm_cell" / "swaps" / variant.replace("-", "/") / "deploy.py").read_text()))
 def test_swap_variant(variant, tmp_path, request):
     """Each frozen swap variant runs in lockstep with the reference command stream; host-b (two machines) is v0.1,
     so it must only describe (CONTRACT §13)."""

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 
 import pytest
 
+from kpi.support import backends
 from kpi.support.lk import BUILD, like_keras
 
 
@@ -173,7 +175,7 @@ def graph_gather(lk, parts):
 GRAPHS = {name.removeprefix("graph_"): function for name, function in globals().items() if name.startswith("graph_")}
 
 
-@pytest.mark.parametrize("name", sorted(GRAPHS))
+@pytest.mark.parametrize("name", backends.imported_by(sorted(GRAPHS), lambda name: inspect.getsource(GRAPHS[name])))
 def test_valid_graph_accepted(name):
     lk = like_keras()
     from kpi.miswire import parts

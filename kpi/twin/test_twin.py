@@ -20,7 +20,7 @@ import time
 import numpy as np
 import pytest
 
-from kpi.support import cells, mcap
+from kpi.support import backends, cells, mcap
 from kpi.support.lk import BUILD, KPI, like_keras
 
 ARM = KPI / "tasks" / "arm_cell"
@@ -70,7 +70,7 @@ def ten_lockstep_runs(placement: str, tmp_path, clock) -> tuple[list[str], list[
     return hashes, speeds
 
 
-@pytest.mark.parametrize("placement", ["fallback", "same_box"])
+@pytest.mark.parametrize("placement", backends.placements("fallback", "same_box"))
 def test_ten_runs_hash_identical_at_10x_cpu_time(placement, tmp_path):
     """Default tier: ten seeded lockstep runs give identical output-stream hashes, each at >= 10x real time on this
     process's CPU time. WHY CPU time here: on the powered rig the lanes run at nice 19 on two shared cores, where
@@ -83,7 +83,7 @@ def test_ten_runs_hash_identical_at_10x_cpu_time(placement, tmp_path):
 
 
 @pytest.mark.timing
-@pytest.mark.parametrize("placement", ["fallback", "same_box"])
+@pytest.mark.parametrize("placement", backends.placements("fallback", "same_box"))
 def test_ten_runs_hash_identical_at_10x_wall_clock(placement, tmp_path):
     """Timing tier (rack unpowered or the fixed cloud VM): the same ten runs, identical hashes, each at >= 10x real
     time on the wall clock."""

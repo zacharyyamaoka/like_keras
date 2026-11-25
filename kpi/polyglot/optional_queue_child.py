@@ -1,6 +1,6 @@
 """A23's optional queue input, deployed in a process of its own (ruler M0.4; kpi/polyglot/test_polyglot_friction.py).
 
-    python -m kpi.polyglot.optional_queue_child --library SO --backend inproc|dora --wiring unwired|wired \
+    python -m kpi.polyglot.optional_queue_child --library SO --backend NAME --wiring unwired|wired \
         --directory DIR --name NAME
 
 kpi/polyglot/optional_queue.cpp's box at 10 Hz, lockstep until 1.05 s, its two reports written to DIR/idle.jsonl and
@@ -14,6 +14,7 @@ the suite, with it.
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import pathlib
 
@@ -26,7 +27,7 @@ BOX_HZ = 10.0
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--library", required=True)
-    parser.add_argument("--backend", choices=("inproc", "dora"), required=True)
+    parser.add_argument("--backend", required=True)  # a like_keras backend: kpi/support/backends.py (ruler v2)
     parser.add_argument("--wiring", choices=("unwired", "wired"), required=True)
     parser.add_argument("--directory", type=pathlib.Path, required=True)
     parser.add_argument("--name", required=True)
@@ -42,12 +43,8 @@ def main() -> None:
         box = s.add(lk.native(arguments.library, config={"unused": 0}), "box")
     s.add(JointStateLog(path=str(directory / "idle.jsonl")), "idle_sink", value=box.idle_steps)
     s.add(JointStateLog(path=str(directory / "gated.jsonl")), "gated_sink", value=box.gated_steps)
-    if arguments.backend == "dora":
-        from like_keras.backends import dora
-
-        dep = lk.Deployment(s, backend=dora, realtime=False)
-    else:
-        dep = lk.Deployment(s, realtime=False)
+    backend = importlib.import_module(f"like_keras.backends.{arguments.backend}")  # inproc is lk.Deployment's default
+    dep = lk.Deployment(s, backend=backend, realtime=False)
     dep.place(s.box, process="box", hz=BOX_HZ)
     if arguments.wiring == "wired":
         dep.place(s.source, process="source", hz=BOX_HZ)

@@ -20,7 +20,7 @@ import time
 import numpy as np
 import pytest
 
-from kpi.support import arm_cell_oracle, cells, procs
+from kpi.support import arm_cell_oracle, backends, cells, procs
 from kpi.support.lk import BUILD, KPI, binary, like_keras, lk_command, native_library, recorded, kpi_cpus
 from kpi.tasks.arm_cell.fake_bus import EVENT_POSITION, EVENT_QUERY, EVENT_STOP, MODE_POSITION, MODE_TIMEOUT, FakeBoards
 from kpi.tasks.arm_cell.jtc_law import TrajectoryLaw
@@ -81,6 +81,7 @@ def _assert_plans_start_on_time(plans: list[dict], commands: list[dict]) -> None
 # ---------------------------------------------------------------- T1, A3: lockstep, no timing
 
 
+@pytest.mark.backend("dora")
 def test_T1_swap(tmp_path, request):
     """All three placements, lockstep, recorded targets: the same command on every plan tick, to 1e-9 rad."""
     request.getfixturevalue("private_dora")
@@ -275,6 +276,7 @@ def _python_thread_ids() -> set[int]:
 
 
 @pytest.mark.timing
+@pytest.mark.backend("dora")
 def test_A1_handoff_over_dora(tmp_path, request):
     """target: a 7 x 1000 plan every 0.5 s for 60 s while the node ticks at 100 Hz."""
     request.getfixturevalue("private_dora")
@@ -314,7 +316,7 @@ def test_A2_same_planner_in_one_process(tmp_path):
 
 
 @pytest.mark.timing
-@pytest.mark.parametrize("placement", ["target", "same_box"])
+@pytest.mark.parametrize("placement", backends.placements("target", "same_box"))
 def test_T2_send_cost(placement, tmp_path, request):
     """1000 sends of a 7 x 1000 plan while the node ticks: p99 <= 0.1 ms in-process, <= 1 ms over dora."""
     _dora_if(placement, request)
@@ -350,7 +352,7 @@ def test_T2_send_cost(placement, tmp_path, request):
 
 
 @pytest.mark.timing
-@pytest.mark.parametrize("placement", ["target", "same_box"])
+@pytest.mark.parametrize("placement", backends.placements("target", "same_box"))
 def test_T3_isolation(placement, tmp_path, request):
     """The planner's process spins pure Python with gc.collect() every 50 ms under kpi/load.py --cpu 24, for 10 min
     (KPI_T3_SECONDS): tick-start jitter p99 <= 0.2 ms, max <= 1 ms."""
@@ -394,6 +396,7 @@ def _top(address: str, seconds: float) -> str:
 
 
 @pytest.mark.timing
+@pytest.mark.backend("dora")
 def test_T4_boundary_stall(tmp_path, private_dora):
     """kill -STOP the dora daemon for 4 s mid-trajectory: the trajectory finishes on time, then holds; 0 missed
     ticks; InputStale visible on lk top during the stall (attach does not go through the daemon)."""
@@ -503,7 +506,7 @@ def _planner_crash(placement: str, tmp_path, request) -> float:
             dep.stop()
 
 
-@pytest.mark.parametrize("placement", ["target", "attached"])
+@pytest.mark.parametrize("placement", backends.placements("target", "attached"))
 def test_T5_planner_crash(placement, tmp_path, request):
     """kill -9 the planner, restart it: the arm holds; the restarted planner commands again within 5 s.
     WHY 5 s here (CONTRACT §15 A14, ruler-006 §2): on the loaded cores the restart alone (a Python start and its
@@ -513,14 +516,14 @@ def test_T5_planner_crash(placement, tmp_path, request):
 
 
 @pytest.mark.timing
-@pytest.mark.parametrize("placement", ["target", "attached"])
+@pytest.mark.parametrize("placement", backends.placements("target", "attached"))
 def test_T5_planner_crash_within_1s(placement, tmp_path, request):
     """Timing tier (rack unpowered or the fixed cloud VM): T5 as CONTRACT §10 writes it, the arm holds and the
     restarted planner commands again within 1 s."""
     assert _planner_crash(placement, tmp_path, request) <= 1.0, "the restarted planner did not command within 1 s"
 
 
-@pytest.mark.parametrize("placement", ["target"])
+@pytest.mark.parametrize("placement", backends.placements("target"))
 def test_T6_node_crash(placement, tmp_path, request):
     """kill -9 the node: the fake boards are in timeout mode within 0.25 s; on restart take_over, no mode 0, no bare stop."""
     request.getfixturevalue("private_dora")
@@ -550,7 +553,7 @@ def test_T6_node_crash(placement, tmp_path, request):
     assert np.all(after["mode_after"][after["kind"] == EVENT_POSITION] == MODE_POSITION), "a board rested in mode 0"
 
 
-@pytest.mark.parametrize("placement", ["target", "same_box"])
+@pytest.mark.parametrize("placement", backends.placements("target", "same_box"))
 def test_T7_exclusivity(placement, tmp_path, request):
     """Start a second node on the same bus: refused in activate before the port opens; exits non-zero having sent 0 frames."""
     _dora_if(placement, request)
@@ -636,7 +639,7 @@ def test_T8_claim(tmp_path):
     _assert_holds(log, holder_stopped + 0.25 + 0.5, holder_stopped + 2.0)
 
 
-@pytest.mark.parametrize("placement", ["target", "same_box"])
+@pytest.mark.parametrize("placement", backends.placements("target", "same_box"))
 def test_T12_introspection(placement, tmp_path, request):
     """`lk top <address>` shows every R14 metric: tick p50/p99/max, overruns, exchange p95, bus errors, watchdog
     lapses, drops, and every component's health."""

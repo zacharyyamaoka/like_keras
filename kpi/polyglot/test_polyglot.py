@@ -19,7 +19,7 @@ import numpy as np
 import pytest
 
 from kpi.golden import lkf, make_golden
-from kpi.support import cells, mcap
+from kpi.support import backends, cells, mcap
 from kpi.support.lk import BUILD, KPI, REPO, backend, like_keras, native_library
 
 PER_JOINT = {"sensor/JointState": "joint_state", "control/ServoState": "servo_state", "control/ServoCommand": "servo_command"}
@@ -35,7 +35,7 @@ def rows(path) -> list[dict]:
         return []
 
 
-@pytest.mark.parametrize("backend_name", ["inproc", "dora"])
+@pytest.mark.parametrize("backend_name", backends.names())
 def test_mixed_chain(backend_name, tmp_path, request):
     """Python source -> C++ Gain (k = 2) -> Python sink, lockstep, against the same chain all in Python."""
     lk = like_keras()
@@ -79,6 +79,7 @@ def test_cpp_needs_no_python():
             assert "find_package(python" not in text and not re.search(r"execute_process\([^)]*python", text), cmake_file
 
 
+@pytest.mark.backend("dora")
 def test_one_so_three_placements(tmp_path, request):
     """libarm_controller.so as a dora node (target), as a thread inside this Python process (same_box, real time),
     and stepped on the twin bus (same_box, lockstep): commands flow in each."""
