@@ -201,8 +201,10 @@ def gates(junit: dict, arguments) -> dict:
     equivalence = {test: passed(contract, test) for test in EQUIVALENCE}
     python_inproc = (passed(contract, "test_one_process_matches_schedule") and passed(contract, "test_sent_equals_received", "inproc")
                      and passed(contract, "test_reference_solutions", "pipeline"))
-    fallback = run_json([sys.executable, str(KPI / "fallback.py")] + ([] if arguments.skip_fallback_suite else ["--suite"]),
-                        timeout=4000)
+    # WHY --runs (ruler v3, CONTRACT §15 A49): the differential suite runs as sharded cloud dispatches; the gate reads them
+    runs = [str(pathlib.Path(path).resolve()) for path in arguments.fallback_runs]
+    runs = [] if arguments.skip_fallback_suite or not runs else ["--runs", *runs]
+    fallback = run_json([sys.executable, str(KPI / "fallback.py"), *runs], timeout=600)
     probe = BUILD / "alloc_probe"
     if probe.exists():
         result = subprocess.run([str(probe), "--gtest_brief=1"], capture_output=True, text=True, timeout=900)
@@ -466,6 +468,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--suite-timeout", type=float, default=7200.0)
     parser.add_argument("--skip-fallback-suite", action="store_true",
                         help="check the fallback files' bytes only; the gate then reports red (suite not run)")
+    runs = [path for path in os.environ.get("KPI_FALLBACK_RUNS", "").split(os.pathsep) if path]
+    parser.add_argument("--fallback-runs", nargs="+", default=runs,
+                        help="both arms' collected cloud shards for kpi/fallback.py (env KPI_FALLBACK_RUNS)")
     parser.add_argument("--out", type=pathlib.Path, default=KPI / "scoreboard.json")
     arguments = parser.parse_args(argv)
     if os.environ.get("LK_BACKEND"):  # WHY (ruler v2): the frozen denominators name every backend; a subset scores red
