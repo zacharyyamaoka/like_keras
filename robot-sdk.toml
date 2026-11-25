@@ -5,5 +5,13 @@ schema = "robot-sdk-declaration/1"
 role = "library"
 layer = "comms"
 one_line = "Components, ports and systems over dora; robot_msgs on the wire"
+summary = "The communication API: components with ports, systems that wire them from outside, deployments in one process or across the network. dora-rs is the first transport. (Design in progress: check `docs/CONTRACT.md`.)"
+use_when = "Connecting robot components, sensors and processes; dataflows."
+
+# Where to read more. github and pypi are required; the rest are what this package has.
+[links]
+github = "https://github.com/zacharyyamaoka/like_keras"
+pypi = "https://pypi.org/project/like_keras/"
+docs = "https://github.com/zacharyyamaoka/like_keras/blob/main/docs/CONTRACT.md"
 
 # Header, DiagnosticRecord, Metrics, LogRecord travel as records on the wire (codec, in-process backend); no public signature names them.
