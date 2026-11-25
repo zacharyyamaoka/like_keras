@@ -51,8 +51,11 @@ def rows(path) -> list[dict]:
 
 # ---------------------------------------------------------------- A18 (consumer-003): lifecycle
 
-SIGNAL_CASES = backends.cases(["py-inproc-SIGTERM", "py-inproc-SIGHUP", "cpp-inproc-SIGTERM", "cpp-inproc-SIGHUP",
-                               "cpp-dora-SIGTERM", "cpp-dora-node-SIGTERM"])
+SIGNAL_NAMES = ["py-inproc-SIGTERM", "py-inproc-SIGHUP", "cpp-inproc-SIGTERM", "cpp-inproc-SIGHUP",
+                "cpp-dora-SIGTERM", "cpp-dora-node-SIGTERM"]
+# WHY two lists (ruler v2 fix, found by LK Dora RS Agent): backends.cases() returns pytest.param objects, so the
+# test body looks its case up in the plain names; .index() on SIGNAL_CASES raised ValueError for all six cases.
+SIGNAL_CASES = backends.cases(SIGNAL_NAMES)
 
 
 @pytest.mark.parametrize("case", SIGNAL_CASES)
@@ -69,7 +72,7 @@ def test_sigterm_runs_deactivate(case, tmp_path, request):
     like_keras()
     dora = request.getfixturevalue("private_dora") if backend_name == "dora" else None
     library = ["--library", str(feature_library("hand_back"))] if language == "cpp" else []
-    name = f"hand_back_{SIGNAL_CASES.index(case)}_{os.getpid()}"
+    name = f"hand_back_{SIGNAL_NAMES.index(case)}_{os.getpid()}"
     handed_back = tmp_path / "handed_back"
     child = procs.Child("kpi.facilities.hand_back_child", "--language", language, "--backend", backend_name,
                         "--directory", str(tmp_path), "--name", name, *library, log=tmp_path / "child.log")
