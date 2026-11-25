@@ -124,7 +124,7 @@ nice -n 19 ionice -c3 cmake --build /home/bam/like_keras/build -j 2
 | `blackbox/` + `blackbox.py` + `/.importlinter` | Criterion 3; `test_blackbox_friction.py` (A19) |
 | `miswire/`, `validgraphs/` | Criterion 12 |
 | `deps.py` | The lean-core gate |
-| `fallback.py` + `fallback_manifest.json` | The fallback-untouched gate |
+| `fallback.py` + `fallback_manifest.json` + `fallback_shard.py` + `fallback_confirm.py` | The fallback-untouched gate (A49): at the pinned bam_ws commit, the fallback files' bytes, no like_keras dependency, and bam_rack_twin's per-test outcomes identical with and without like_keras installed, from two 8-shard cloud runs (`fallback_shard.py` on each VM; `score.py --fallback-runs DIR ...`); a difference counts only if 3 reruns each way (`fallback_confirm.py`) reproduce it |
 | `alloc_probe.cpp` | The real-time hot-path gate: the chain as configured, and with every plan running away and its guard hold released (A14) |
 | `bench_overhead.py`, `bench/` | Criterion 2. `bench_chain.cpp` and `chain4.cpp` give the C++ cost per edge. |
 | `surface.py` | Criteria 4 and 7, and criterion 8 part 5 |
