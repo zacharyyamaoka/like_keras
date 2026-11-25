@@ -4,6 +4,18 @@ and edges a Deployment places, with every wiring check of §4.3 catalogued in PR
     s.add(PickPlanner(), "planner", target=targets.target, state=arm.state)   # the child's inputs, named
     s.wire(arm, trajectory=planner.trajectory)                                # inputs of a child added earlier
 
+or, the same wiring as calls (P1, the Keras form), inside a block:
+
+    with lk.System("pick_cell") as s:
+        planner = PickPlanner()
+        planner(target=targets.target, state=arm.state)   # the call binds inputs; it runs nothing
+        arm(trajectory=planner.trajectory)
+        s.expose(arm.state)
+
+A component joins the block it is made in, or the one where it is first called, exposed or named as a source; when
+the block closes each child is named after the local variable holding it (else as `add` names it), and the calls
+are bound in the order they were written, exactly as `add`/`wire` bind them.
+
 A System is a component: the ports it exposes are its ports when a parent adds it (closure under composition), and
 its own `log`, `health` and `metrics` carry every component inside it, as a native box's do (CONTRACT §15 A21).
 """
@@ -11,10 +23,24 @@ its own `log`, `health` and `metrics` carry every component inside it, as a nati
 from __future__ import annotations
 
 import itertools
-from dataclasses import dataclass
+import sys
+from dataclasses import dataclass, field
 from typing import Any, TypeVar
 
-from like_keras.component import FACILITY_PORTS, Component, PortRef, as_ref, message_type, path, site, snake, type_name
+from like_keras.component import (
+    FACILITY_PORTS,
+    Component,
+    PortRef,
+    _blocks,
+    as_ref,
+    call_wires,
+    message_type,
+    path,
+    site,
+    snake,
+    type_name,
+    user_site,
+)
 
 C = TypeVar("C", bound=Component)
 _ORDER = itertools.count()  # binding order across Systems: a cycle is reported at the binding that closed it
@@ -37,6 +63,13 @@ PROBLEMS = {
     "hash": "{port} <- {src} (at {at}): {side} was built with schema hash {theirs} for {want}; this robot_msgs has {ours}. Fix: rebuild the .so",
     # the graph, refused by describe() and start()
     "no_forward": "{child} (added at {at}) has no forward(). Fix: define forward(self, <its inputs>)",
+    "bind_key": "bind key {key} (Deployment at {at}) is neither a node path nor a Component class. Fix: key by a role class, bind={{Arm: ...}}, or by a node path, bind={{\"arm\": ...}}",
+    "bind_path": "bind[{key!r}] (Deployment at {at}) names no node of {system}; its nodes: {nodes}. Fix: use one of them",
+    "bind_class": "bind[{key}] (Deployment at {at}) matches no node of {system}. Fix: drop it, or key by a class the System uses",
+    "bind_value": "{how} = a {got} (Deployment at {at}) is not a component. Fix: bind a component instance (a template: each Deployment builds its own)",
+    "bind_parent": "{how} = System {got!r} (Deployment at {at}) is already in {parent}. Fix: bind a System of its own (build one per Deployment)",
+    "bind_ports": "{how} = {impl} (Deployment at {at}) does not fit {node}: {wrong}. Fix: bind an implementation with {node}'s ports",
+    "unbound_role": "{child} is a role ({role}: ports and no forward; added at {at}) and nothing binds it. Fix: bind an implementation, Deployment(..., bind={{{role}: <an implementation>}}) or bind={{\"{node}\": ...}}, or define forward",
     "unbound": "{port} is not bound (added at {at}). Fix: bind it with add(..., {name}=<an Out>) or wire(...), or expose it",
     "exposed_wired": "{port} is exposed by {system} (at {first}) and also wired to {src} (at {at}). Fix: an attach client writes an exposed input; drop the expose or the wire",
     "foreign_leaf": "{child} is not in {system} (placed at {at}). Fix: place components of the deployed System",
@@ -77,20 +110,42 @@ class Binding:
     order: int
 
 
+@dataclass
+class _Block:
+    """An open `with lk.System(...)`: who joins it, and the calls and exposes to apply, in order, when it closes."""
+
+    members: dict[int, list] = field(default_factory=dict)  # id -> [component, explicit name or None, file:line]
+    wires: list[tuple] = field(default_factory=list)  # (component, inputs, file:line, order)
+    exposes: list[tuple] = field(default_factory=list)  # (ports, renamed, file:line)
+
+
+def is_role(component: Component) -> bool:
+    """A role (P5): a Python leaf class with ports and no forward, the datasheet without the device. A Deployment's
+    `bind=` chooses what runs in its place; unbound, it is refused before start."""
+    return (
+        not isinstance(component, System)
+        and component._lk_language == "python"
+        and type(component).forward is Component.forward
+        and bool(type(component)._lk_ins or type(component)._lk_outs)
+    )
+
+
 class System(Component):
     """A tree of components and the edges between them, wired from outside. It has no forward: its children run
     in the order the build derives from the edges (CONTRACT §5.3)."""
 
     def __init__(self, name: str) -> None:
-        super().__init__()
+        super().__init__()  # made inside a parent's block (a builder called there), it joins that parent
         _identifier(name, site())
         self._lk.name = name
         self._children: dict[str, Component] = {}
         self._bindings: list[Binding] = []
         self._exposed: dict[str, tuple[PortRef, str]] = {}  # boundary name -> (the child's port, file:line)
+        self._block: _Block | None = None
 
     def add(self, component: C, name: str | None = None, **inputs: PortRef) -> C:
-        """Add a child and bind its inputs: `input name = the Out that feeds it`. Returns the child."""
+        """Add a child and bind its inputs: `input name = the Out that feeds it`. Returns the child. Inside this
+        System's open block it names the child explicitly (a for loop's `arm_3`), bound when the block closes."""
         at = site()
         if not isinstance(component, Component):
             raise TypeError(problem("not_component", got=type(component).__name__, at=at))
@@ -99,16 +154,24 @@ class System(Component):
             raise ValueError(
                 problem("has_parent", child=path(component), parent=parent, first=component._lk.site, at=at)
             )
-        name = name or (component._lk.name if isinstance(component, System) else snake(type(component).__name__))
-        self._claim(name, at, component)
-        component._lk.name, component._lk.parent, component._lk.site = name, self, at
-        self._children[name] = component
+        if self._block is not None:
+            pending = component._lk.block
+            if pending not in (None, self):  # an explicit add() wins over the block it was made in
+                del pending._block.members[id(component)]
+                component._lk.block = None
+            self._lk_join(component, at, name)
+            self._lk_call(component, inputs, at)
+            return component
+        self._adopt(component, name, at)
         self._bind(component, inputs, at)
         return component
 
     def wire(self, component: Component, **inputs: PortRef) -> None:
         """Bind inputs of a child added earlier: for cycles and forward references."""
         at = site()
+        if self._block is not None:
+            self._lk_call(component, inputs, at)
+            return
         if component._lk.parent is not self:
             port, parent = f"{path(component)}.{next(iter(inputs), '')}", path(component._lk.parent or component)
             raise ValueError(
@@ -120,6 +183,153 @@ class System(Component):
         """Make children's ports this System's boundary: an exposed Out is readable from outside, an exposed In is
         written from outside (a parent's wiring, or an attach client at the top)."""
         at = site()
+        if self._block is not None:
+            for port in [*ports, *renamed.values()]:
+                self._lk_join(as_ref(port).owner, at)
+            self._block.exposes.append((ports, renamed, at))
+            return
+        self._expose(ports, renamed, at)
+
+    # ------------------------------------------------------------ P1: the call form, inside a `with` block
+
+    def __enter__(self) -> System:
+        if self._block is not None:
+            raise RuntimeError(f"{path(self)} is open already (at {user_site()}). Fix: one `with` per System at a time")
+        self._block = _Block()
+        _blocks.__dict__.setdefault("stack", []).append(self)
+        return self
+
+    def __exit__(self, kind, error, trace) -> None:
+        block, self._block = self._block, None
+        _blocks.stack.remove(self)
+        for component, _, _ in block.members.values():
+            component._lk.block = None
+        if kind is None:  # WHY the caller's locals: a child is named after the variable that holds it (P1 §3)
+            self._close(block, sys._getframe(1).f_locals)
+
+    def __call__(self, *args: Any, **inputs: Any) -> Any:
+        """Inside a parent's block, ports wire this System like any component. Outside, plain values run one step of
+        every child in the derived order (one group, now() = 0.0), and the exposed Outs come back as forward's do."""
+        if call_wires(self, args, inputs):
+            return self
+        return self._lk_step(inputs)
+
+    def _lk_join(self, component: Component, at: str, name: str | None = None) -> None:
+        """`component` becomes a child when this block closes, unless it has a parent or an open block already."""
+        if component is self or component._lk.parent is not None or component._lk.block not in (None, self):
+            return
+        component._lk.block = self
+        entry = self._block.members.setdefault(id(component), [component, None, at])
+        entry[1] = name or entry[1]
+
+    def _lk_call(self, component: Component, inputs: dict[str, Any], at: str) -> None:
+        """Record `component(**inputs)` for the close; refuse at the call what the two ports alone show wrong."""
+        self._lk_join(component, at)
+        for name, source in inputs.items():
+            dst, src = PortRef(component, name), as_ref(source)
+            dst_port = port_of(dst, at)
+            if dst_port.output:
+                raise ValueError(problem("not_input", port=dst, at=at))
+            if src.owner is not self:  # a boundary input of this block is exposed when it closes
+                self._lk_join(src.owner, at)
+                src_port = port_of(src, at)
+                if src_port.output:
+                    _check_types(dst, dst_port, src, src_port, at)
+        self._block.wires.append((component, dict(inputs), at, next(_ORDER)))
+
+    def _close(self, block: _Block, local_names: dict[str, Any]) -> None:
+        named = {}
+        for variable, value in local_names.items():
+            if isinstance(value, Component) and id(value) in block.members:
+                named.setdefault(id(value), variable)
+        for component, name, at in block.members.values():
+            if component._lk.parent is None:  # else an explicit add() in another System claimed it meanwhile
+                self._adopt(component, name or named.get(id(component)), at)
+        for ports, renamed, at in block.exposes:
+            self._expose(ports, renamed, at)
+        for component, inputs, at, order in block.wires:
+            if component._lk.parent is not self:
+                port, parent = f"{path(component)}.{next(iter(inputs), '')}", path(component._lk.parent or component)
+                raise ValueError(
+                    problem("not_child", port=port, child=path(component), system=path(self), parent=parent, at=at)
+                )
+            self._bind(component, inputs, at, order)
+
+    def _lk_step(self, inputs: dict[str, Any]) -> Any:
+        """One eager step: every leaf in the order one group derives, lagged inputs from the previous call, each
+        leaf activated at its first step. WHY a convenience, not a runtime: a composite tested alone, like a leaf's
+        eager call; nothing here touches a backend or a thread."""
+        from like_keras.deployment import Group, _derive_order
+
+        found = graph(self)
+        group = Group(list(found.leaves), hz=1.0, at="one eager step")  # a rate: a lagged cycle is legal, as in hz
+        failures = [*found.failures, *_derive_order(group, found.edges)]
+        unknown = sorted(set(inputs) - set(found.exposed_in))
+        if failures or unknown:
+            known = sorted(found.exposed_in)
+            failures += [f"{path(self)} exposes no input {name!r}; its inputs: {known}" for name in unknown]
+            raise ValueError(f"{path(self)}: cannot step:\n" + "\n".join(f"- {failure}" for failure in failures))
+        state = self.__dict__.setdefault("_lk_eager", {"latest": {}, "active": set()})
+        latest, before = state["latest"], dict(state["latest"])
+        feeds = {(id(edge.dst), edge.dst_port): (id(edge.src), edge.src_port) for edge in found.edges}
+        boundary = {(id(ref.owner), ref.name): name for name, refs in found.exposed_in.items() for ref in refs}
+        for leaf in group.order:
+            leaf._lk.now = 0.0
+            if id(leaf) not in state["active"]:
+                leaf.activate()
+                state["active"].add(id(leaf))
+            values = {}
+            for name in type(leaf)._lk_ins:
+                key = (id(leaf), name)
+                seen = before if type(leaf)._lk_ports[name].lagged else latest  # lagged: the previous step's value
+                values[name] = inputs.get(boundary[key]) if key in boundary else seen.get(feeds.get(key))
+            result, outs = leaf.forward(**values), type(leaf)._lk_outs
+            for port, value in zip(outs, (result,) if len(outs) == 1 else result or (None,) * len(outs)):
+                if value is not None:
+                    latest[(id(leaf), port)] = value
+        exposed = [latest.get((id(ref.owner), ref.name)) for ref in found.exposed_out.values()]
+        return exposed[0] if len(exposed) == 1 else tuple(exposed) if exposed else None
+
+    def summary(self) -> str:
+        """Print and return this System's children, what feeds each input, the exposed ports, and the order one
+        group steps the leaves in (CONTRACT §5.3): the wiring an agent reads instead of the builder's code."""
+        from like_keras.deployment import Group, _derive_order
+
+        def source(ref: PortRef) -> str:
+            return f"[{ref.name}]" if ref.owner is self else f"{ref.owner._lk.name}.{ref.name}"
+
+        lines, width = [], max((len(name) for name in self._children), default=0)
+        for name, child in self._children.items():
+            count = len(child._children) if isinstance(child, System) else 0
+            kind = f"System of {count}" if isinstance(child, System) else type(child).__qualname__
+            kind += " (role: the Deployment binds it)" if is_role(child) else ""
+            feeds = [
+                f"{b.dst.name} <- {source(b.src)}" + (" (lagged)" if port_of(b.dst).lagged else "")
+                for b in self._bindings
+                if b.dst.owner is child
+            ]
+            lines.append(f"  {name:<{width}}  {kind}" + (f"   {'; '.join(feeds)}" if feeds else ""))
+        for name, (ref, _) in self._exposed.items():
+            arrow = "<-" if port_of(ref).output else "->"
+            lines.append(f"  exposed: {name} {arrow} {ref.owner._lk.name}.{ref.name}")
+        found = graph(self)
+        group = Group(list(found.leaves), hz=1.0, at="summary()")
+        roles = tuple(f"{path(leaf)} is a role (" for leaf in found.leaves if is_role(leaf))
+        problems = [f for f in found.failures if not f.startswith(roles or ("\0",))] + _derive_order(group, found.edges)
+        top = path(self)
+        order = ", ".join(path(leaf)[len(top) + 1 :] for leaf in group.order)
+        head = f"{top}: {len(self._children)} children, {len(found.leaves)} leaves; one group steps: {order}"
+        text = "\n".join([head, *lines, *(f"  problem: {problem}" for problem in problems)])
+        print(text)
+        return text
+
+    def _adopt(self, component: Component, name: str | None, at: str) -> None:
+        name = name or (component._lk.name if isinstance(component, System) else snake(type(component).__name__))
+        self._claim(name, at, component)
+        component._lk.name, component._lk.parent, component._lk.site = name, self, at
+        self._children[name] = component
+
+    def _expose(self, ports: tuple, renamed: dict[str, PortRef], at: str) -> None:
         for name, port in [*((as_ref(port).name, port) for port in ports), *renamed.items()]:
             ref = as_ref(port)
             if ref.owner._lk.parent is not self:
@@ -134,6 +344,14 @@ class System(Component):
                 return self._children[name]
             if name in self.__dict__.get("_exposed", ()):
                 return PortRef(self, name)
+            block = self.__dict__.get("_block")
+            if block is not None:  # an open block: a child named by add(), a port expose() has promised
+                for component, given, _ in block.members.values():
+                    if given == name:
+                        return component
+                for ports, renamed, _ in block.exposes:
+                    if name in renamed or any(as_ref(port).name == name for port in ports):
+                        return PortRef(self, name)
         return super().__getattr__(name)
 
     def __dir__(self):
@@ -150,7 +368,7 @@ class System(Component):
         elif hasattr(System, name) or name == "params":
             raise ValueError(problem("member", port=f"{path(self)}.{name}", at=at))
 
-    def _bind(self, component: Component, inputs: dict[str, Any], at: str) -> None:
+    def _bind(self, component: Component, inputs: dict[str, Any], at: str, order: int | None = None) -> None:
         for name, source in inputs.items():
             dst, src = PortRef(component, name), as_ref(source)
             dst_port, src_port = port_of(dst, at), port_of(src, at)
@@ -163,7 +381,7 @@ class System(Component):
                 if binding.dst == dst:
                     raise ValueError(problem("twice", port=dst, src=binding.src, first=binding.at, at=at))
             _check_types(dst, dst_port, src, src_port, at)
-            self._bindings.append(Binding(dst, src, at, next(_ORDER)))
+            self._bindings.append(Binding(dst, src, at, next(_ORDER) if order is None else order))
 
 
 def _identifier(name: str, at: str) -> None:
@@ -297,7 +515,10 @@ def graph(top: System) -> Graph:
     leaves, edges, failures = leaves_of(top), [], []
     exposed_in: dict[str, list[PortRef]] = {}
     for leaf in leaves:
-        if leaf._lk_language == "python" and type(leaf).forward is Component.forward:
+        if is_role(leaf):
+            role, node = type(leaf).__qualname__, path(leaf).partition(".")[2]
+            failures.append(problem("unbound_role", child=path(leaf), role=role, node=node, at=leaf._lk.site))
+        elif leaf._lk_language == "python" and type(leaf).forward is Component.forward:
             failures.append(problem("no_forward", child=path(leaf), at=leaf._lk.site))
         for name in type(leaf)._lk_ins:
             ref = PortRef(leaf, name)

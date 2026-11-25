@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import os
 import re
 import sys
+import threading
 from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
@@ -25,6 +27,52 @@ def site(depth: int = 2) -> str:
     """`file.py:line` of the user's call: every wiring failure names the call that caused it (CONTRACT §4.3)."""
     frame = sys._getframe(depth)
     return f"{frame.f_code.co_filename.rsplit('/', 1)[-1]}:{frame.f_lineno}"
+
+
+_PACKAGE = os.path.dirname(os.path.abspath(__file__)) + os.sep
+_blocks = threading.local()  # the open `with lk.System(...)` blocks of this thread, innermost last
+
+
+def user_site() -> str:
+    """`file.py:line` of the first frame outside like_keras: where a component was made or called, however deep the
+    library's own frames go (a System's __init__, lk.native)."""
+    frame = sys._getframe(1)
+    while frame.f_back is not None and frame.f_code.co_filename.startswith(_PACKAGE):
+        frame = frame.f_back
+    return f"{frame.f_code.co_filename.rsplit('/', 1)[-1]}:{frame.f_lineno}"
+
+
+def open_block():
+    """The innermost System open as a `with` block on this thread, or None."""
+    stack = getattr(_blocks, "stack", None)
+    return stack[-1] if stack else None
+
+
+def is_ref(value) -> bool:
+    return isinstance(value, PortRef) or getattr(value, "_lk_ref", None) is not None
+
+
+def call_wires(component, args: tuple, inputs: dict) -> bool:
+    """P1, the call form: inside `with lk.System(...)` a call with ports is wiring (True); outside, a call with values
+    runs the component (False). WHY two hard errors and no silent switch: one call with two meanings must never pick
+    the other one quietly, and an agent reading the error must see the fix."""
+    at, name = user_site(), component._lk.name
+    if args:
+        example = (type(component)._lk_ins or ("input",))[0]
+        raise TypeError(f"{name}(...) got {len(args)} positional argument(s) (at {at}). Fix: name each input, e.g. "
+                        f"{name}({example}=...): a new port must never break a caller")
+    block, ports = open_block(), [key for key, value in inputs.items() if is_ref(value)]
+    if block is None:
+        if ports:
+            raise TypeError(f"{name}({ports[0]}=...) passes a port outside a System (at {at}): a call with ports "
+                            f'wires. Fix: call it inside `with lk.System("...") as s:`')
+        return False
+    values = [key for key in inputs if key not in ports]
+    if values:
+        raise TypeError(f"{name}({values[0]}=...) passes a value inside `with lk.System(...)` (at {at}), where a "
+                        "call wires. Fix: pass a port (e.g. arm.state), or call it outside the block to run it")
+    block._lk_call(component, inputs, at)
+    return True
 
 
 def snake(name: str) -> str:
@@ -170,6 +218,7 @@ class ComponentState:
 
     def __init__(self, name: str) -> None:
         self.name, self.parent, self.site = name, None, ""
+        self.block = None  # the open `with lk.System(...)` it joins when that block closes (P1)
         self.reset()
 
     def reset(self) -> None:
@@ -237,6 +286,9 @@ class Component:
         self._lk = ComponentState(snake(type(self).__name__))
         self.log = _Log(self)
         self.health = _Health(self, "health")
+        block = open_block()
+        if block is not None:  # P1: made inside `with lk.System(...)`, it joins that System when the block closes
+            block._lk_join(self, user_site())
 
     def forward(self, **inputs: Any) -> Any:
         """One step: inputs by name in; one Out returns its value, several a tuple; None is not sent."""
@@ -264,8 +316,12 @@ class Component:
             raise ValueError(f"metric {name!r} is a standard metric (CONTRACT §8); give yours another name")
         self._lk.custom[name] = float(value)
 
-    def __call__(self, **inputs: Any) -> Any:
-        """Eager: forward on plain values, now() = 0.0, no backend, no thread (a component tested alone)."""
+    def __call__(self, *args: Any, **inputs: Any) -> Any:
+        """Eager: forward on plain values, now() = 0.0, no backend, no thread (a component tested alone). Inside
+        `with lk.System(...)` the same call with ports is the wiring, `planner(state=arm.state)`, and returns the
+        component, so its outputs read as attributes (P1)."""
+        if call_wires(self, args, inputs):
+            return self
         self._lk.now = 0.0
         return self.forward(**inputs)
 

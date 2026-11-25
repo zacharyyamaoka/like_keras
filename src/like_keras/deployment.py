@@ -7,6 +7,8 @@ are system.PROBLEMS), then `describe()` returns the plan as JSON-ready data: the
 
 from __future__ import annotations
 
+import copy
+import dataclasses
 import hashlib
 import json
 import math
@@ -17,14 +19,28 @@ import signal
 import sys
 import threading
 import time
-from collections.abc import Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from types import ModuleType
 from typing import Any
 
 from like_keras import backends
 from like_keras.backends import inproc
-from like_keras.component import ABI, Component, PortRef, as_ref, is_message, message_type, path, site, type_name
+from like_keras.component import (
+    ABI,
+    FACILITY_PORTS,
+    Component,
+    ComponentState,
+    PortRef,
+    _Health,
+    _Log,
+    as_ref,
+    is_message,
+    message_type,
+    path,
+    site,
+    type_name,
+)
 from like_keras.system import Edge, Graph, System, graph, leaves_of, out_leaves, port_of, problem
 
 VERSION = "0.1.0"
@@ -61,12 +77,26 @@ class Plan:
 
 
 class Deployment:
-    def __init__(self, system: System, backend: ModuleType = inproc, realtime: bool = True) -> None:
+    def __init__(
+        self,
+        system: System,
+        backend: ModuleType = inproc,
+        realtime: bool = True,
+        bind: Mapping[type[Component] | str, Component] | None = None,
+    ) -> None:
+        """`bind` (P5) chooses what runs in place of a role or a node: `{Arm: TwinArm(), "arm": lk.native(SO)}`. A
+        class key binds every node of that class, a node path (`"arm"`, `"arm.io"`) one node and wins; a value is a
+        template, so each Deployment builds its own instance (a System value is used as given)."""
         self._system, self._backend, self._realtime, self._at = system, backend, realtime, site()
         self._places: list[tuple[tuple[Component, ...], dict[str, Any], str]] = []
         self._recordings: list[tuple[str, list[PortRef], str]] = []
         self._run = None
         self._stopping = threading.RLock()  # a stop in progress on another thread finishes before a signal ends us
+        # WHY resolved here, not in the System (P5): the System wires roles and stays the same in sim, on the robot
+        # and in a test; which implementation runs is this deployment's one line. `cell.arm` reads the bound one.
+        self._bind = None if bind is None else dict(bind)
+        self._swaps, self._bound, self._bound_by, self._bind_failures = _resolve(system, self._bind or {}, self._at)
+        _apply(system, self._swaps)
 
     def place(
         self,
@@ -139,8 +169,9 @@ class Deployment:
         return self._plan().datasheet
 
     def _plan(self) -> Plan:
+        _apply(self._system, self._swaps)  # this deployment's bindings, whatever another Deployment bound since
         found, backend = graph(self._system), self._backend
-        failures = list(found.failures)
+        failures = [*self._bind_failures, *found.failures]
         groups = self._groups(found, failures)
         group_of = {id(leaf): group for group in groups for leaf in group.leaves}
         for group in groups:
@@ -163,7 +194,8 @@ class Deployment:
             failures += _check_edge(edge, crossing[edge])
         failures += _check_processes(groups, backend, self._realtime, self._at)
         recordings = [
-            (file, self._recorded(found, crossing, ports, at, failures)) for file, ports, at in self._recordings
+            (file, self._recorded(found, crossing, [self._moved(port) for port in ports], at, failures))
+            for file, ports, at in self._recordings
         ]
         if failures:
             raise ValueError(
@@ -171,8 +203,13 @@ class Deployment:
                 + "\n".join(f"- {failure}" for failure in failures)
             )
         plan = Plan(self._system, groups, found, crossing, recordings, self._realtime)
-        plan.datasheet = _datasheet(plan, backend)
+        plan.datasheet = _datasheet(plan, backend, None if self._bind is None else self._bound_by)
         return plan
+
+    def _moved(self, ref: PortRef) -> PortRef:
+        """A port of a node this deployment bound, as the port of what runs there (P5)."""
+        bound = self._bound.get(id(ref.owner))
+        return ref if bound is None else PortRef(bound, ref.name)
 
     def _groups(self, found: Graph, failures: list[str]) -> list[Group]:
         for leaf in found.leaves:  # the logger carries the path its component has in this deployment
@@ -182,7 +219,8 @@ class Deployment:
         known, placed, groups = {id(leaf) for leaf in found.leaves}, {}, []
         for components, options, at in self._places:
             groups.append(Group([], **options, at=at))
-            for leaf in (leaf for component in components for leaf in leaves_of(component)):
+            bound = [self._bound.get(id(component), component) for component in components]  # a role: what runs
+            for leaf in (leaf for component in bound for leaf in leaves_of(component)):
                 if id(leaf) not in known:
                     failures.append(problem("foreign_leaf", child=path(leaf), system=path(self._system), at=at))
                 elif id(leaf) in placed:
@@ -222,6 +260,139 @@ class Deployment:
             for edge in (edge for edge, crosses in crossing.items() if crosses):
                 add(PortRef(edge.src, edge.src_port), f"{path(edge.src)}.{edge.src_port}", False)
         return list(chosen.values())
+
+
+# ---------------------------------------------------------------- bindings (P5: roles and bindings)
+
+
+def _declared(system: System) -> dict[str, Component]:
+    """A System's children as its builder made them, whatever a Deployment has bound in their place since."""
+    declared = system.__dict__.get("_lk_declared", {})
+    return {name: declared.get(name, child) for name, child in system._children.items()}
+
+
+def _nodes(system: System, prefix: str = "") -> Iterator[tuple[System, str, str, Component]]:
+    """(parent, name, node path below the top, declared node) for every node of the tree, depth first."""
+    if not isinstance(system, System):  # v0 refuses a non-System in describe(), as before: nothing to bind here
+        return
+    for name, node in _declared(system).items():
+        yield system, name, prefix + name, node
+        if isinstance(node, System):
+            yield from _nodes(node, f"{prefix}{name}.")
+
+
+def _resolve(top: System, bind: dict, at: str):
+    """What runs in place of which node: (swaps, {id(node): implementation}, {id(leaf): datasheet rows}, failures).
+    A node path wins over a class key, the most specific class key over a wider one, and a bound System is
+    replaced whole (class keys inside it are moot, not unmatched)."""
+    swaps, bound, rows, failures = [], {}, {}, []
+    paths = {key: value for key, value in bind.items() if isinstance(key, str)}
+    classes = {key: value for key, value in bind.items() if isinstance(key, type) and issubclass(key, Component)}
+    failures += [problem("bind_key", key=repr(key), at=at) for key in bind if key not in paths and key not in classes]
+    nodes = list(_nodes(top))
+    known = sorted(node_path for _, _, node_path, _ in nodes)
+    for key in paths.keys() - set(known):
+        failures.append(problem("bind_path", key=key, system=path(top), nodes=", ".join(known), at=at))
+    for key in classes:
+        if not any(isinstance(node, key) for *_, node in nodes):
+            failures.append(problem("bind_class", key=key.__qualname__, system=path(top), at=at))
+    replaced: list[str] = []
+    for system, name, node_path, node in nodes:
+        if any(node_path.startswith(f"{done}.") for done in replaced):
+            continue
+        key = node_path if node_path in paths else next((k for k in type(node).__mro__ if k in classes), None)
+        if key is None:
+            continue
+        replaced.append(node_path)
+        how = f'bind["{key}"]' if isinstance(key, str) else f"bind[{key.__qualname__}]"
+        implementation = _implementation(bind[key], how, system, node, node_path, at, failures)
+        if implementation is not None:
+            swaps.append((system, name, node, implementation))
+            bound[id(node)] = implementation
+            role = f"System {node._lk.name}" if isinstance(node, System) else _impl(node)
+            rows.update({id(leaf): {"role": role, "bound_by": how} for leaf in leaves_of(implementation)})
+    return swaps, bound, rows, failures
+
+
+def _impl(component: Component) -> str:
+    return getattr(type(component), "_lk_impl", f"{type(component).__module__}:{type(component).__qualname__}")
+
+
+def _implementation(value, how: str, system: System, node: Component, node_path: str, at: str, failures: list[str]):
+    """This deployment's own instance of a bound value, checked against the node's ports; None when refused."""
+    if isinstance(value, System):
+        if value._lk.parent not in (None, system):
+            failures.append(problem("bind_parent", how=how, got=value._lk.name, parent=path(value._lk.parent), at=at))
+            return None
+        implementation = value
+    elif isinstance(value, Component):
+        # WHY a copy: a profile dict serves many Deployments and tests, as module:qualname(**params) rebuilds a
+        # component in another process; nothing is shared but the frozen params (state is made in activate)
+        implementation = copy.copy(value)
+        implementation._lk = ComponentState(value._lk.name)
+        implementation.log, implementation.health = _Log(implementation), _Health(implementation, "health")
+    else:
+        failures.append(problem("bind_value", how=how, got=type(value).__name__, at=at))
+        return None
+    want, got = _ports(node), _ports(implementation)
+    wrong = []
+    for name, port in want.items():
+        have = got.get(name)
+        if have is None:
+            wrong.append(f"no port {name!r} ({_side(port)})")
+        elif have.output != port.output or type_name(have.type) != type_name(port.type):
+            wrong.append(f"{name} is {_side(have)}, the node's is {_side(port)}")
+        elif have.hash is not None:
+            from like_keras import codec
+
+            ours = codec.schema_hash(message_type(have.type))
+            if have.hash != ours:
+                wrong.append(f"{name} was built with schema hash {have.hash:016x}; this robot_msgs has {ours:016x}")
+    for name, port in got.items():
+        if name not in want and not port.output and not port.optional:
+            wrong.append(f"its input {name!r} ({_side(port)}) is not a port of the node, so nothing could feed it")
+    if wrong:
+        shown = f"System {implementation._lk.name}" if isinstance(implementation, System) else _impl(implementation)
+        failures.append(problem("bind_ports", how=how, impl=shown, node=node_path, wrong="; ".join(wrong), at=at))
+        return None
+    return implementation
+
+
+def _ports(component: Component) -> dict[str, Any]:
+    """The ports another component wires to: a leaf's declared ones, a System's exposed ones."""
+    if isinstance(component, System):
+        names = list(component._exposed)
+    else:
+        names = [name for name in type(component)._lk_ports if name not in FACILITY_PORTS]
+    return {name: port_of(PortRef(component, name)) for name in names}
+
+
+def _side(port) -> str:
+    return f"{'Out' if port.output else 'In'}[{type_name(port.type)}]"
+
+
+def _apply(top: System, swaps: list) -> None:
+    """Put every node back as declared, then this deployment's implementations in their places."""
+    for system, name, _, node in list(_nodes(top)):
+        if system._children[name] is not node:
+            _swap(system, name, system._children[name], node)
+    for system, name, node, implementation in swaps:
+        system.__dict__.setdefault("_lk_declared", {})[name] = node
+        _swap(system, name, node, implementation)
+
+
+def _swap(system: System, name: str, old: Component, new: Component) -> None:
+    """`new` takes `old`'s place in `system`: its name, its site, every binding and exposure that named it."""
+    system._children[name] = new
+    new._lk.name, new._lk.parent, new._lk.site = name, system, old._lk.site
+    if name in FACILITY_PORTS:  # as System._claim does: the child wins over the class's facility port
+        system.__dict__[name] = new
+
+    def moved(ref: PortRef) -> PortRef:
+        return PortRef(new, ref.name) if ref.owner is old else ref
+
+    system._bindings = [dataclasses.replace(b, dst=moved(b.dst), src=moved(b.src)) for b in system._bindings]
+    system._exposed = {key: (moved(ref), at) for key, (ref, at) in system._exposed.items()}
 
 
 def _check_group(group: Group, edges: list[Edge], backend: ModuleType) -> list[str]:
@@ -412,7 +583,7 @@ def _port_sheet(port) -> dict[str, Any]:
     }
 
 
-def _datasheet(plan: Plan, backend: ModuleType) -> dict[str, Any]:
+def _datasheet(plan: Plan, backend: ModuleType, bound: dict[int, dict[str, str]] | None = None) -> dict[str, Any]:
     group_of = {id(leaf): group for group in plan.groups for leaf in group.leaves}
 
     def transport(edge: Edge) -> str:  # a call inside a group, a slot inside a process, else the backend's transport
@@ -429,7 +600,10 @@ def _datasheet(plan: Plan, backend: ModuleType) -> dict[str, Any]:
         impl = getattr(type(leaf), "_lk_impl", f"{type(leaf).__module__}:{type(leaf).__qualname__}")
         params = json.loads(json.dumps(leaf._lk_params(), default=str))
         ports = {name: _port_sheet(port) for name, port in type(leaf)._lk_ports.items()}
-        return {"impl": impl, "language": leaf._lk_language, "params": params, "ports": ports}
+        sheet = {"impl": impl, "language": leaf._lk_language, "params": params, "ports": ports}
+        if bound is not None:  # P5: what was bound here and by which key; v0's sheet (no bind=) is unchanged
+            sheet.update(bound.get(id(leaf), {"bound_by": "default"}))
+        return sheet
 
     ignored = [group for group in plan.groups if group.language == "python" and (group.fifo or group.cpus)]
     sheet = {
