@@ -65,14 +65,17 @@ def measure(hw, *, ticks: int, trials: int, step_rad: float, detect_rad: float, 
     rtts, rtt_ticks, missed = [], [], 0
     step_trace = None
     for trial in range(trials):
+        # WHY write-then-read pairs and never a bare read: an attached STEPPED core answers each command with one state, so a
+        # read with no write before it waits for a state that never comes (local backends return the newest state either way)
         for _ in range(settle_ticks):  # let the last step settle (a simulated plant's time moves only with writes)
             hw.write(command)
+            state = hw.read()
         if settle_s:
             end = clock() + settle_s
             while clock() < end:
                 hw.write(command)
+                state = hw.read()
                 time.sleep(0.01)
-        state = hw.read()
         q0 = float(state.position[0])
         # alternate origin + step and origin - step: never more than one step from where the board was found, and every step is
         # 2 x step long, so a plant stuck in its friction band (the twin of record's LuGre) still breaks away
@@ -109,6 +112,21 @@ def measure(hw, *, ticks: int, trials: int, step_rad: float, detect_rad: float, 
             "backend": hw.backend_name, "origin_deg": math.degrees(origin)}
 
 
+def start_core(backend: str, mode: str):
+    """serve_core as a child process; (process, address, fingerprint) once it prints its ready line."""
+    import subprocess  # noqa: PLC0415
+    import sys  # noqa: PLC0415
+
+    name = f"lk_hwb_{backend}_{mode}"
+    core = subprocess.Popen([sys.executable, "-m", "examples.hw_backends.serve_core", "--backend", backend, "--mode", mode,
+                             "--name", name], stdout=subprocess.PIPE, text=True)
+    line = core.stdout.readline()
+    if not line:
+        raise SystemExit(f"serve_core {backend} {mode} exited with {core.wait()}")
+    ready = json.loads(line)
+    return core, ready["address"], ready["fingerprint"], ready["initial_position"]
+
+
 def cases(names: list[str], address: str | None, fingerprint: str | None) -> dict[str, tuple[Any, Any, str]]:
     from examples.hw_backends.description import nominal, twin_of_record  # noqa: PLC0415
 
@@ -126,6 +144,9 @@ def cases(names: list[str], address: str | None, fingerprint: str | None) -> dic
             table[name] = (KinematicConfig(), None, "4. Kinematic (measured = commanded)")
         elif name == "real":
             table[name] = (RealConfig(), None, "5. Real: rack CAN 11 on fdcanusb 272813EF")
+        elif name.startswith("remote_unix:"):  # remote_unix:<backend>:<mode>: a serve_core this harness starts and stops
+            _, backend, mode = name.split(":")
+            table[name] = (backend, mode, f"6a. Remote, same machine (unix socket) → {backend}, {mode}")
         elif name.startswith("remote"):
             if not address or not fingerprint:
                 raise SystemExit(f"{name} needs --address and --fingerprint")
@@ -147,6 +168,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-ticks", type=int, default=500)
     parser.add_argument("--address", default=None)
     parser.add_argument("--fingerprint", default=None)
+    parser.add_argument("--initial", type=float, default=None,
+                        help="a stepped remote core's initial_position (serve_core's ready line): prime it with a hold there")
     parser.add_argument("--label", default=None, help="a remote case's label in the report")
     parser.add_argument("--note", default="", help="how the case ran (e.g. which host the core ran on)")
     parser.add_argument("--out", default=str(OUT / "latency.json"), help="merged into: one key per case")
@@ -156,13 +179,27 @@ def main(argv: list[str] | None = None) -> int:
     merged = json.loads(out.read_text()) if out.exists() else {"cases": {}}
     for name, (config, description, label) in cases(arguments.cases.split(","), arguments.address, arguments.fingerprint).items():
         print(f"[measure] {name}: {label}", flush=True)
+        core, mode, initial = None, "stepped" if arguments.initial is not None else None, arguments.initial
+        if isinstance(config, str):  # a core to start: (backend, mode)
+            mode = description
+            core, address, fingerprint, initial = start_core(config, mode)
+            config, description = RemoteConfig(address, fingerprint), None
         hw = hardware(config, description)
+        if mode == "stepped" and initial is not None:
+            # WHY prime: a stepped core sent its first state before this client attached (serve_core WHY); a hold at the
+            # position it printed makes the next state
+            from robot_msgs.control import ServoCommand  # noqa: PLC0415
+
+            hw.write(ServoCommand(name=hw.joint_names, position=np.array([initial]), velocity=np.zeros(1)))
         try:
             result = measure(hw, ticks=arguments.ticks, trials=arguments.trials, step_rad=math.radians(arguments.step_deg),
                              detect_rad=math.radians(arguments.detect_deg), settle_ticks=arguments.settle_ticks,
                              settle_s=arguments.settle_s, max_ticks=arguments.max_ticks)
         finally:
             hw.close()
+            if core is not None:
+                core.terminate()
+                core.wait(timeout=30)
         result.update(label=arguments.label or label, note=arguments.note, config=repr(config),
                       description=None if description is None else {"label": description.label,
                                                                      "digest": description.parameters_digest,

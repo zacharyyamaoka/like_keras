@@ -28,6 +28,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--backend", choices=("mujoco_nominal", "mujoco_twin", "analytical", "kinematic", "real"), default="analytical")
     parser.add_argument("--numbers", action="store_true", help="the nominal description from frozen numbers (no bam_rack_twin)")
     parser.add_argument("--name", default="pendulum_can11")
+    parser.add_argument("--mode", choices=("default", "stepped", "free"), default="default",
+                        help="stepped: one plant period per command (a sim's default); free: the core runs at 1/period_s (real's)")
     arguments = parser.parse_args(argv)
     if arguments.numbers:
         description = from_numbers(NOMINAL_NUMBERS)
@@ -44,11 +46,15 @@ def main(argv: list[str] | None = None) -> int:
     config = {"mujoco_nominal": MujocoConfig(), "mujoco_twin": MujocoConfig(), "analytical": AnalyticalConfig(),
               "kinematic": KinematicConfig(), "real": RealConfig()}[arguments.backend]
     hw = hardware(config, description)
-    dep = serve(hw, arguments.name)
+    # WHY printed: a stepped core publishes its first state once, at its first tick, so a client that attaches after it waits
+    # for a state that only its own first command brings (like_keras a6201f9). The client primes with a hold here instead.
+    initial = float(hw.read().position[0])
+    stepped = None if arguments.mode == "default" else arguments.mode == "stepped"
+    dep = serve(hw, arguments.name, stepped=stepped)
     dep.start()
     sheet = dep.describe()
     print(json.dumps({"ready": True, "address": sheet["attach"]["socket"], "fingerprint": robot_fingerprint(hw.joints),
-                      "backend": arguments.backend, "description": None if description is None else description.label}), flush=True)
+                      "backend": arguments.backend, "mode": arguments.mode, "initial_position": initial, "description": None if description is None else description.label}), flush=True)
     try:
         signal.sigwait({signal.SIGTERM, signal.SIGINT})
     finally:
