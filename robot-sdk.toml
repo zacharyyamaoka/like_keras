@@ -15,3 +15,28 @@ pypi = "https://pypi.org/project/like_keras/"
 docs = "https://github.com/zacharyyamaoka/like_keras/blob/main/docs/CONTRACT.md"
 
 # Header, DiagnosticRecord, Metrics, LogRecord travel as records on the wire (codec, in-process backend); no public signature names them.
+
+# The attached HardwareInterface backend (src/like_keras/hardware_interface.py, a6201f9): a pipe to an always-on core.
+[[consumes]]
+type = "robot_msgs.control.HardwareInterface"
+symbols = ["like_keras.hardware_interface.serve_hardware_interface"]
+
+[[consumes]]
+type = "robot_msgs.control.JointTable"
+symbols = ["like_keras.hardware_interface.AttachedBackend"]
+
+[[consumes]]
+type = "robot_msgs.control.ServoCommand"
+symbols = ["like_keras.hardware_interface.AttachedBackend.write"]
+
+[[produces]]
+type = "robot_msgs.control.HardwareInterface"
+symbols = ["like_keras.hardware_interface.attached_hardware_interface"]
+
+[[produces]]
+type = "robot_msgs.control.JointTable"
+symbols = ["like_keras.hardware_interface.identity_table"]
+
+[[produces]]
+type = "robot_msgs.control.ServoState"
+symbols = ["like_keras.hardware_interface.AttachedBackend.read"]
