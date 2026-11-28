@@ -499,6 +499,9 @@ class _Link:
         self.pending: collections.deque = collections.deque()
         self.refusals: collections.deque = collections.deque(maxlen=16)
         self.writing, self.closed, self.last_sent, self.drops = False, False, 0.0, 0
+        # WHY these two (like_keras.arm.AttachedBackend): a blocking reader waits on `arrived` (set on every DATA, REFUSED
+        # and loss) instead of polling, and `lost` counts connections that ended, so it raises instead of reading stale
+        self.arrived, self.lost = threading.Event(), 0
         self.wake_read, self.wake_write = socket.socketpair()
         self.first = threading.Event()  # every subscribed Out has its cached latest value
         self.thread = threading.Thread(target=self._loop, name=f"lk-attach-{name}", daemon=True)
@@ -539,6 +542,9 @@ class _Link:
             except OSError:
                 pass
             self.connection.close()
+            if not self.closed:
+                self.lost += 1
+                self.arrived.set()
             while not self.closed:  # dropped or restarted: subscribe again
                 try:
                     self.connection = self._connect()
@@ -575,6 +581,7 @@ class _Link:
                                 self.first.set()
                         elif kind == REFUSED:
                             self.refusals.append(json.loads(payload))
+                        self.arrived.set()
                 out = b""
                 while self.pending:
                     name, value = self.pending.popleft()
