@@ -1,0 +1,20 @@
+# The always-on pendulum demo (examples/pendulum/README.md). Its own environment, so like_keras's core keeps its one
+# dependency (CONTRACT §2.1): rerun-sdk and moteus are this example's, never like_keras's.
+[project]
+name = "lk-pendulum-demo"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"  # WHY: dora-rs 0.5.0 has wheels up to 3.12
+dependencies = ["like_keras[dora]", "robot-msgs", "numpy", "moteus", "rerun-sdk"]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+like_keras = { path = "../..", editable = true }
+robot-msgs = { path = "../../../robot_msgs", editable = true }
+
+[dependency-groups]
+report = [
+    "matplotlib>=3.11.2",
+    "opencv-python-headless>=5.1.0.95",
+]
