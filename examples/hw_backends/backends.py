@@ -269,10 +269,10 @@ class KinematicBackend(_Simulated):
 
 
 class RealBackend:
-    """CAN 11 through the rack's fdcanusb, the like_keras pendulum bus's path (examples/pendulum/bus.py): its bus lock (shared
-    with the rack's runners), its adapter, the board's fault check before taking over, a window around the opening position,
-    stop on close. Unlike bus.py's one exchange per tick, `read()` and `write()` are one CAN exchange each (a query, a
-    position command without a reply), so each latency is measured on its own.
+    """CAN 11 latency example using the adapter-specific lock and an opening fault check.
+
+    The stock dispatch path separately requires the global rack lock or queue lease and a board-frame check.
+    Unlike bus.py's one exchange per tick, `read()` and `write()` each make one CAN exchange so each latency is measured on its own.
 
     WHY no return-home here (bus.py has one): every target is clamped to the opening position +- `window_rad` (3 deg), and
     `close()` first holds at the opening position for 0.5 s, so the board stops where it was found (at rest at its bottom)."""
@@ -292,38 +292,79 @@ class RealBackend:
         except BlockingIOError:
             self._lock.close()
             raise BackendUnavailable(f"{RACK_LOCK} is held: a rack session owns fdcanusb {config.adapter}") from None
+        except BaseException:
+            self._lock.close()
+            raise
         self._moteus = moteus
-        self._loop = asyncio.new_event_loop()
+        self._loop = None
+        self._transport = None
         port = f"/dev/serial/by-id/usb-mjbots_fdcanusb_{config.adapter}-if00"
 
         async def connect():  # WHY inside the loop: moteus.Fdcanusb starts its reader task when it is built (bus.py)
-            transport = moteus.Fdcanusb(port)
-            return transport, moteus.Controller(id=config.can_id, transport=transport)
+            self._transport = moteus.Fdcanusb(port)
+            return moteus.Controller(id=config.can_id, transport=self._transport)
 
-        self._transport, self._controller = self._loop.run_until_complete(connect())
-        self._seq = 0
-        state = self.read()
-        if int(state.fault[0]):
-            self.close(hold=False)
-            raise BackendUnavailable(f"CAN {config.can_id} reports fault {int(state.fault[0])}: refusing to take over")
-        self.home_rad = float(state.position[0])
+        try:
+            self._loop = asyncio.new_event_loop()
+            self._controller = self._loop.run_until_complete(connect())
+            self._seq = 0
+            state = self._read()
+            if int(state.fault[0]):
+                raise BackendUnavailable(f"CAN {config.can_id} reports fault {int(state.fault[0])}: refusing to take over")
+            self.home_rad = float(state.position[0])
+        except BaseException as error:
+            self._release_after_error(error)
+            raise
+
+    def _require_open(self) -> None:
+        if self._lock.closed:
+            raise BackendUnavailable(f"CAN {self.config.can_id} backend is closed")
 
     def _cycle(self, command):
         return self._loop.run_until_complete(self._transport.cycle([command]))
 
     def read(self) -> ServoState:
+        self._require_open()
+        try:
+            return self._read()
+        except BaseException as error:
+            self._release_after_error(error)
+            raise
+
+    def _read(self) -> ServoState:
         replies = self._cycle(self._controller.make_query())
         values = replies[0].values if replies else {}
-        r = self._moteus.Register
+        position, velocity, torque, temperature, fault = (
+            self._required_register(values, name) for name in ("POSITION", "VELOCITY", "TORQUE", "TEMPERATURE", "FAULT")
+        )
         self._seq += 1
-        return ServoState(name=self._key, position=np.array([float(values.get(r.POSITION, math.nan)) * TAU]),
-                          velocity=np.array([float(values.get(r.VELOCITY, math.nan)) * TAU]),
-                          effort=np.array([float(values.get(r.TORQUE, math.nan))]),
-                          temperature=np.array([float(values.get(r.TEMPERATURE, math.nan))]),
-                          fault=np.array([int(values.get(r.FAULT, 0))], dtype=np.int64), seq=self._seq,
+        return ServoState(name=self._key, position=np.array([position * TAU]),
+                          velocity=np.array([velocity * TAU]), effort=np.array([torque]),
+                          temperature=np.array([temperature]),
+                          fault=np.array([int(fault)], dtype=np.int64), seq=self._seq,
                           header=Header(stamp=time.time()))
 
+    def _required_register(self, values, name: str) -> float:
+        value = values.get(getattr(self._moteus.Register, name))
+        if value is None:
+            raise BackendUnavailable(f"CAN {self.config.can_id} reply is missing {name}")
+        try:
+            number = float(value)
+        except (TypeError, ValueError, OverflowError) as error:
+            raise BackendUnavailable(f"CAN {self.config.can_id} reply has invalid {name}: {value!r}") from error
+        if not math.isfinite(number) or (name == "FAULT" and not number.is_integer()):
+            raise BackendUnavailable(f"CAN {self.config.can_id} reply has invalid {name}: {value!r}")
+        return number
+
     def write(self, command: ServoCommand, defines: Mapping[str, float] | None = None) -> None:
+        self._require_open()
+        try:
+            self._write(command)
+        except BaseException as error:
+            self._release_after_error(error)
+            raise
+
+    def _write(self, command: ServoCommand) -> None:
         position = float(command.position[0])
         low, high = self.home_rad - self.config.window_rad, self.home_rad + self.config.window_rad
         velocity = 0.0 if command.velocity is None else float(command.velocity[0])
@@ -341,16 +382,41 @@ class RealBackend:
             if hold:
                 hold_here = ServoCommand(name=self._key, position=np.array([self.home_rad]), velocity=np.zeros(1))
                 for _ in range(50):
-                    self.write(hold_here)
+                    self._write(hold_here)
                     time.sleep(0.01)
             self._loop.run_until_complete(self._controller.set_stop())
-        finally:
-            fcntl.flock(self._lock, fcntl.LOCK_UN)
-            self._lock.close()
-            for task in asyncio.all_tasks(self._loop):  # the transport's reader task: cancel it so the loop closes clean
+        except BaseException as error:
+            self._release_after_error(error)
+            raise
+        self._release()
+
+    def _release_after_error(self, error: BaseException) -> None:
+        # A failed exchange is not evidence for another command. Teardown relies on the configured command watchdog.
+        try:
+            self._release()
+        except Exception as cleanup_error:
+            error.add_note(f"CAN {self.config.can_id} cleanup failed: {cleanup_error}")
+
+    def _release(self) -> None:
+        async def cancel_pending() -> None:
+            tasks = asyncio.all_tasks() - {asyncio.current_task()}
+            for task in tasks:
                 task.cancel()
-            self._loop.run_until_complete(asyncio.gather(*asyncio.all_tasks(self._loop), return_exceptions=True))
-            self._loop.close()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+
+        try:
+            try:
+                if self._transport is not None:
+                    self._transport.close()
+            finally:
+                if self._loop is not None:
+                    try:
+                        self._loop.run_until_complete(cancel_pending())
+                    finally:
+                        self._loop.close()
+        finally:
+            self._lock.close()
 
 
 # ---------------------------------------------------------------- 6: remote
