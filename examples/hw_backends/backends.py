@@ -101,6 +101,24 @@ class RemoteConfig:
 # ---------------------------------------------------------------- shared simulated-backend plumbing
 
 
+def servo_mode(command: ServoCommand) -> str:
+    """What servo 0 is told to do: ``"position"``, ``"stop"`` or ``"brake"`` (robot_msgs SERVO_MODES).
+
+    WHY fail closed (W3-HWI-28, Joint Command Controller's compat test, 2026-11-28): a JCC stop tick is mode "stop",
+    position NaN, max_effort 0. Read as a position target, the NaN clamped to the window edge and went out as a powered
+    move (home - 3 deg at 3 N*m), not limp. So a position command whose position is not finite, or whose max_effort is
+    0, is a stop too.
+    """
+    mode = "position" if command.mode is None else str(command.mode[0])
+    if mode != "position":
+        return mode
+    if not math.isfinite(float(command.position[0])):
+        return "stop"
+    if command.max_effort is not None and float(command.max_effort[0]) == 0.0:
+        return "stop"
+    return "position"
+
+
 class _Simulated:
     simulated = True
 
@@ -188,9 +206,15 @@ class MujocoBackend(_Simulated):
         self._tau = float(observation["requested_torque"][0])
 
     def write(self, command: ServoCommand, defines: Mapping[str, float] | None = None) -> None:
-        position, velocity, effort, cap = self._target(command, self.description.cap_nm)
-        board = {"mode": "combined", "position": (position,), "velocity": (velocity,), "feedforward_torque": (effort,),
-                 "kp_scale": (1.0,), "kd_scale": (1.0,), "ilimit_scale": (0.0,), "maximum_torque": (cap,)}
+        mode = servo_mode(command)
+        if mode == "position":
+            position, velocity, effort, cap = self._target(command, self.description.cap_nm)
+            board = {"mode": "combined", "position": (position,), "velocity": (velocity,), "feedforward_torque": (effort,),
+                     "kp_scale": (1.0,), "kd_scale": (1.0,), "ilimit_scale": (0.0,), "maximum_torque": (cap,)}
+        else:  # WHY gains to zero, not maximum_torque 0: moteus_servo refuses a cap <= 0; stop = no torque, brake = damping
+            board = {"mode": "combined", "position": (self._q,), "velocity": (0.0,), "feedforward_torque": (0.0,),
+                     "kp_scale": (0.0,), "kd_scale": (1.0 if mode == "brake" else 0.0,), "ilimit_scale": (0.0,),
+                     "maximum_torque": (self.description.cap_nm,)}
         if self._delay > 0.0:
             self._adapter.step(self._delay)  # WHY: the board latches a command command_delay_s after it arrives (twin.py)
         self._adapter.apply_device_commands({TWIN_JOINT: board})
@@ -219,6 +243,7 @@ class AnalyticalBackend(_Simulated):
         self.description, self.config = description, config
         self._q = description.bottom_rad
         self._command: tuple[float, float, float, float] | None = None
+        self._brake = False
 
     def _qdd(self, q: float, qd: float) -> tuple[float, float]:
         d = self.description
@@ -226,12 +251,22 @@ class AnalyticalBackend(_Simulated):
             tau = 0.0  # stopped until the first command
         else:
             position, velocity, effort, cap = self._command
-            tau = max(-cap, min(cap, d.kp_nm_rad * (position - q) + d.kd_nm_s_rad * (velocity - qd) + effort))
+            if self._brake:  # windings shorted: damping only
+                tau = max(-cap, min(cap, -d.kd_nm_s_rad * qd))
+            else:
+                tau = max(-cap, min(cap, d.kp_nm_rad * (position - q) + d.kd_nm_s_rad * (velocity - qd) + effort))
         friction = d.coulomb_nm * math.tanh(qd / 0.01) if d.coulomb_nm else 0.0
         return (tau - d.gravity_nm * math.sin(q - d.bottom_rad) - d.damping_nm_s_rad * qd - friction) / d.inertia_kg_m2, tau
 
     def write(self, command: ServoCommand, defines: Mapping[str, float] | None = None) -> None:
-        self._command = self._target(command, self.description.cap_nm)
+        mode = servo_mode(command)
+        self._brake = mode == "brake"
+        if mode == "position":
+            self._command = self._target(command, self.description.cap_nm)
+        elif mode == "brake":
+            self._command = (self._q, 0.0, 0.0, self.description.cap_nm)
+        else:
+            self._command = None  # stop: no torque
         h = self.period_s / self.config.substeps
         q, qd = self._q, self._qd
         for _ in range(self.config.substeps):  # classic RK4 on (q, q')
@@ -259,8 +294,11 @@ class KinematicBackend(_Simulated):
         self._q = 0.0 if description is None else description.bottom_rad
 
     def write(self, command: ServoCommand, defines: Mapping[str, float] | None = None) -> None:
-        position, velocity, effort, _ = self._target(command, math.inf)
-        self._q, self._qd, self._tau = position, velocity, effort
+        if servo_mode(command) == "position":
+            position, velocity, effort, _ = self._target(command, math.inf)
+            self._q, self._qd, self._tau = position, velocity, effort
+        else:  # stop / brake: stays where it is, at rest (a stop's NaN position must never reach the state)
+            self._qd = self._tau = 0.0
         self._seq += 1
         self._sim_t += self.period_s
 
@@ -365,14 +403,24 @@ class RealBackend:
             raise
 
     def _write(self, command: ServoCommand) -> None:
+        mode = servo_mode(command)
+        if mode == "stop":
+            self._cycle(self._controller.make_stop(query=False))
+            return
+        if mode == "brake":
+            self._cycle(self._controller.make_brake(query=False))
+            return
         position = float(command.position[0])
         low, high = self.home_rad - self.config.window_rad, self.home_rad + self.config.window_rad
         velocity = 0.0 if command.velocity is None else float(command.velocity[0])
         if not low <= position <= high:
             position, velocity = min(high, max(low, position)), 0.0
         effort = 0.0 if command.feedforward_effort is None else float(command.feedforward_effort[0])
+        cap = self.config.cap_nm  # WHY min: a JCC step's max_effort is the cap it asked for; the sims already honour it
+        if command.max_effort is not None and math.isfinite(float(command.max_effort[0])):
+            cap = min(cap, float(command.max_effort[0]))
         self._cycle(self._controller.make_position(position=position / TAU, velocity=velocity / TAU, feedforward_torque=effort,
-                                                   maximum_torque=self.config.cap_nm, watchdog_timeout=self.config.watchdog_s,
+                                                   maximum_torque=cap, watchdog_timeout=self.config.watchdog_s,
                                                    query=False))
 
     def close(self, hold: bool = True) -> None:
