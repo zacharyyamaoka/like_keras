@@ -18,6 +18,8 @@
 #include <optional>
 #include <span>
 #include <stdexcept>
+#include <tuple>
+#include <type_traits>
 
 #include "box.hpp"
 
@@ -26,48 +28,10 @@ namespace {
 
 // ---------------------------------------------------------------- the v0 types, field by field in dataclass order
 
-// One function per type walks its wire children in robot_msgs' field order (the schema-hash order, CONTRACT §7.1),
-// with one visitor to decode, one to encode and one to pin strings. Fields a view leaves out (Header.meta, a plan's
-// channels and limits) are skipped on the way in and sent empty on the way out.
-template <class V>
-void fields(rm::Header& m, V& v) {
-  v.scalar(m.stamp), v.text(m.frame_id), v.empty_map();
-}
-template <class V>
-void fields(rm::JointState& m, V& v) {
-  v.names(m.name, m.size), v.numbers(m.position, m.size), v.numbers(m.velocity, m.size);
-  v.numbers(m.effort, m.size), v.nest(m.header);
-}
-template <class V>
-void fields(rm::ServoState& m, V& v) {
-  v.names(m.name, m.size), v.numbers(m.position, m.size), v.numbers(m.velocity, m.size), v.numbers(m.effort, m.size);
-  v.numbers(m.temperature, m.size), v.numbers(m.voltage, m.size), v.numbers(m.fault, m.size), v.scalar(m.seq);
-  v.nest(m.header);
-}
-template <class V>
-void fields(rm::ServoCommand& m, V& v) {
-  v.names(m.name, m.size), v.numbers(m.position, m.size), v.numbers(m.velocity, m.size);
-  v.numbers(m.feedforward_effort, m.size), v.numbers(m.stiffness, m.size), v.numbers(m.damping, m.size);
-  v.numbers(m.max_effort, m.size), v.scalar(m.state_stamp), v.scalar(m.state_seq), v.nest(m.header);
-}
-template <class V>
-void fields(rm::JointTrajectory& m, V& v) {
-  v.span(m.t), v.skip(), v.nest(m.header), v.names(m.joint_names, m.joints), v.span(m.positions), v.span(m.velocities);
-  v.span(m.accelerations), v.span(m.effort), v.skip();
-}
-template <class V>
-void fields(rm::LogRecord& m, V& v) {
-  v.nest(m.header), v.text(m.path), v.scalar(m.tick), v.scalar(m.level), v.text(m.message);
-}
-template <class V>
-void fields(rm::DiagnosticRecord& m, V& v) {
-  v.nest(m.header), v.text(m.path), v.text(m.level), v.text(m.code), v.text(m.message), v.text(m.mode);
-  v.scalar(m.expected_period_s), v.scalar(m.uptime_s), v.names(m.stale_inputs, m.size);
-}
-template <class V>
-void fields(rm::Metrics& m, V& v) {
-  v.nest(m.header), v.text(m.path), v.names(m.names, m.size), v.numbers(m.values, m.size);
-}
+// The generated headers give every view a `rm::fields(view, visitor)` that walks its wire children in robot_msgs'
+// field order (the schema-hash order, CONTRACT §7.1); found here by argument-dependent lookup. One visitor decodes,
+// one encodes and one pins strings. WHY generated, not listed here: a hand-kept list drifted from robot_msgs and a
+// C++ ServoState went out one child (`truth`) short under the full schema's hash.
 
 // ---------------------------------------------------------------- decode: views into a received array
 
@@ -90,78 +54,102 @@ struct Reader {
     const auto* offsets = static_cast<const std::int32_t*>(array.buffers[1]);
     return {offsets[at], offsets[at + 1]};
   }
-  static std::string_view text_at(const ArrowArray& array, std::int64_t at) {
-    const auto [begin, end] = range(array, at);
-    return {static_cast<const char*>(array.buffers[2]) + begin, static_cast<std::size_t>(end - begin)};
+  template <class N>
+  static N item(const ArrowArray& array, std::int64_t at) {  // element `at` of a g, l, b or u array, or a +l of g
+    if constexpr (std::is_same_v<N, bool>) {
+      return static_cast<const std::uint8_t*>(array.buffers[1])[at / 8] >> (at % 8) & 1;
+    } else if constexpr (std::is_same_v<N, std::string_view>) {
+      const auto [begin, end] = range(array, at);
+      return {static_cast<const char*>(array.buffers[2]) + begin, static_cast<std::size_t>(end - begin)};
+    } else if constexpr (std::is_same_v<N, std::span<const double>>) {
+      const auto [begin, end] = range(array, at);
+      const ArrowArray& items = *array.children[0];
+      return {static_cast<const double*>(items.buffers[1]) + items.offset + begin,
+              static_cast<std::size_t>(end - begin)};
+    } else {
+      return static_cast<const N*>(array.buffers[1])[at];
+    }
+  }
+  // the list (or map) at this row, or nullptr: missing (ok = false), null where nullable (`out` reset), or longer
+  // than the view's capacity (ok = false: refused, never cut)
+  template <class Out = std::nullptr_t>
+  const ArrowArray* rows(std::size_t capacity, std::int64_t& begin, std::int64_t& end, Out* nullable = nullptr) {
+    const ArrowArray* list = child();
+    if (list == nullptr) return nullptr;
+    if constexpr (!std::is_same_v<Out, std::nullptr_t>)
+      if (!valid(*list, list->offset + row)) return nullable->reset(), nullptr;
+    std::tie(begin, end) = range(*list, list->offset + row);
+    if (end - begin > static_cast<std::int64_t>(capacity)) return ok = false, nullptr;
+    return list;
   }
   template <class N, std::size_t C>
-  void copy_items(const ArrowArray& list, std::array<N, C>& out) {
-    const auto [begin, end] = range(list, list.offset + row);
+  void copy_items(const ArrowArray& list, std::int64_t begin, std::int64_t end, std::array<N, C>& out) {
     const ArrowArray& items = *list.children[0];
-    if (end - begin > static_cast<std::int64_t>(C)) {
-      ok = false;  // more joints than lk::kMaxJoints: refused, never cut
-      return;
-    }
-    if (end > begin)
-      std::memcpy(out.data(), static_cast<const N*>(items.buffers[1]) + items.offset + begin,
-                  (end - begin) * sizeof(N));
+    for (auto at = begin; at < end; ++at) out[at - begin] = item<N>(items, items.offset + at);
   }
   template <class N, std::size_t C>
   void numbers(std::array<N, C>& out, std::size_t&) {
-    if (const ArrowArray* list = child()) copy_items(*list, out);
+    std::int64_t begin = 0, end = 0;
+    if (const ArrowArray* list = rows(C, begin, end)) copy_items(*list, begin, end, out);
   }
   template <class N, std::size_t C>
   void numbers(std::optional<std::array<N, C>>& out, std::size_t&) {
-    const ArrowArray* list = child();
-    if (list == nullptr || !valid(*list, list->offset + row)) return out.reset();
-    copy_items(*list, out.emplace());
+    std::int64_t begin = 0, end = 0;
+    if (const ArrowArray* list = rows(C, begin, end, &out)) copy_items(*list, begin, end, out.emplace());
   }
   template <std::size_t C>
   void names(std::array<std::string_view, C>& out, std::size_t& size) {
-    const ArrowArray* list = child();
-    if (list == nullptr) return;
-    const auto [begin, end] = range(*list, list->offset + row);
-    if (end - begin > static_cast<std::int64_t>(C)) return void(ok = false);
-    const ArrowArray& items = *list->children[0];
-    for (auto at = begin; at < end; ++at) out[at - begin] = text_at(items, items.offset + at);
-    size = static_cast<std::size_t>(end - begin);
+    std::int64_t begin = 0, end = 0;
+    if (const ArrowArray* list = rows(C, begin, end))
+      copy_items(*list, begin, end, out), size = static_cast<std::size_t>(end - begin);
+  }
+  template <std::size_t C>
+  void names(std::optional<std::array<std::string_view, C>>& out, std::size_t&) {  // the count is the required names'
+    std::int64_t begin = 0, end = 0;
+    if (const ArrowArray* list = rows(C, begin, end, &out)) copy_items(*list, begin, end, out.emplace());
+  }
+  template <class V, std::size_t C>
+  void map(rm::Map<V, C>& out) {
+    std::int64_t begin = 0, end = 0;
+    const ArrowArray* map = rows(C, begin, end);
+    if (map == nullptr) return;
+    const ArrowArray& entries = *map->children[0];
+    const ArrowArray &keys = *entries.children[0], &values = *entries.children[1];
+    for (auto at = begin; at < end; ++at) {
+      out.keys[at - begin] = item<std::string_view>(keys, keys.offset + entries.offset + at);
+      out.values[at - begin] = item<V>(values, values.offset + entries.offset + at);
+    }
+    out.size = static_cast<std::size_t>(end - begin);
   }
   template <class N>
   void scalar(N& out) {
-    if (const ArrowArray* array = child()) out = static_cast<const N*>(array->buffers[1])[array->offset + row];
+    if (const ArrowArray* array = child()) out = item<N>(*array, array->offset + row);
   }
   template <class N>
   void scalar(std::optional<N>& out) {
     const ArrowArray* array = child();
     if (array == nullptr || !valid(*array, array->offset + row)) return out.reset();
-    out = static_cast<const N*>(array->buffers[1])[array->offset + row];
+    out = item<N>(*array, array->offset + row);
   }
-  void text(std::string_view& out) {
-    if (const ArrowArray* array = child()) out = text_at(*array, array->offset + row);
-  }
-  std::span<const double> items_of(const ArrowArray& list) {
-    const auto [begin, end] = range(list, list.offset + row);
-    const ArrowArray& items = *list.children[0];
-    return {static_cast<const double*>(items.buffers[1]) + items.offset + begin, static_cast<std::size_t>(end - begin)};
-  }
-  void span(std::span<const double>& out) {
-    if (const ArrowArray* list = child()) out = items_of(*list);
-  }
-  void span(std::optional<std::span<const double>>& out) {
-    const ArrowArray* list = child();
-    if (list == nullptr || !valid(*list, list->offset + row)) return out.reset();
-    out = items_of(*list);
-  }
+  void text(std::string_view& out) { scalar(out); }
+  void span(std::span<const double>& out) { scalar(out); }
+  void span(std::optional<std::span<const double>>& out) { scalar(out); }
   template <class M>
   void nest(M& out) {
-    const ArrowArray* array = child();
-    if (array == nullptr) return;
-    Reader inner{array, array->offset + row};
-    fields(out, inner);
-    ok = ok && inner.ok;
+    if (const ArrowArray* array = child()) read_struct(*array, out);
   }
-  void skip() { child(); }
-  void empty_map() { child(); }
+  template <class M>
+  void nest(std::optional<M>& out) {
+    const ArrowArray* array = child();
+    if (array == nullptr || !valid(*array, array->offset + row)) return out.reset();
+    read_struct(*array, out.emplace());
+  }
+  template <class M>
+  void read_struct(const ArrowArray& array, M& out) {
+    Reader inner{&array, array.offset + row};
+    fields(out, inner);
+    ok = ok && inner.ok && inner.next == array.n_children;  // a child the view does not know is refused, as at the root
+  }
 };
 
 template <class T>
@@ -189,9 +177,22 @@ struct Pinner {
   void names(std::array<std::string_view, C>& names, std::size_t size) {
     for (std::size_t at = 0; at < std::min(size, C); ++at) text(names[at]);
   }
+  template <std::size_t C>
+  void names(std::optional<std::array<std::string_view, C>>& names, std::size_t size) {
+    if (names) this->names(*names, size);
+  }
+  template <class V, std::size_t C>
+  void map(rm::Map<V, C>& map) {
+    names(map.keys, map.size);
+    if constexpr (std::is_same_v<V, std::string_view>) names(map.values, map.size);
+  }
   template <class M>
   void nest(M& message) {
     fields(message, *this);
+  }
+  template <class M>
+  void nest(std::optional<M>& message) {
+    if (message) fields(*message, *this);
   }
   template <class... Any>
   void numbers(Any&&...) {}
@@ -199,8 +200,6 @@ struct Pinner {
   void scalar(Any&&...) {}
   template <class... Any>
   void span(Any&&...) {}
-  void skip() {}
-  void empty_map() {}
 };
 
 template <class T>
@@ -248,52 +247,69 @@ struct Writer {
                                                 release_child, nullptr});
   }
   template <class N>
+  ArrowArray* column(const N* data, std::size_t size, bool null = false) {  // `size` elements of a g, l, b or u array
+    if constexpr (std::is_same_v<N, std::string_view>) {
+      std::vector<std::int32_t> offsets{0};
+      std::string chars;
+      for (std::size_t at = 0; at < size; ++at)
+        chars += data[at], offsets.push_back(static_cast<std::int32_t>(chars.size()));
+      return node(static_cast<std::int64_t>(size), null,
+                  {nullptr, keep(offsets.data(), offsets.size() * 4), keep(chars.data(), chars.size())});
+    } else if constexpr (std::is_same_v<N, bool>) {
+      std::string bits((size + 7) / 8, '\0');
+      for (std::size_t at = 0; at < size; ++at) bits[at / 8] = static_cast<char>(bits[at / 8] | data[at] << (at % 8));
+      return node(static_cast<std::int64_t>(size), null, {nullptr, keep(bits.data(), bits.size())});
+    } else {
+      return node(static_cast<std::int64_t>(size), null, {nullptr, keep(data, size * sizeof(N))});
+    }
+  }
+  template <class N>
   void list(const N* data, std::size_t size, bool null) {
-    ArrowArray* items = node(static_cast<std::int64_t>(size), false, {nullptr, keep(data, size * sizeof(N))});
-    kids.push_back(node(1, null, {nullptr, ends(size)}, {items}));
+    kids.push_back(node(1, null, {nullptr, ends(size)}, {column(data, size)}));
   }
   template <class N, std::size_t C>
   void numbers(const std::array<N, C>& in, std::size_t size) {
-    list(in.data(), size, false);
+    list(in.data(), std::min(size, C), false);
   }
   template <class N, std::size_t C>
   void numbers(const std::optional<std::array<N, C>>& in, std::size_t size) {
-    in ? list(in->data(), size, false) : list<N>(nullptr, 0, true);
+    in ? list(in->data(), std::min(size, C), false) : list<N>(nullptr, 0, true);
   }
   template <std::size_t C>
   void names(const std::array<std::string_view, C>& in, std::size_t size) {
-    std::vector<std::int32_t> offsets{0};
-    std::string chars;
-    for (std::size_t at = 0; at < size; ++at)
-      chars += in[at], offsets.push_back(static_cast<std::int32_t>(chars.size()));
-    ArrowArray* items = node(static_cast<std::int64_t>(size), false,
-                             {nullptr, keep(offsets.data(), offsets.size() * 4), keep(chars.data(), chars.size())});
-    kids.push_back(node(1, false, {nullptr, ends(size)}, {items}));
+    numbers(in, size);
+  }
+  template <std::size_t C>
+  void names(const std::optional<std::array<std::string_view, C>>& in, std::size_t size) {
+    numbers(in, size);
+  }
+  template <class V, std::size_t C>
+  void map(const rm::Map<V, C>& in) {
+    const std::size_t size = std::min(in.size, C);
+    ArrowArray* entries = node(static_cast<std::int64_t>(size), false, {nullptr},
+                               {column(in.keys.data(), size), column(in.values.data(), size)});
+    kids.push_back(node(1, false, {nullptr, ends(size)}, {entries}));
   }
   template <class N>
   void scalar(const N& value) {
-    kids.push_back(node(1, false, {nullptr, keep(&value, sizeof value)}));
+    kids.push_back(column(&value, 1));
   }
   template <class N>
   void scalar(const std::optional<N>& value) {
     const N held = value.value_or(N{});
-    kids.push_back(node(1, !value, {nullptr, keep(&held, sizeof held)}));
+    kids.push_back(column(&held, 1, !value));
   }
-  void text(std::string_view text) {
-    kids.push_back(node(1, false, {nullptr, ends(text.size()), keep(text.data(), text.size())}));
-  }
+  void text(std::string_view text) { scalar(text); }
   template <class M>
-  void nest(M& message) {
+  void nest(M& message, bool null = false) {
     Writer inner{built};
     fields(message, inner);
-    kids.push_back(node(1, false, {nullptr}, std::move(inner.kids)));
+    kids.push_back(node(1, null, {nullptr}, std::move(inner.kids)));
   }
-  void empty_map() {  // map<utf8, utf8> with no entries (Header.meta, which the views leave out)
-    const std::int32_t zero = 0;
-    ArrowArray* key = node(0, false, {nullptr, keep(&zero, 4), nullptr});
-    ArrowArray* value = node(0, false, {nullptr, keep(&zero, 4), nullptr});
-    ArrowArray* entries = node(0, false, {nullptr}, {key, value});
-    kids.push_back(node(1, false, {nullptr, ends(0)}, {entries}));
+  template <class M>
+  void nest(std::optional<M>& message) {  // null: a default view under a null slot, as codec._zero writes (§7.1)
+    M blank{};
+    message ? nest(*message) : nest(blank, true);
   }
 };
 

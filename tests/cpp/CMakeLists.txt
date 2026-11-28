@@ -43,3 +43,7 @@ lk_component(optional_queue optional_queue.cpp)
 
 # CONTRACT §15 A28 (consumer-012): a line logged between two facility rounds, for a reader (tests/test_log_readers.py)
 lk_component(log_once log_once.cpp)
+
+# ServoState.truth, a nullable nested message with a str -> float map, out of and back into a C++ box
+# (tests/test_servo_truth.py)
+lk_component(servo_truth servo_truth.cpp)

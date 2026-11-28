@@ -273,9 +273,57 @@ def _message(cls: type, values: dict, children: list[Node]):
 # ---------------------------------------------------------------- C++ views (CONTRACT §7.4)
 
 CPP_TYPES = {"g": "double", "l": "std::int64_t", "b": "bool", "u": "std::string_view"}
+MAP_CAPACITY = "kMaxMeta"  # entries of one Mapping[str, X] field (Header.meta, GroundTruth.meta, a plan's channels)
+
+
+def _cpp_member(cls: type, node: Node, trajectory: bool, capacity: str) -> tuple[list[str], str]:
+    """One wire child as (its declaration lines, its visitor call), or TypeError naming it.
+
+    WHY refuse, never skip: the views carry kHash, the hash of every child, so a child left out of the view made a C++
+    ServoState that claimed robot_msgs' layout while sending one child too few (ServoState.truth, robot_msgs c72d664;
+    Python read it as "zip() argument 2 is shorter than argument 1")."""
+    item = node.children[0].format if node.format == "+l" else ""
+    count = "m.joints" if trajectory else "m.size"
+    if node.format in CPP_TYPES and not (node.nullable and node.format == "u"):
+        declaration, call = CPP_TYPES[node.format], f"v.{'text' if node.format == 'u' else 'scalar'}(m.{node.name})"
+    elif node.format == "+l" and item == "u":
+        declaration, call = f"std::array<std::string_view, {capacity}>", f"v.names(m.{node.name}, {count})"
+    elif node.format == "+l" and trajectory and item == "g":
+        declaration, call = "std::span<const double>", f"v.span(m.{node.name})"
+    elif node.format == "+l" and not trajectory and item in NUMBER:
+        declaration, call = f"std::array<{CPP_TYPES[item]}, {capacity}>", f"v.numbers(m.{node.name}, m.size)"
+    elif node.format == "+s" and node.message is not None:
+        declaration, call = node.message.type_name.split("/")[1], f"v.nest(m.{node.name})"
+    elif node.format == "+m" and not node.nullable:
+        value = node.children[0].children[1]
+        if value.format in CPP_TYPES:
+            kind = CPP_TYPES[value.format]
+        elif trajectory and value.format == "+l" and value.children[0].format == "g":
+            kind = "std::span<const double>"  # a plan's channels: (N, ...) row-major, read-only like its arrays
+        else:
+            kind = ""
+        declaration, call = f"Map<{kind}, {MAP_CAPACITY}>", f"v.map(m.{node.name})"
+        if not kind:
+            declaration = ""
+    else:
+        declaration = ""
+    if not declaration:
+        raise TypeError(
+            f"{cls.type_name}.{node.name} ({node.format}{', nullable' if node.nullable else ''}) has no C++ view "
+            "layout (CONTRACT §7.4): add one to codec._cpp_member and the visitors in cpp/src/abi.cpp, never skip it"
+        )
+    lines = []
+    if trajectory and call.startswith("v.names") and node.name == "joint_names":
+        # WHY (CONTRACT §15 A16): a C++ controller maps a plan by name, as its Python peer does, never by column
+        lines.append("  std::size_t joints = 0;  // how many names joint_names holds (one per column of the arrays)")
+    elif trajectory and call.startswith("v.names"):
+        raise TypeError(f"{cls.type_name}.{node.name}: a sample-major view has one name list, joint_names")
+    lines.append(f"  {f'std::optional<{declaration}>' if node.nullable else declaration} {node.name}{{}};")
+    return lines, call
 
 
 def _cpp_struct(cls: type) -> list[str]:
+    """The view of one type and its `fields` visitor: every wire child in dataclass (= schema hash) order."""
     nodes, name = schema(cls), cls.type_name.split("/")[1]
     trajectory = any(node.sample for node in nodes)
     capacity = "kMaxNames" if cls.type_name.startswith("std/") else "lk::kMaxJoints"
@@ -289,35 +337,63 @@ def _cpp_struct(cls: type) -> list[str]:
         lines.append("  // read-only views over the received buffers, valid for the step; row-major (N, J); N = t.size()")
     elif any(node.format == "+l" for node in nodes):
         lines.append("  std::size_t size = 0;  // how many joints (names) the arrays below hold")
+    calls = []
     for node in nodes:
-        item = node.children[0].format if node.children else ""
-        if node.format == "+s" and node.message is robot_msgs.std.Header:
-            declaration = "Header"
-        elif trajectory and node.format == "+l" and item == "u":
-            # WHY (CONTRACT §15 A16): a C++ controller maps a plan by name, as its Python peer does, never by column
-            lines.append("  std::size_t joints = 0;  // how many names joint_names holds (one per column of the arrays)")
-            declaration = f"std::array<std::string_view, {capacity}>"
-        elif trajectory:
-            declaration = "std::span<const double>" if node.format == "+l" and item == "g" else ""
-        elif node.format == "+l":
-            declaration = f"std::array<{CPP_TYPES[item]}, {capacity}>"
-        else:
-            declaration = CPP_TYPES.get(node.format, "")
-        if declaration:  # maps (Header.meta, channels) and limits of a plan stay Python-side in v0
-            lines.append(f"  {f'std::optional<{declaration}>' if node.nullable else declaration} {node.name}{{}};")
-    return lines + ["};"]
+        declaration, call = _cpp_member(cls, node, trajectory, capacity)
+        lines += declaration
+        calls.append(call)
+    lines += ["};", "template <class V>", f"void fields({name}& m, V& v) {{  // its wire children, in hash order"]
+    row = "  "
+    for call in calls:
+        if len(row) + len(call) + 2 > 118:
+            lines.append(row.rstrip(", ") + ";")
+            row = "  "
+        row += call + ", "
+    return lines + [row.rstrip(", ") + ";", "}"]
+
+
+def _cpp_types() -> list[type]:
+    """The v0 types and every message nested in one, each after the types it nests (a struct before its use)."""
+    registry, ordered = robot_msgs.message_types(), []
+
+    def add(cls: type) -> None:
+        def nested(nodes: tuple[Node, ...]) -> None:
+            for node in nodes:
+                if node.message is not None:
+                    add(node.message)
+                else:
+                    nested(node.children)
+
+        nested(schema(cls))
+        if cls not in ordered:
+            ordered.append(cls)
+
+    for name in V0_TYPES:
+        add(registry[name])
+    return ordered
 
 
 def cpp_headers() -> dict[str, str]:
     """`<domain>.hpp` -> its text: namespace rm, one struct per v0 type, fixed capacity (CONTRACT §7.4)."""
-    registry = robot_msgs.message_types()
     generator = hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest()[:16]
     domains: dict[str, list[str]] = {}
-    for name in V0_TYPES:
-        domains.setdefault(name.split("/")[0], []).extend(_cpp_struct(registry[name]))
+    for cls in _cpp_types():
+        domains.setdefault(cls.type_name.split("/")[0], []).extend(_cpp_struct(cls))
     out = {}
     for domain, body in domains.items():
-        text = "\n".join(body)
+        constants = [
+            "",
+            "inline constexpr std::size_t kMaxNames = 64;  // facility records: names, metrics, inputs",
+            f"inline constexpr std::size_t {MAP_CAPACITY} = 32;  // entries of one map field; more is refused, never cut",
+            "",
+            "template <class V, std::size_t C>",
+            "struct Map {  // a Mapping[str, V]: its first `size` keys and values, in the order sent",
+            "  std::size_t size = 0;",
+            "  std::array<std::string_view, C> keys{};",
+            "  std::array<V, C> values{};",
+            "};",
+        ] if domain == "std" else []
+        text = "\n".join(constants + body)
         needed = {
             "array": "std::array",
             "cstddef": "std::size_t",
@@ -329,10 +405,9 @@ def cpp_headers() -> dict[str, str]:
         includes = [f"#include <{header}>" for header, token in needed.items() if token in text]
         includes += [
             f"#include <like_keras/{header}>"
-            for header, token in (("lk.hpp", "lk::"), ("msgs/std.hpp", "Header"))
-            if token in text and domain != "std"
+            for header, tokens in (("lk.hpp", ("lk::",)), ("msgs/std.hpp", ("Header", "Map<")))
+            if any(token in text for token in tokens) and domain != "std"
         ]
-        constants = ["", "inline constexpr std::size_t kMaxNames = 64;  // facility records: names, metrics, inputs"]
         out[f"{domain}.hpp"] = "\n".join(
             [
                 f"// GENERATED by `python -m like_keras.codec --cpp` (generator {generator}); do not edit.",
@@ -342,7 +417,7 @@ def cpp_headers() -> dict[str, str]:
                 *includes,
                 "",
                 "namespace rm {",
-                *(constants if domain == "std" else []),
+                *constants,
                 *body,
                 "",
                 "}  // namespace rm",
