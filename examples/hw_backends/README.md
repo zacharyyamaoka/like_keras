@@ -13,7 +13,7 @@ hw = hardware(MujocoConfig(), twin_of_record())   # 2. realistic: the same backe
 hw = hardware(AnalyticalConfig(), nominal())      # 3. closed-form ODE on the host
 hw = hardware(KinematicConfig())                  # 4. measured = commanded
 hw = hardware(RealConfig())                       # 5. CAN 11 on fdcanusb 272813EF (rack bus lock, +-3 deg window)
-hw = hardware(RemoteConfig(address, robot_fingerprint()))   # 6. like_keras AttachedBackend (waits on like_keras main)
+hw = hardware(RemoteConfig(address, robot_fingerprint()))   # 6. like_keras AttachedBackend to a serve_core
 state = hw.read(); hw.write(hold(state, 0.01))
 ```
 
@@ -25,6 +25,8 @@ state = hw.read(); hw.write(hold(state, 0.01))
 | `measure.py` | the harness: read / write / round-trip latency and loop rate per case, into one JSON |
 | `build_report.py` | the report: `reports/hw-backends-latency-2026-11-28.html` |
 | `test_hw_backends.py` | read/write on 1-4, nominal MuJoCo = analytical, the real backend's lock refusal, the remote fingerprint refusal |
+| `relay.py` | a stdlib byte pipe (unix/TCP) that carries an attach socket to another host: the LAN hairpin, the cloud tunnel |
+| `cloud_core.sh` | the cloud VM side of case 6c (cores + relay + a Cloudflare quick tunnel; hostnames pushed on a branch) |
 | `run.sh` | runs any of these under bam_rack_twin's venv (MuJoCo 3.11, bam_sim, moteus), like_keras on the path |
 
 Runtime: bam_rack_twin's venv (`/home/bam/bam_ws/src/dev/bam_rack_twin/.venv`), because the realistic twin is bam_rack_twin's
@@ -36,3 +38,8 @@ wait out any full-arm homing.
 ```bash
 bash /home/bam/like_keras/examples/hw_backends/run.sh test
 ```
+
+Results, 2026-11-28: `reports/hw-backends-latency-2026-11-28.html` (built by `build_report.py` from
+`reports/media/hw-backends-2026-11-28/latency.json`). The remote numbers ran on robot_msgs 292b832: robot_msgs 4137538
+(GroundTruth.meta: Any) makes ServoState un-encodable for like_keras's codec, so `test_remote_refuses_a_wrong_fingerprint` is
+red on robot_msgs main until that is fixed upstream (`PYTHONPATH=<robot_msgs 292b832>/src run.sh test` is green).

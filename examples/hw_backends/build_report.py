@@ -14,19 +14,25 @@ from pathlib import Path
 
 MEDIA = Path("/home/bam/like_keras/reports/media/hw-backends-2026-11-28")
 OUT = Path("/home/bam/like_keras/reports/hw-backends-latency-2026-11-28.html")
-ORDER = ["mujoco_nominal", "mujoco_twin", "analytical", "analytical_twin", "kinematic", "real", "remote_unix", "remote_lan", "remote_cloud"]
+ORDER = ["mujoco_nominal", "mujoco_twin", "analytical", "analytical_twin", "kinematic", "real", "remote_unix:kinematic:stepped",
+         "remote_unix:analytical:stepped", "remote_unix:analytical:free", "remote_lan", "remote_cf_local"]
 COLORS = {"read": "var(--c1)", "write": "var(--c2)", "round_trip": "var(--c3)"}
 LO, HI = -3.0, 2.0  # log10 ms: 1 us .. 100 ms
 
 PENDING = [
-    ("6a. Remote, same machine (unix socket)", "waiting",
-     "like_keras AttachedBackend is not on main yet (the parallel agent's box/attached-arm is uncommitted). Glue is in backends.py "
-     "(remote_backend, serve) and serve_core.py; a preview against the in-flight code connected and refused a wrong fingerprint (below)."),
-    ("6b. Remote, LAN (camera box 192.168.1.66)", "waiting",
-     "needs 6a, and like_keras attach is unix-socket only (attach.py refuses any address but unix:), so a LAN client also needs a "
-     "TCP path. ICMP floor to the box: 0.195 ms avg, 8.3 ms max (200 pings)."),
-    ("6c. Remote, cloud VM", "waiting", "needs 6a plus a TCP path out of the VM (an outbound tunnel); not attempted: nothing to connect to yet."),
-    ("6d. Fingerprint mismatch", "preview", "refused, nothing written (output below), against the uncommitted AttachedBackend: re-run on main."),
+    ("6a. Remote, same machine (unix socket)", "measured",
+     "like_keras main a6201f9's AttachedBackend to a serve_core child (stepped: kinematic and analytical; free: analytical). A stepped "
+     "core looks for the next command at 1 kHz (like_keras STEPPED_HZ), so ~1 ms is that poll, not the socket; a free core samples "
+     "at the plant's 100 Hz, so a read waits for the next 10 ms sample."),
+    ("6b. Remote, LAN (camera box 192.168.1.66)", "measured",
+     "Hairpin: the client here -> relay.py on the Windows box -> the core here; every message crosses the LAN twice. Windows "
+     "Python has no AF_UNIX, so the box carries bytes and runs no client. ICMP floor to the box 0.195 ms avg."),
+    ("6c. Remote, cloud VM", "blocked",
+     "No cloud session could start: the bam, personal and dfuture CLIs answer 'Cloud sessions need a claude.ai sign-in'; personal2 "
+     "gave no session in 180 s; jidoka is signed in but has no GitHub connection, so it uploads the folder: bam_ws is 361 MB (over the "
+     "cap) and a 4.4 MB like_keras clone needs a folder-trust yes, which tools/cloud/pty_run.py leaves to Zach. The tunnel itself works: "
+     "this core through a Cloudflare quick tunnel (no account) and back, row 6c' (cloud_core.sh is the VM side, ready)."),
+    ("6d. Fingerprint mismatch", "measured", "refused before any write, on the unix socket (pytest) and over the LAN path (below)."),
 ]
 
 
@@ -73,7 +79,7 @@ def latency_chart(case: dict) -> str:
 
 def step_chart(cases: dict) -> str:
     width, height, left = 560.0, 220.0, 50
-    traces = [(n, c) for n, c in ((n, cases.get(n)) for n in ORDER) if c and c.get("step")]
+    traces = [(n, c) for n, c in ((n, cases.get(n)) for n in ORDER[:6]) if c and c.get("step")]  # the local backends
     tmax = 0.6
     ymax = max(max(c["step"]["dq_deg"]) for _, c in traces) * 1.1
     ymin = min(0.0, min(min(c["step"]["dq_deg"]) for _, c in traces))
@@ -120,7 +126,8 @@ def main(argv: list[str] | None = None) -> int:
         c = cases.get(name)
         if not c:
             continue
-        how = html.escape(c["note"]) if c.get("note") else ("live" if not c["simulated"] else "sim")
+        how = html.escape(c["note"]) if c.get("note") else ("attached, unix socket, this host" if name.startswith("remote_unix")
+                                                             else "live" if not c["simulated"] else "sim")
         rows.append(
             f"<tr><td>{html.escape(c['label'])}</td>"
             + "".join(f"<td class=n>{fmt(c[k], q)}</td>" for k in ("read", "write", "round_trip") for q in ("p50", "p95", "p99"))
@@ -156,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
                            "camera's view; the evidence of its motion is the step trace above (encoder).</figcaption></figure>")
     page = TEMPLATE.format(rows="".join(rows), panels="".join(panels), configs="".join(configs), pending=pending,
                            step=step_chart(cases), params=param_rows, real=real_block,
-                           refusal=html.escape(preview["refusal"]), core=html.escape(json.dumps(preview["core"])),
+                           refusal=html.escape(preview["refusal"]), lan_refusal=html.escape((media / "lan_refusal.txt").read_text().strip()), core=html.escape(json.dumps(preview["core"])),
                            client=html.escape(preview["client"]), preview_status=html.escape(preview["status"]))
     Path(arguments.out).write_text(page, encoding="utf-8")
     print(f"wrote {arguments.out} ({len(page) / 1024:.0f} KB)")
@@ -192,17 +199,20 @@ svg.chart {{ width:100%; height:auto; display:block; }}
 .legend {{ display:flex; flex-wrap:wrap; gap:6px 16px; font-size:12px; margin-top:6px; }}
 .key i {{ display:inline-block; width:12px; height:3px; margin-right:5px; vertical-align:middle; }}
 .pill {{ font-size:11px; padding:1px 7px; border-radius:9px; border:1px solid var(--line); white-space:nowrap; }}
-.pill.waiting {{ color:var(--c2); }} .pill.preview {{ color:var(--c1); }}
+.pill.blocked {{ color:var(--c5); }} .pill.measured {{ color:var(--c3); }}
 ul {{ padding-left:20px; }}
 </style></head><body><main>
 <h1>One HardwareInterface, six backends</h1>
 <p class="mut">The rack pendulum (CAN 11) behind one robot_msgs <code>HardwareInterface</code> · like_keras <code>examples/hw_backends</code> · 2026-11-28</p>
-<p class="verdict"><b>Backends 1–5 read, write and were timed through the same interface, real CAN 11 live.</b> Remote (6) is waiting on like_keras's
-AttachedBackend reaching main; a preview against its in-flight code connected and refused a wrong fingerprint.</p>
+<p class="verdict"><b>One HardwareInterface reads and writes the pendulum on MuJoCo (nominal and twin of record), analytical, kinematic,
+real CAN 11 (live) and remote (same machine and LAN, through like_keras's AttachedBackend), all timed.</b> The cloud leg is blocked
+on a Claude cloud sign-in or folder trust, not on the network: the tunnel it would use was measured end to end from here.</p>
 <ul>
-<li>Interface cost (read, kinematic) is ~0.02 ms. Everything above that is the backend: the real bus ~1.1–1.3 ms per CAN exchange, MuJoCo ~2.3 ms per 10 ms period (30 kHz moteus PID twin), the ODE ~0.03 ms.</li>
-<li>Round trip = write a 2° step, then write/read until the joint has moved 0.02° toward it. On a sim that is one tick; on the real board ~5 bus ticks (~12 ms): the pendulum's inertia, not the link.</li>
+<li>The interface itself costs ~0.02 ms (kinematic read). Everything above that is the backend: the real bus ~1.1–1.3 ms per CAN exchange, MuJoCo ~2.3 ms per 10 ms period (bam_rack_twin's 30 kHz moteus PID twin), the ODE ~0.04 ms.</li>
+<li>Round trip = write a 2° step, then write/read until the joint has moved 0.02° toward it. On a sim that is one tick. On the real board it is ~5 bus ticks (~12 ms): the pendulum's inertia, not the link.</li>
+<li>Remote adds ~1 ms on this host and over the LAN alike (p50): a stepped core checks for a command at 1 kHz. The LAN shows in the tail (p99 ~7 ms vs ~2 ms). Through Cloudflare's edge and back it is ~11 ms. A free-running core (real's default) answers on its own 100 Hz clock: a read waits up to one 10 ms sample, and a step shows two samples later (~20 ms).</li>
 <li>"No friction" and "realistic" are one MuJoCo backend with two parameter sets (bam_rack_twin's twin of record, wrapped, not rewritten).</li>
+<li>Found on the way: robot_msgs 4137538 (07:20 today, GroundTruth.meta: Any) makes ServoState un-encodable for like_keras's codec, so every attached core fails at start on robot_msgs main. The remote numbers here ran on robot_msgs 292b832.</li>
 </ul>
 
 <h2>Latency (ms)</h2>
@@ -233,10 +243,12 @@ AttachedBackend reaching main; a preview against its in-flight code connected an
 <div class="scroll"><table><tr><th>parameter</th><th>nominal (frictionless)</th><th>twin of record</th><th>unit</th></tr>{params}</table></div>
 
 <h2>Fingerprint refusal</h2>
-<p><span class="pill preview">preview</span> {preview_status}. The fingerprint is the robot's (its name and each joint with its servo key), not the parameter set: a client planning on the nominal sim may drive a core running the twin or the real board; it may not drive another robot.</p>
+<p>The fingerprint is the robot's (its name and each joint with its servo key), not the parameter set: a client planning on the nominal sim may drive a core running the twin or the real board; it may not drive another robot.</p>
 <pre>core:   {core}
 client: {client}
 → {refusal}</pre>
+<p>The same refusal through the LAN hairpin (client here → camera box → core here):</p>
+<pre>{lan_refusal}</pre>
 
 <h2>Reproduce</h2>
 <pre>bash /home/bam/like_keras/examples/hw_backends/run.sh test

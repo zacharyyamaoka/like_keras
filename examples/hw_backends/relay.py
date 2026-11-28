@@ -20,7 +20,7 @@ import time
 def _address(text: str):
     kind, _, rest = text.partition(":")
     if kind == "unix":
-        return socket.AF_UNIX, rest
+        return socket.AF_UNIX, rest  # WHY only looked up here: Windows' socket module has no AF_UNIX
     if kind == "tcp":
         host, _, port = rest.rpartition(":")
         return socket.AF_INET, (host, int(port))
@@ -50,7 +50,8 @@ def main(argv: list[str] | None = None) -> int:
     family, where = _address(arguments.listen)
     to_family, to = _address(arguments.to)
     server = socket.socket(family, socket.SOCK_STREAM)
-    if family == socket.AF_UNIX:
+    unix = family != socket.AF_INET
+    if unix:
         if os.path.exists(where):
             os.unlink(where)
     else:
@@ -73,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
         threading.Thread(target=_pump, args=(client, upstream), daemon=True).start()
         threading.Thread(target=_pump, args=(upstream, client), daemon=True).start()
     server.close()
-    if family == socket.AF_UNIX and os.path.exists(where):
+    if unix and os.path.exists(where):
         os.unlink(where)
     return 0
 
